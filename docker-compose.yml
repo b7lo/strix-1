@@ -1,6 +1,0 @@
-services:
-  mysite:
-    build: .
-    ports:
-      - "80:80"
-    restart: always
