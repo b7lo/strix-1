@@ -6,7 +6,7 @@ import { Plus, Edit2, Trash2, LogOut, Settings, ExternalLink, Shield } from 'luc
 
 export default function Dashboard() {
   const { logout } = useAuth();
-  const { projects, addProject, updateProject, deleteProject } = useProjects();
+  const { projects, addProject, updateProject, deleteProject, loading } = useProjects();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('projects');
@@ -98,12 +98,25 @@ export default function Dashboard() {
           >
             {editingId ? 'تعديل مشروع' : 'إضافة جديد'}
           </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            style={{ 
+              background: 'transparent', border: 'none', color: activeTab === 'settings' ? 'var(--accent)' : 'var(--muted)',
+              fontWeight: 700, cursor: 'pointer', padding: '0.5rem 1rem', borderBottom: activeTab === 'settings' ? '2px solid var(--accent)' : 'none'
+            }}
+          >
+            الإعدادات
+          </button>
         </div>
 
         {/* Content */}
         {activeTab === 'projects' && (
           <div style={{ display: 'grid', gap: '1.2rem' }}>
-            {projects.length === 0 ? (
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--accent)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                جاري تحميل البيانات...
+              </div>
+            ) : projects.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px' }}>
                 لم يتم إضافة أي مشاريع بعد.
               </div>
@@ -200,7 +213,63 @@ export default function Dashboard() {
           </div>
         )}
 
+        {activeTab === 'settings' && (
+          <SettingsTab />
+        )}
+
       </div>
+    </div>
+  );
+}
+
+function SettingsTab() {
+  const { changePassword } = useAuth();
+  const [passData, setPassData] = useState({ old: '', new: '', confirm: '' });
+  const [msg, setMsg] = useState({ type: '', text: '' });
+
+  const handlePassChange = async (e) => {
+    e.preventDefault();
+    if (passData.new !== passData.confirm) {
+      setMsg({ type: 'error', text: 'كلمة المرور الجديدة غير متطابقة' });
+      return;
+    }
+    const res = await changePassword(passData.old, passData.new);
+    if (res.success) {
+      setMsg({ type: 'success', text: 'تم تغيير كلمة المرور بنجاح!' });
+      setPassData({ old: '', new: '', confirm: '' });
+    } else {
+      setMsg({ type: 'error', text: res.message });
+    }
+  };
+
+  return (
+    <div className="ct-form" style={{ maxWidth: '500px', margin: '0 auto' }}>
+      <h2 style={{ marginBottom: '2rem' }}>إعدادات الأمان</h2>
+      <form onSubmit={handlePassChange}>
+        <div className="fg" style={{ marginBottom: '1.2rem' }}>
+          <label>كلمة المرور الحالية</label>
+          <input type="password" required value={passData.old} onChange={e => setPassData({...passData, old: e.target.value})} />
+        </div>
+        <div className="fg" style={{ marginBottom: '1.2rem' }}>
+          <label>كلمة المرور الجديدة</label>
+          <input type="password" required value={passData.new} onChange={e => setPassData({...passData, new: e.target.value})} />
+        </div>
+        <div className="fg" style={{ marginBottom: '1.5rem' }}>
+          <label>تأكيد كلمة المرور الجديدة</label>
+          <input type="password" required value={passData.confirm} onChange={e => setPassData({...passData, confirm: e.target.value})} />
+        </div>
+        
+        {msg.text && (
+          <p style={{ 
+            color: msg.type === 'error' ? '#ff4d4d' : '#00ff88', 
+            fontSize: '0.85rem', marginBottom: '1rem', textAlign: 'center' 
+          }}>
+            {msg.text}
+          </p>
+        )}
+        
+        <button type="submit" className="ct-btn" style={{ width: '100%' }}>تحديث مفتاح الدخول</button>
+      </form>
     </div>
   );
 }

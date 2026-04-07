@@ -5,13 +5,24 @@ import { useProjects } from '../contexts/ProjectsContext';
 export default function ProjectDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { projects } = useProjects();
+  const { projects, loading } = useProjects();
   
   const project = projects.find(p => p.slug === slug);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  if (loading) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', display: 'flex', flexDirection: 'column', 
+        alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--text)' 
+      }}>
+        <p style={{ color: 'var(--accent)' }}>جاري تحميل تفاصيل المشروع...</p>
+      </div>
+    );
+  }
 
   if (!project) {
     return (

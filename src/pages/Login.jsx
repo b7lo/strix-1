@@ -8,9 +8,9 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = login(password);
+    const result = await login(password);
     if (result.success) {
       navigate('/access/v2/dashboard');
     } else {

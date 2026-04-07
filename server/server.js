@@ -1,0 +1,140 @@
+import express from 'express';
+import cors from 'cors';
+import Database from 'better-sqlite3';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+const DB_PATH = path.join(__dirname, 'database.db');
+
+app.use(cors());
+app.use(express.json());
+
+// Initialize Database
+const db = new Database(DB_PATH);
+
+// Create tables if they don't exist
+db.exec(`
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    description TEXT,
+    image TEXT,
+    type TEXT,
+    link TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+// Set default password if not exists
+const checkPwd = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_password');
+if (!checkPwd) {
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('admin_password', 'admin123');
+}
+
+// Routes
+
+// Auth
+app.post('/api/auth/login', (req, res) => {
+  const { password } = req.body;
+  const savedPwd = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_password');
+
+  if (password === savedPwd.value) {
+    res.json({ success: true, message: 'Logged in successfully' });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid password' });
+  }
+});
+
+app.post('/api/auth/change-password', (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const savedPwd = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_password');
+
+  if (oldPassword === savedPwd.value) {
+    db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(newPassword, 'admin_password');
+    res.json({ success: true, message: 'Password changed successfully' });
+  } else {
+    res.status(401).json({ success: false, message: 'Current password incorrect' });
+  }
+});
+
+// Projects
+app.get('/api/projects', (req, res) => {
+  const projects = db.prepare('SELECT * FROM projects ORDER BY created_at DESC').all();
+  res.json(projects);
+});
+
+app.post('/api/projects', (req, res) => {
+  const { id, title, slug, description, image, type, link } = req.body;
+  try {
+    db.prepare(`
+      INSERT INTO projects (id, title, slug, description, image, type, link)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, title, slug, description, image, type, link);
+    res.status(201).json({ success: true, id });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/projects/:id', (req, res) => {
+  const { id } = req.params;
+  const { title, slug, description, image, type, link } = req.body;
+  try {
+    db.prepare(`
+      UPDATE projects 
+      SET title = ?, slug = ?, description = ?, image = ?, type = ?, link = ?
+      WHERE id = ?
+    `).run(title, slug, description, image, type, link, id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/projects/:id', (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// For initial migration of existing projects from frontend
+app.post('/api/projects/sync', (req, res) => {
+  const { projects } = req.body;
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO projects (id, title, slug, description, image, type, link)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const transaction = db.transaction((projects) => {
+    for (const p of projects) insert.run(p.id, p.title, p.slug, p.description, p.image, p.type, p.link);
+  });
+
+  try {
+    transaction(projects);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

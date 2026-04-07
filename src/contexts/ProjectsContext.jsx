@@ -1,6 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import { ProjectsContext } from './contextRegistry';
 
+const API_URL = 'http://localhost:5000/api';
+
 export const useProjects = () => {
   const context = useContext(ProjectsContext);
   if (context === undefined) {
@@ -9,37 +11,45 @@ export const useProjects = () => {
   return context;
 };
 
-const defaultProjects = [
-  {
-    id: '1',
-    title: 'تطبيق متجر إلكتروني',
-    slug: 'ecommerce-app',
-    description: 'تطبيق متجر إلكتروني متكامل مبني باستخدام React للمنصة الأمامية و Node.js في الخلفية. يتميز بلوحة تحكم متقدمة، نظام سلة تسوق حديث، وتجربة مستخدم سلسة.',
-    image: 'https://images.unsplash.com/photo-1557821552-17105153ce9a?w=800&q=80',
-    type: 'متجر إلكتروني',
-    link: 'https://github.com'
-  },
-  {
-    id: '2',
-    title: 'منصة تعليمية',
-    slug: 'lms-platform',
-    description: 'منصة لتقديم الدورات التعليمية عن بعد، مصممة بأحدث التقنيات مع دعم للـ Dark Mode وميزات التفاعل في الوقت الفعلي.',
-    image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&q=80',
-    type: 'منصة',
-    link: 'https://github.com'
-  }
-];
-
 export const ProjectsProvider = ({ children }) => {
-  const [projects, setProjects] = useState(() => {
-    const saved = localStorage.getItem('awadh_projects');
-    if (saved) return JSON.parse(saved);
-    return defaultProjects;
-  });
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem('awadh_projects', JSON.stringify(projects));
-  }, [projects]);
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch(`${API_URL}/projects`);
+        const data = await response.json();
+        
+        // Initial Sync: If localStorage has projects and DB is empty, sync them
+        const savedLocal = localStorage.getItem('awadh_projects');
+        if (data.length === 0 && savedLocal) {
+          const localProjects = JSON.parse(savedLocal);
+          if (localProjects.length > 0) {
+            await fetch(`${API_URL}/projects/sync`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ projects: localProjects }),
+            });
+            // Refetch after sync
+            const refetch = await fetch(`${API_URL}/projects`);
+            const newData = await refetch.json();
+            setProjects(newData);
+            localStorage.removeItem('awadh_projects'); // Clean up
+            return;
+          }
+        }
+        
+        setProjects(data);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
 
   const generateSlug = (title) => {
     if (!title) return `project-${Date.now()}`;
@@ -51,27 +61,63 @@ export const ProjectsProvider = ({ children }) => {
       .replace(/-+/g, '-'); // Collapse multiple hyphens
   };
 
-  const addProject = (project) => {
+  const addProject = async (project) => {
     const newProject = {
       ...project,
       id: Date.now().toString(),
       slug: generateSlug(project.title),
     };
-    setProjects([newProject, ...projects]);
+    
+    try {
+      const response = await fetch(`${API_URL}/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProject),
+      });
+      if (response.ok) {
+        setProjects([newProject, ...projects]);
+      }
+    } catch (error) {
+      console.error('Error adding project:', error);
+    }
   };
 
-  const updateProject = (id, updatedProject) => {
-    setProjects(projects.map((p) => 
-      p.id === id ? { ...updatedProject, id, slug: generateSlug(updatedProject.title) } : p
-    ));
+  const updateProject = async (id, updatedProject) => {
+    const projectToUpdate = { 
+      ...updatedProject, 
+      id, 
+      slug: generateSlug(updatedProject.title) 
+    };
+    
+    try {
+      const response = await fetch(`${API_URL}/projects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectToUpdate),
+      });
+      if (response.ok) {
+        setProjects(projects.map((p) => (p.id === id ? projectToUpdate : p)));
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+    }
   };
 
-  const deleteProject = (id) => {
-    setProjects(projects.filter((p) => p.id !== id));
+  const deleteProject = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/projects/${id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setProjects(projects.filter((p) => p.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+    }
   };
 
   return (
-    <ProjectsContext.Provider value={{ projects, addProject, updateProject, deleteProject }}>
+    <ProjectsContext.Provider value={{ projects, addProject, updateProject, deleteProject, loading }}>
       {children}
     </ProjectsContext.Provider>
   );

@@ -1,0 +1,5 @@
+commit 504e748e737ee61929c25e4e2cd9793afb340c94
+Author: Awadh <awdh1000@icloud.com>
+Date:   Mon Apr 6 23:16:21 2026 +0300
+
+    fix(deps): rebuild package-lock.json for Nixpacks
