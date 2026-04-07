@@ -73,32 +73,42 @@ export default function Home() {
           ) : (
             projects.map((proj) => (
               <div key={proj.id} className="proj-card reveal" ref={addToRefs}>
-                <div className={`proj-vis ${proj.type === 'shop' ? 'pv2' : proj.type === 'tool' ? 'pv4' : 'pv1'}`}>
-                  <div className={`proj-glow ${proj.type === 'shop' ? 'g-gold' : proj.type === 'tool' ? 'g-blue' : 'g-purple'}`} style={{ top: '-60px', left: '-60px' }}></div>
-                  <div className="proj-ico">
-                    {/* Using custom SVGs based on project type as shown in user's design */}
-                    {proj.type === 'shop' ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#f0c060" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <path d="M16 10a4 4 0 01-8 0" />
-                      </svg>
-                    ) : proj.type === 'tool' ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#88aaff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="8" y1="13" x2="16" y2="13" />
-                        <line x1="8" y1="17" x2="13" y2="17" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#b08fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 3h6v2.5S17 7 17 10v10a1 1 0 01-1 1H8a1 1 0 01-1-1V10c0-3 2-4.5 2-4.5V3z" />
-                        <path d="M9 3c0-1 1.5-2 3-2s3 1 3 2" />
-                        <line x1="10" y1="14" x2="14" y2="14" /><line x1="10" y1="17" x2="14" y2="17" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className={`proj-badge ${proj.type === 'shop' ? 'b-store' : proj.type === 'tool' ? 'b-tool' : 'b-plat'}`}>
+                <div className={`proj-vis ${proj.type === 'shop' ? 'pv2' : proj.type === 'tool' ? 'pv4' : 'pv1'}`} style={proj.image ? { padding: 0, overflow: 'hidden' } : {}}>
+                  {proj.image ? (
+                    <img 
+                      src={proj.image} 
+                      alt={proj.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <>
+                      <div className={`proj-glow ${proj.type === 'shop' ? 'g-gold' : proj.type === 'tool' ? 'g-blue' : 'g-purple'}`} style={{ top: '-60px', left: '-60px' }}></div>
+                      <div className="proj-ico">
+                        {proj.type === 'shop' ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="#f0c060" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <path d="M16 10a4 4 0 01-8 0" />
+                          </svg>
+                        ) : proj.type === 'tool' ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="#88aaff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="8" y1="13" x2="16" y2="13" />
+                            <line x1="8" y1="17" x2="13" y2="17" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="#b08fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 3h6v2.5S17 7 17 10v10a1 1 0 01-1 1H8a1 1 0 01-1-1V10c0-3 2-4.5 2-4.5V3z" />
+                            <path d="M9 3c0-1 1.5-2 3-2s3 1 3 2" />
+                            <line x1="10" y1="14" x2="14" y2="14" /><line x1="10" y1="17" x2="14" y2="17" />
+                          </svg>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  <span className={`proj-badge ${proj.type === 'shop' ? 'b-store' : proj.type === 'tool' ? 'b-tool' : 'b-plat'}`} style={proj.image ? { position: 'absolute', bottom: '0.8rem', right: '0.8rem', margin: 0 } : {}}>
                     {proj.category || 'مشاريع'}
                   </span>
                 </div>
