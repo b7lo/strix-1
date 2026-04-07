@@ -141,7 +141,7 @@ app.post('/api/projects/sync', (req, res) => {
 });
 
 // SPA fallback — serve index.html for all non-API routes
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
