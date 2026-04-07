@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_22", "pnpm", "g++", "make", "python3"]
 
 [phases.install]
-cmds = ["pnpm install --no-frozen-lockfile"]
+cmds = ["pnpm install --no-frozen-lockfile", "pnpm rebuild better-sqlite3"]
 
 [phases.build]
 cmds = ["pnpm run build"]
