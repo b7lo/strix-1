@@ -73,13 +73,20 @@ export default function Home() {
           ) : (
             projects.map((proj) => (
               <div key={proj.id} className="proj-card reveal" ref={addToRefs}>
-                <div className={`proj-vis ${proj.type === 'shop' ? 'pv2' : proj.type === 'tool' ? 'pv4' : 'pv1'}`} style={proj.image ? { padding: 0, overflow: 'hidden' } : {}}>
+                <div 
+                  className={`proj-vis ${!proj.image ? (proj.type === 'shop' ? 'pv2' : proj.type === 'tool' ? 'pv4' : 'pv1') : ''}`} 
+                  style={proj.image ? { padding: 0, overflow: 'hidden', background: 'var(--surface2)' } : {}}
+                >
                   {proj.image ? (
                     <img 
                       src={proj.image} 
                       alt={proj.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      onError={(e) => { e.target.style.display = 'none'; }}
+                      onError={(e) => { 
+                        e.target.style.display = 'none';
+                        // Re-enable background class on error if needed, 
+                        // but for now we just hide the broken image
+                      }}
                     />
                   ) : (
                     <>
