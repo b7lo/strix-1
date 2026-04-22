@@ -54,52 +54,39 @@ specs/[###-feature]/
 └── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
-### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
+### Source Code (WordPress Child Theme — `blocksy-child/`)
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+blocksy-child/
+├── functions.php                        # Hook registration — require_once all includes here
+│
+├── includes/                            # Backend PHP logic (one file per feature)
+│   ├── [feature-name].php               # NEW: feature backend logic
+│   └── ...existing files...
+│
+├── assets/
+│   ├── css/
+│   │   └── [feature-name].css           # NEW: feature stylesheet (conditionally enqueued)
+│   └── js/
+│       └── [feature-name].js            # NEW: feature script (conditionally enqueued)
+│
+├── directorist/                         # Directorist template overrides only
+│   └── [mirrored-plugin-path]/
+│       └── [override-template].php      # NEW (if listing UI changes needed)
+│
+├── templates/
+│   ├── mobile/                          # Mobile-only templates
+│   │   └── [feature-template].php       # NEW (if mobile-specific UI needed)
+│   └── desktop/                         # Desktop-only templates
+│       └── [feature-template].php       # NEW (if desktop-specific UI needed)
+│
+└── page-[name].php                      # NEW: only if a new WP page template needed
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: All new files follow the child theme layout above.
+Backend logic → `includes/`. Assets → `assets/css/` and `assets/js/`.
+Directorist UI → `directorist/`. Device-specific templates → `templates/mobile|desktop/`.
+No build pipeline — plain PHP/CSS/JS with versioned enqueue handles.
 
 ## Complexity Tracking
 
@@ -107,5 +94,5 @@ directories captured above]
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| [e.g., modifying Directorist JS directly] | [specific need] | [why override approach is insufficient] |
+| [e.g., inline script in template] | [above-the-fold critical path] | [why enqueue is insufficient here] |
