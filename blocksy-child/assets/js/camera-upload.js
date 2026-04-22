@@ -19,9 +19,6 @@
             return;
         }
 
-        /**
-         * Function to enforce camera-only attributes on file inputs
-         */
         function enforceCameraOnly() {
             // Find all file inputs within directorist forms or dropzones
             // Directorist uses EzMediaUploader which creates file inputs
@@ -32,6 +29,16 @@
                 if (!$input.attr('capture')) {
                     $input.attr('capture', 'environment');
                     $input.attr('accept', 'image/*');
+                }
+                
+                // Add the professional warning message if not already added
+                var $uploaderContainer = $input.closest('.ez-media-uploader, .directorist-form-group');
+                if ($uploaderContainer.length > 0 && $uploaderContainer.find('.ph-camera-notice').length === 0) {
+                    var noticeHtml = '<div class="ph-camera-notice directorist-mb-15" style="background-color: #f0fdf4; border-right: 4px solid #16a34a; padding: 12px 15px; border-radius: 4px; font-size: 14px; color: #166534; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">' +
+                        '<i class="fas fa-camera" style="color: #16a34a; font-size: 18px; margin-top: 3px;"></i>' +
+                        '<div><strong>لتعزيز الموثوقية ومكافحة الغش التجاري:</strong><br>يُرجى التقاط صورة العطر مباشرة عبر الكاميرا لتأكيد امتلاكك للمنتج. (الرفع من الاستديو متاح فقط للحسابات الموثقة).</div>' +
+                        '</div>';
+                    $uploaderContainer.prepend(noticeHtml);
                 }
             });
         }
