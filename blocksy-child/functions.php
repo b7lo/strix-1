@@ -42,22 +42,23 @@ require_once get_stylesheet_directory() . '/includes/class-verified-authors.php'
 require_once get_stylesheet_directory() . '/includes/camera-upload-validator.php';
 
 // Enqueue Camera-First Upload Script for Directorist Add/Edit Listing
-add_action( 'wp_enqueue_scripts', function() {
+function ph_enqueue_camera_upload_script() {
     // Only enqueue on Add/Edit listing pages (Directorist dashboard or specific pages)
     // We can also just enqueue it generally if it only acts on specific classes, but best to restrict if possible.
     // Assuming 'add-listing' or similar is the slug, or we can check if it's a directorist page.
     // For safety, we will enqueue it and the JS will check for the file input.
-    wp_enqueue_script( 'ph-camera-upload', get_stylesheet_directory_uri() . '/assets/js/camera-upload.js', ['jquery'], '1.0.0', true );
+    wp_enqueue_script( 'ph-camera-upload', get_stylesheet_directory_uri() . '/assets/js/camera-upload.js', array( 'jquery' ), '1.0.0', true );
     
     $is_verified = false;
     if ( is_user_logged_in() ) {
         $is_verified = (bool) get_user_meta( get_current_user_id(), 'is_verified_merchant', true );
     }
     
-    wp_localize_script( 'ph-camera-upload', 'ph_camera_upload_data', [
-        'is_verified' => $is_verified
-    ]);
-}, 99 );
+    wp_localize_script( 'ph-camera-upload', 'ph_camera_upload_data', array(
+        'is_verified' => $is_verified,
+    ) );
+}
+add_action( 'wp_enqueue_scripts', 'ph_enqueue_camera_upload_script', 99 );
 
 // Tap Payment Integration (Legacy simple handler, kept for reference if needed, but new one supersedes)
 // require_once get_stylesheet_directory() . '/includes/tap-payment.php'; 
