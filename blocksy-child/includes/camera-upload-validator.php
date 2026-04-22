@@ -38,10 +38,15 @@ function ph_validate_camera_upload_exif( $file ) {
         return $file; // Can't verify, fallback (or block, but we leave core auth to handle it)
     }
     
-    $is_verified = (bool) get_user_meta( $user_id, 'ph_verified_merchant', true );
+    $is_verified = (bool) get_user_meta( $user_id, 'is_verified_merchant', true );
     
     if ( $is_verified ) {
         return $file; // Verified merchants are exempt
+    }
+
+    // 2.5 Only restrict main listing images, not profile logos (avater)
+    if ( isset( $_REQUEST['field'] ) && ( $_REQUEST['field'] === 'avater' || $_REQUEST['field'] === 'profile_pic' ) ) {
+        return $file; // Allow logos to be uploaded from gallery
     }
 
     // 3. EXIF Validation (T008, T009)

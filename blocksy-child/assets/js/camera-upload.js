@@ -20,9 +20,9 @@
         }
 
         function enforceCameraOnly() {
-            // Find all file inputs within directorist forms or dropzones
-            // Directorist uses EzMediaUploader which creates file inputs
-            $('input[type="file"]').each(function() {
+            // Find all file inputs within directorist gallery forms
+            // We explicitly target .directorist-image-upload to avoid profile/logo uploaders
+            $('.directorist-image-upload input[type="file"]').each(function() {
                 var $input = $(this);
                 
                 // Only modify inputs that don't already have the capture attribute

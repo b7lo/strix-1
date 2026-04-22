@@ -51,7 +51,7 @@ add_action( 'wp_enqueue_scripts', function() {
     
     $is_verified = false;
     if ( is_user_logged_in() ) {
-        $is_verified = (bool) get_user_meta( get_current_user_id(), 'ph_verified_merchant', true );
+        $is_verified = (bool) get_user_meta( get_current_user_id(), 'is_verified_merchant', true );
     }
     
     wp_localize_script( 'ph-camera-upload', 'ph_camera_upload_data', [
