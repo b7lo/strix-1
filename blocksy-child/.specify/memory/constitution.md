@@ -1,16 +1,13 @@
 <!--
   SYNC IMPACT REPORT
   ==================
-  Version Change:    [INITIAL] → 1.0.0
-  Modified Principles: N/A (initial ratification)
+  Version Change:    1.0.0 → 1.1.0
+  Modified Principles: None (existing principles unchanged)
   Added Sections:
-    - Core Principles (5 principles)
-    - Technology Stack & Constraints
-    - Development Workflow
-    - Governance
+    - Core Principle VI: Camera-First Photo Integrity (new)
   Removed Sections: N/A
   Templates Updated:
-    - .specify/templates/plan-template.md    ✅ aligned (no changes required)
+    - .specify/templates/plan-template.md    ✅ Constitution Check updated (6 gates)
     - .specify/templates/spec-template.md    ✅ aligned (no changes required)
     - .specify/templates/tasks-template.md   ✅ aligned (no changes required)
   Deferred TODOs:
@@ -82,13 +79,44 @@ Session lifetime for authenticated users is set to 30 days via `auth_cookie_expi
 **Rationale**: A SaaS directory platform where merchants pay for placement has real financial
 consequences if authorization checks are bypassed or subscription state is stale.
 
+### VI. Camera-First Photo Integrity (NON-NEGOTIABLE)
+
+When a non-verified merchant submits a new perfume listing, ALL uploaded images MUST be
+captured directly via the device camera. Gallery/studio/file-picker access MUST be blocked
+at the UI level by setting `accept="image/*" capture="environment"` on the file input and
+MUST be enforced again at the server level. Server-side enforcement MUST verify that the
+uploaded image contains valid EXIF metadata consistent with a live camera capture
+(e.g., `DateTimeOriginal` present, no software-editing flags). Images that fail EXIF
+validation MUST be rejected with a clear Arabic-language error message and the listing
+submission MUST be blocked.
+
+**Exception — Verified Merchants**: Users whose account carries the verified merchant badge
+(user meta `ph_verified_merchant = 1`) MAY upload images from any source (camera or
+gallery/studio). This exemption MUST be checked server-side on every upload request; the
+client-side UI MUST reflect the exemption by removing the `capture` attribute restriction
+only after server confirmation of verified status.
+
+**Implementation constraints**:
+- EXIF parsing MUST use a PHP library (e.g., `exif_read_data()` built-in or a vetted
+  Composer package) executed inside a WordPress REST API endpoint or an `admin-ajax.php`
+  handler — never relying on client-reported metadata alone.
+- The validation logic MUST live in `includes/camera-upload-validator.php`.
+- The front-end camera UI MUST live in `assets/js/camera-upload.js`.
+- Any bypass attempt (spoofed EXIF, stripped metadata) that cannot be conclusively verified
+  as a live capture MUST default to rejection (fail-closed policy).
+
+**Rationale**: The platform's trust model depends on listings representing real, physically
+present products. Allowing gallery uploads for unverified merchants creates an easy vector
+for fraudulent or stock-photo listings that undermine buyer confidence and platform
+credibility.
+
 ## Technology Stack & Constraints
 
 **Platform**: WordPress (latest stable) on shared/managed hosting with LiteSpeed Web Server.
 **Parent Theme**: Blocksy (latest stable) — child theme path: `blocksy-child/`.
 **Core Plugin**: Directorist — listing management, search, author pages, map integration.
 **Custom Plugins (in-house)**: Merchant Restrictions, Verified Merchants, Multi-Vendor Cart,
-Subscription Handler, Tap Payment integration.
+Subscription Handler, Tap Payment integration, Camera Upload Validator.
 **Cache**: LiteSpeed Cache — Vary group MUST include `ph_device_type` cookie.
 **Languages**: PHP 8.x, JavaScript (vanilla + jQuery where WordPress requires it), CSS3.
 **No build pipeline** is required; assets are plain CSS/JS files with manual version strings.
@@ -129,7 +157,7 @@ This constitution supersedes all other informal practices. Amendments require:
 4. All `.specify/templates/*.md` files MUST be reviewed for alignment after any amendment.
 
 All implementation plans and task lists MUST include a "Constitution Check" section
-confirming compliance with the five Core Principles before implementation begins.
+confirming compliance with the six Core Principles before implementation begins.
 Use `README.md` as the primary runtime developer guidance document.
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-22 | **Last Amended**: 2026-04-22
+**Version**: 1.1.0 | **Ratified**: 2026-04-22 | **Last Amended**: 2026-04-22

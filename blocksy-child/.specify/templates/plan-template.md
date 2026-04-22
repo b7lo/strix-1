@@ -31,13 +31,14 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Verify compliance with all five Core Principles from `.specify/memory/constitution.md`:
+Verify compliance with all six Core Principles from `.specify/memory/constitution.md`:
 
 - [ ] **I. WordPress-Native**: All changes are in `blocksy-child/`. No core/plugin files modified.
 - [ ] **II. Asset Separation**: CSS in `assets/css/`, JS in `assets/js/`, enqueued conditionally with versioned handles.
 - [ ] **III. Mobile–Desktop Isolation**: Device-specific templates/assets conditionally loaded; both form factors tested.
 - [ ] **IV. Directorist-First**: Listing data uses `atbdp_listing`; overrides in `directorist/`; filters used before `pre_get_posts`.
 - [ ] **V. Security & Roles**: Merchant capabilities enforced server-side; subscription state validated per action.
+- [ ] **VI. Camera-First Integrity**: Non-verified uploads blocked to camera-only at UI + server; EXIF validated server-side in `includes/camera-upload-validator.php`; verified merchants (`ph_verified_merchant=1`) exempt.
 
 ## Project Structure
 
