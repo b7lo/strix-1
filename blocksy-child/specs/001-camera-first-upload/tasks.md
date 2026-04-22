@@ -26,8 +26,8 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 [P] Create blank `includes/camera-upload-validator.php` file
-- [ ] T002 [P] Create blank `assets/js/camera-upload.js` file
+- [x] T001 [P] Create blank `includes/camera-upload-validator.php` file
+- [x] T002 [P] Create blank `assets/js/camera-upload.js` file
 
 ---
 
@@ -37,9 +37,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Hook `includes/camera-upload-validator.php` by requiring it in `functions.php`
-- [ ] T004 Add enqueue logic in `functions.php` to load `assets/js/camera-upload.js` only on Directorist add/edit listing pages.
-- [ ] T005 Set up the `wp_handle_upload_prefilter` hook stub in `includes/camera-upload-validator.php`
+- [x] T003 Hook `includes/camera-upload-validator.php` by requiring it in `functions.php`
+- [x] T004 Add enqueue logic in `functions.php` to load `assets/js/camera-upload.js` only on Directorist add/edit listing pages.
+- [x] T005 Set up the `wp_handle_upload_prefilter` hook stub in `includes/camera-upload-validator.php`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -53,10 +53,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] In `assets/js/camera-upload.js`, write JS to find the Directorist file input (`input[type="file"]`) and add attributes `capture="environment"` and `accept="image/*"`.
-- [ ] T007 [US1] In `includes/camera-upload-validator.php`, implement the condition to target only requests destined for `/directorist/v1/temp-media-upload`.
-- [ ] T008 [US1] In `includes/camera-upload-validator.php`, implement `exif_read_data()` validation to check for `DateTimeOriginal` or `Make`/`Model` tags and ensure no editing software tags exist.
-- [ ] T009 [US1] In `includes/camera-upload-validator.php`, return a `WP_Error` if EXIF validation fails, using the Arabic message: "يجب التقاط الصورة مباشرة من الكاميرا".
+- [x] T006 [US1] In `assets/js/camera-upload.js`, write JS to find the Directorist file input (`input[type="file"]`) and add attributes `capture="environment"` and `accept="image/*"`.
+- [x] T007 [US1] In `includes/camera-upload-validator.php`, implement the condition to target only requests destined for `/directorist/v1/temp-media-upload`.
+- [x] T008 [US1] In `includes/camera-upload-validator.php`, implement `exif_read_data()` validation to check for `DateTimeOriginal` or `Make`/`Model` tags and ensure no editing software tags exist.
+- [x] T009 [US1] In `includes/camera-upload-validator.php`, return a `WP_Error` if EXIF validation fails, using the Arabic message: "يجب التقاط الصورة مباشرة من الكاميرا".
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -70,9 +70,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] In `functions.php` (where the script is enqueued), use `wp_localize_script` to pass a boolean variable `ph_is_verified_merchant` to the JS file based on user meta `ph_verified_merchant`.
-- [ ] T011 [US2] In `assets/js/camera-upload.js`, update the logic to only apply `capture="environment"` if the localized `ph_is_verified_merchant` is false.
-- [ ] T012 [US2] In `includes/camera-upload-validator.php`, update the `wp_handle_upload_prefilter` logic to bypass EXIF validation if the current user has `ph_verified_merchant = 1`.
+- [x] T010 [P] [US2] In `functions.php` (where the script is enqueued), use `wp_localize_script` to pass a boolean variable `ph_is_verified_merchant` to the JS file based on user meta `ph_verified_merchant`.
+- [x] T011 [US2] In `assets/js/camera-upload.js`, update the logic to only apply `capture="environment"` if the localized `ph_is_verified_merchant` is false.
+- [x] T012 [US2] In `includes/camera-upload-validator.php`, update the `wp_handle_upload_prefilter` logic to bypass EXIF validation if the current user has `ph_verified_merchant = 1`.
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -82,7 +82,7 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T013 Run quickstart.md validation manually to ensure all acceptance criteria are met for both user stories.
+- [x] T013 Run quickstart.md validation manually to ensure all acceptance criteria are met for both user stories.
 
 ---
 
