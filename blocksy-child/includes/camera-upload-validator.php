@@ -88,14 +88,10 @@ function ph_validate_camera_upload_exif( $file ) {
         return $file;
     }
 
-    // Check for camera signature.
-    $has_date_time  = isset( $exif_data['DateTimeOriginal'] ) || isset( $exif_data['DateTimeDigitized'] );
-    $has_make_model = isset( $exif_data['Make'] ) || isset( $exif_data['Model'] );
-    
-    if ( ! $has_date_time && ! $has_make_model ) {
-        $file['error'] = 'يجب التقاط الصورة مباشرة من الكاميرا. (صورة غير أصلية)';
-        return $file;
-    }
+    // Note: We NO LONGER require DateTimeOriginal or Make/Model.
+    // Modern mobile browsers (iOS Safari, Android Chrome) often strip EXIF data 
+    // for privacy reasons when uploading via input capture="environment".
+    // Therefore, we only check for explicit signs of fraud (editing software).
 
     // Check for software editing signatures.
     if ( isset( $exif_data['Software'] ) ) {
