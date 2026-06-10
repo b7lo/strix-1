@@ -1,0 +1,90 @@
+{
+  "expo": {
+    "name": "Strix",
+    "slug": "strix",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "strix",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0D1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "CFBundleDisplayName": "ستركس",
+        "NSMotionUsageDescription": "يستخدم ستركس مستشعرات الحركة للتعرف الفوري على قوة الاصطدام وحماية الركاب. / Strix uses motion sensors for instant collision detection and passenger safety.",
+        "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لتحديد إحداثيات الحادث بدقة وحساب سرعة المركبة عند وقوع الاصطدام. / Location is used to pin accident coordinates and estimate vehicle speed during impact.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "نستخدم موقعك في الخلفية لتتبع الحوادث فور وقوعها. / Background location is used to detect crashes immediately when they happen.",
+        "NSLocationAlwaysUsageDescription": "نستخدم موقعك في الخلفية لتتبع الحوادث فور وقوعها. / Background location is used to detect crashes immediately when they happen.",
+        "NSFallDetectionUsageDescription": "تفعيل كشف السقوط يساعدنا في التعرف على الانقلابات والحوادث الخطيرة. / Fall detection helps us identify rollovers and serious accidents.",
+        "UIRequiredDeviceCapabilities": [
+          "accelerometer",
+          "gyroscope"
+        ],
+        "UIBackgroundModes": [
+          "location"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.strix.app"
+    },
+    "android": {
+      "package": "com.strix.app",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://strix.app/"
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "يستخدم ستركس مستشعرات الحركة للتعرف الفوري على قوة الاصطدام وحماية الركاب. / Strix uses motion sensors for instant collision detection and passenger safety."
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "نستخدم موقعك لتحديد إحداثيات الحادث بدقة وحساب سرعة المركبة عند وقوع الاصطدام. / Location is used to pin accident coordinates and estimate vehicle speed during impact.",
+          "locationAlwaysAndWhenInUsePermission": "نستخدم موقعك في الخلفية لرصد الحوادث فور وقوعها أثناء القيادة. / Background location is used to detect crashes immediately while driving.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "supportsRTL": true,
+      "router": {
+        "origin": "https://strix.app/"
+      },
+      "eas": {
+        "projectId": "bd31b2e4-f9bf-4733-8cbc-fa045ba73983"
+      }
+    },
+    "owner": "awadh"
+  }
+}

@@ -1,0 +1,220 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: accidents
+    description: Accident sync and matching operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /accidents:
+    post:
+      operationId: createAccident
+      tags: [accidents]
+      summary: Create accident sync record
+      description: Stores a locally generated accident report for later matching.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccidentRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateAccidentResponse"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /accidents/{id}/match:
+    post:
+      operationId: matchAccident
+      tags: [accidents]
+      summary: Match accident with another device report
+      description: Searches nearby reports from other devices and links likely matching accidents.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchAccidentRequest"
+      responses:
+        "200":
+          description: Match result or null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/MatchAccidentResult"
+                  - type: "null"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    Severity:
+      type: string
+      enum: [critical, severe, moderate, minor]
+    ImpactZone:
+      type: string
+      enum:
+        - front
+        - front-left
+        - front-right
+        - rear
+        - rear-left
+        - rear-right
+        - side-left
+        - side-right
+        - unknown
+    ImpactDirection:
+      type: string
+      enum: [front, rear, side-left, side-right, unknown]
+    CreateAccidentRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        latitude:
+          type:
+            - number
+            - "null"
+        longitude:
+          type:
+            - number
+            - "null"
+        peakGForce:
+          type: number
+        impactZone:
+          $ref: "#/components/schemas/ImpactZone"
+        impactDirection:
+          $ref: "#/components/schemas/ImpactDirection"
+        speedKmh:
+          type: number
+        jerkPeak:
+          type: number
+        approachAngle:
+          type: number
+        severity:
+          $ref: "#/components/schemas/Severity"
+        reportJson:
+          type: object
+          additionalProperties: true
+      required:
+        - deviceId
+        - timestamp
+        - latitude
+        - longitude
+        - peakGForce
+        - impactZone
+        - impactDirection
+        - speedKmh
+        - jerkPeak
+        - approachAngle
+        - severity
+        - reportJson
+    CreateAccidentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+      required:
+        - id
+    MatchAccidentRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        latitude:
+          type: number
+        longitude:
+          type: number
+        approachAngle:
+          type: number
+      required:
+        - deviceId
+        - timestamp
+        - latitude
+        - longitude
+        - approachAngle
+    MatchAccidentResult:
+      type: object
+      properties:
+        matchedAccidentId:
+          type: string
+          format: uuid
+        matchConfidence:
+          type: integer
+          minimum: 0
+          maximum: 100
+        otherReport:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+        distanceMeters:
+          type: integer
+        timeDiffMs:
+          type: integer
+      required:
+        - matchedAccidentId
+        - matchConfidence
+        - otherReport
+        - distanceMeters
+        - timeDiffMs
