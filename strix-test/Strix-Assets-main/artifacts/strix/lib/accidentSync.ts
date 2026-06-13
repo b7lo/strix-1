@@ -195,9 +195,6 @@ export async function uploadAccident(report: AccidentReport): Promise<string | n
   throw new Error("Failed to extract ID from Supabase response");
 }
 
-/**
- * تحديث بيانات الحادث في قاعدة البيانات (مثل إضافة نموذج التقييم)
- */
 export async function syncReportUpdate(report: AccidentReport): Promise<void> {
   if (!isStrixApiConfigured() && !isSupabaseConfigured()) {
     return;
@@ -210,6 +207,38 @@ export async function syncReportUpdate(report: AccidentReport): Promise<void> {
         report_json: report,
       });
       console.log("[Strix Sync] Report updated in Supabase successfully");
+
+      // تحديث أو إدراج بيانات تقييم نجم (Fault Assessment) في الجدول المخصص
+      if (report.faultAssessment) {
+        // جلب المعرف الفريد للحادث
+        const queryParams = `local_id=eq.${encodeURIComponent(report.id)}&select=id`;
+        const result = await supabaseRequest(`accidents?${queryParams}`, "GET");
+        
+        if (Array.isArray(result) && result.length > 0) {
+          const accidentUuid = result[0].id;
+          
+          const assessmentPayload = {
+            accident_id: accidentUuid,
+            app_liability_user: report.faultAssessment.appLiability,
+            app_liability_other: 100 - report.faultAssessment.appLiability,
+            najm_liability_user: report.faultAssessment.najmLiability,
+            najm_liability_other: 100 - report.faultAssessment.najmLiability,
+            liability_difference: report.faultAssessment.liabilityDifference,
+            user_description: report.faultAssessment.userDescription || null,
+            assessed_at: new Date(report.faultAssessment.createdAt).toISOString()
+          };
+          
+          // التحقق مما إذا كان التقييم موجوداً مسبقاً لهذا الحادث
+          const existing = await supabaseRequest(`fault_assessments?accident_id=eq.${accidentUuid}&select=id`, "GET");
+          if (Array.isArray(existing) && existing.length > 0) {
+            await supabaseRequest(`fault_assessments?id=eq.${existing[0].id}`, "PATCH", assessmentPayload);
+            console.log("[Strix Sync] Fault assessment updated in Supabase successfully");
+          } else {
+            await supabaseRequest("fault_assessments", "POST", assessmentPayload);
+            console.log("[Strix Sync] Fault assessment inserted into Supabase successfully");
+          }
+        }
+      }
     } catch (err) {
       console.warn("[Strix Sync] Failed to update report in Supabase:", err);
     }
