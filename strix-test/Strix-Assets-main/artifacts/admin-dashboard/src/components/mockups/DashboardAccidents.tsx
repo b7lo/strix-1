@@ -2,23 +2,21 @@ import { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { ChevronLeft, ChevronRight, FileSearch, ShieldOff, CheckCircle, ClipboardList, MapPin, Gauge, ShieldAlert } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  ChevronLeft, ChevronRight, Search, ShieldOff, CheckCircle, ClipboardList,
+  MapPin, Gauge, ShieldAlert, Download, Filter, Eye,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
 import { dashboardApi } from "../../lib/dashboard-api";
 import type { DashboardAccident } from "../../types/dashboard";
 
-const severityColors: Record<string, string> = {
-  critical: "bg-red-500/10 text-red-400 border-red-500/30",
-  severe: "bg-orange-500/10 text-orange-400 border-orange-500/30",
-  moderate: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-  minor: "bg-green-500/10 text-green-400 border-green-500/30",
-};
-
-const severityLabels: Record<string, string> = {
-  critical: "حرج",
-  severe: "شديد",
-  moderate: "متوسط",
-  minor: "طفيف",
+const severityConfig: Record<string, { label: string; class: string }> = {
+  critical: { label: "حرج", class: "bg-destructive/10 text-destructive border-destructive/20" },
+  severe: { label: "شديد", class: "bg-warning/10 text-warning-foreground border-warning/20" },
+  moderate: { label: "متوسط", class: "bg-chart-3/10 text-chart-3 border-chart-3/20" },
+  minor: { label: "طفيف", class: "bg-success/10 text-success border-success/20" },
 };
 
 export default function DashboardAccidents({ compact }: { compact?: boolean }) {
@@ -27,6 +25,7 @@ export default function DashboardAccidents({ compact }: { compact?: boolean }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedAccident, setSelectedAccident] = useState<DashboardAccident | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const limit = compact ? 5 : 10;
 
   useEffect(() => { fetchData(); }, [page]);
@@ -43,7 +42,6 @@ export default function DashboardAccidents({ compact }: { compact?: boolean }) {
 
   const totalPages = Math.ceil(total / limit);
 
-  // Helper to determine active zones for SVG visualizer
   const getActiveZones = (zoneStr: string) => {
     const zone = zoneStr.toLowerCase();
     return {
@@ -55,239 +53,248 @@ export default function DashboardAccidents({ compact }: { compact?: boolean }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs sm:text-sm font-bold text-slate-300 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-          {compact ? "أحدث حوادث مسجلة" : "قائمة الحوادث"}
-          <Badge variant="secondary" className="px-2 py-0 h-5 text-[10px] bg-slate-950 border-slate-800 text-slate-400">{total}</Badge>
-        </h3>
-        <div className="text-[10px] text-slate-500">
-          {!compact && `الصفحة ${page} من ${totalPages || 1}`}
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-800 bg-slate-950/20 overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-900/40 border-slate-800">
-                <TableHead className="text-xs font-semibold text-slate-400">التاريخ</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400">الشدة</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 hidden sm:table-cell">منطقة الاصطدام</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 hidden sm:table-cell">G-Force</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400">المؤشرات</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 text-left"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500 text-xs">
-                    جاري تحميل البيانات...
-                  </TableCell>
-                </TableRow>
-              ) : data.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-slate-500 text-xs">
-                    لا توجد حوادث مسجلة حالياً
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data.map((row) => (
-                  <TableRow 
-                    key={row.id} 
-                    className="border-slate-800 hover:bg-slate-900/30 transition-colors cursor-pointer group"
-                    onClick={() => setSelectedAccident(row)}
-                  >
-                    <TableCell className="text-xs font-mono text-slate-400 whitespace-nowrap">
-                      {new Date(row.timestamp).toLocaleDateString("ar-SA", {
-                        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`text-[10px] font-semibold border ${severityColors[row.severity] || "bg-secondary text-slate-400"}`}>
-                        {severityLabels[row.severity] || row.severity}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-300 hidden sm:table-cell font-medium">
-                      {row.impactZone.replace(/-/g, " ")}
-                    </TableCell>
-                    <TableCell className="text-xs hidden sm:table-cell font-mono text-slate-200">
-                      {row.peakGForce.toFixed(2)} G
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {row.isFalseAlarm && <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[9px]"><ShieldOff className="w-2.5 h-2.5 ml-0.5" />كاذب</Badge>}
-                        {row.matchedAccidentId && <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px]"><CheckCircle className="w-2.5 h-2.5 ml-0.5" />مطابق</Badge>}
-                        {row.hasAssessment && <Badge className="bg-sky-500/10 text-sky-400 border-sky-500/20 text-[9px]"><ClipboardList className="w-2.5 h-2.5 ml-0.5" />مقيم</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 group-hover:text-blue-400 transition-colors">
-                        <FileSearch className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {!compact && totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-slate-500">
-            {`${(page - 1) * limit + 1} - ${Math.min(page * limit, total)} من ${total}`}
+    <div className={compact ? "" : "p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6"}>
+      {/* Page header (full page mode only) */}
+      {!compact && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">سجل الحوادث</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">جميع الحوادث المسجلة في النظام</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setPage(p => Math.max(1, p - 1)); }}
-              disabled={page === 1 || loading} className="h-8 text-xs gap-1 border-slate-800 bg-slate-950/40 text-slate-300 hover:bg-slate-900">
-              <ChevronRight className="w-3.5 h-3.5" />السابق
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Filter className="w-3.5 h-3.5" />
+              تصفية
             </Button>
-            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setPage(p => Math.min(totalPages, p + 1)); }}
-              disabled={page === totalPages || loading || total === 0} className="h-8 text-xs gap-1 border-slate-800 bg-slate-950/40 text-slate-300 hover:bg-slate-900">
-              التالي<ChevronLeft className="w-3.5 h-3.5" />
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Download className="w-3.5 h-3.5" />
+              تصدير
             </Button>
           </div>
         </div>
       )}
 
-      {/* Accident Detail Popup (Glassmorphic Dialog) */}
+      <Card className={compact ? "shadow-none border-0 rounded-none" : "shadow-sm border-border"}>
+        {/* Search bar */}
+        {!compact && (
+          <CardHeader className="border-b px-5 py-3">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="بحث بالمعرف أو المنطقة..."
+                  className="pr-9 h-9 text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Badge variant="secondary" className="text-xs">{total} حادث</Badge>
+            </div>
+          </CardHeader>
+        )}
+
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableHead className="text-xs font-semibold py-3 px-4">التاريخ</TableHead>
+                  <TableHead className="text-xs font-semibold py-3">الشدة</TableHead>
+                  <TableHead className="text-xs font-semibold py-3 hidden md:table-cell">منطقة الاصطدام</TableHead>
+                  <TableHead className="text-xs font-semibold py-3 hidden sm:table-cell">G-Force</TableHead>
+                  <TableHead className="text-xs font-semibold py-3">الحالة</TableHead>
+                  <TableHead className="text-xs font-semibold py-3 w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: compact ? 5 : 10 }).map((_, i) => (
+                    <TableRow key={i} className="animate-pulse">
+                      <TableCell className="py-3 px-4"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                      <TableCell className="py-3"><div className="h-5 w-12 bg-muted rounded" /></TableCell>
+                      <TableCell className="py-3 hidden md:table-cell"><div className="h-4 w-20 bg-muted rounded" /></TableCell>
+                      <TableCell className="py-3 hidden sm:table-cell"><div className="h-4 w-14 bg-muted rounded" /></TableCell>
+                      <TableCell className="py-3"><div className="h-5 w-16 bg-muted rounded" /></TableCell>
+                      <TableCell className="py-3"><div className="h-6 w-6 bg-muted rounded" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : data.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <ShieldAlert className="w-8 h-8 opacity-40" />
+                        <p className="text-sm">لا توجد حوادث مسجلة</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.map((row) => {
+                    const severity = severityConfig[row.severity];
+                    return (
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => setSelectedAccident(row)}
+                      >
+                        <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap py-3 px-4">
+                          {new Date(row.timestamp).toLocaleDateString("ar-EG", {
+                            day: "2-digit", month: "2-digit", year: "numeric",
+                            hour: "2-digit", minute: "2-digit", calendar: "gregory",
+                          })}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <Badge variant="outline" className={`text-[10px] rounded-md font-semibold ${severity?.class || ""}`}>
+                            {severity?.label || row.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-foreground hidden md:table-cell font-medium py-3 capitalize">
+                          {row.impactZone.replace(/-/g, " ")}
+                        </TableCell>
+                        <TableCell className="text-xs hidden sm:table-cell font-mono text-muted-foreground py-3">
+                          {row.peakGForce.toFixed(2)} G
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <div className="flex gap-1 flex-wrap">
+                            {row.isFalseAlarm && (
+                              <Badge variant="secondary" className="text-[9px] rounded-md h-5 px-1.5 gap-0.5">
+                                <ShieldOff className="w-2.5 h-2.5" />مرفوض
+                              </Badge>
+                            )}
+                            {row.matchedAccidentId && (
+                              <Badge variant="secondary" className="text-[9px] rounded-md h-5 px-1.5 gap-0.5">
+                                <CheckCircle className="w-2.5 h-2.5 text-success" />مشترك
+                              </Badge>
+                            )}
+                            {row.hasAssessment && (
+                              <Badge variant="secondary" className="text-[9px] rounded-md h-5 px-1.5 gap-0.5">
+                                <ClipboardList className="w-2.5 h-2.5 text-primary" />مقيّم
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary">
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t">
+            <p className="text-xs text-muted-foreground">
+              عرض {(page - 1) * limit + 1} - {Math.min(page * limit, total)} من {total}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8"
+                onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || loading}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(p => (
+                <Button key={p} variant={p === page ? "default" : "outline"} size="icon" className="h-8 w-8 text-xs"
+                  onClick={() => setPage(p)} disabled={loading}>
+                  {p}
+                </Button>
+              ))}
+              <Button variant="outline" size="icon" className="h-8 w-8"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || loading}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Detail Dialog */}
       <Dialog open={selectedAccident !== null} onOpenChange={(open) => !open && setSelectedAccident(null)}>
-        <DialogContent className="sm:max-w-[500px] border-slate-800 bg-slate-950/95 backdrop-blur-lg text-slate-100 p-6 rounded-2xl shadow-2xl">
+        <DialogContent className="sm:max-w-[580px] p-0 overflow-hidden gap-0">
           {selectedAccident && (() => {
             const { isFront, isRear, isLeft, isRight } = getActiveZones(selectedAccident.impactZone);
+            const severity = severityConfig[selectedAccident.severity];
             return (
               <>
-                <DialogHeader className="text-right border-b border-slate-800 pb-4">
-                  <div className="flex items-center gap-2 justify-between">
-                    <DialogTitle className="text-lg font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">تفاصيل الحادث المعملي</DialogTitle>
-                    <Badge className={`text-[10px] font-semibold border ${severityColors[selectedAccident.severity] || ""}`}>
-                      {severityLabels[selectedAccident.severity] || selectedAccident.severity}
+                <DialogHeader className="p-5 pb-4 border-b bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <DialogTitle className="text-base font-bold">تفاصيل الحادث</DialogTitle>
+                    <Badge variant="outline" className={`text-[10px] rounded-md font-semibold ${severity?.class || ""}`}>
+                      {severity?.label || selectedAccident.severity}
                     </Badge>
                   </div>
                 </DialogHeader>
 
-                <div className="grid gap-6 py-4 grid-cols-5 items-center">
-                  {/* Left Column: Metrics & Coordinates */}
-                  <div className="col-span-3 space-y-4">
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] text-slate-500 font-medium">رمز الجهاز المشفر</div>
-                      <div className="text-xs font-mono bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-lg text-slate-300 select-all truncate">
-                        {selectedAccident.deviceId}
+                <div className="grid grid-cols-5 divide-x divide-x-reverse divide-border">
+                  {/* Data */}
+                  <div className="col-span-3 p-5 space-y-4">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">معرف الجهاز</p>
+                      <p className="text-xs font-mono bg-muted px-2.5 py-1.5 rounded-md select-all truncate">{selectedAccident.deviceId}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 mb-1">
+                          <Gauge className="w-3 h-3" /> السرعة
+                        </p>
+                        <p className="text-lg font-bold font-mono">{selectedAccident.speedKmh} <span className="text-xs text-muted-foreground font-normal">km/h</span></p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 mb-1">
+                          <ShieldAlert className="w-3 h-3" /> قوة التسارع
+                        </p>
+                        <p className="text-lg font-bold font-mono">{selectedAccident.peakGForce.toFixed(2)} <span className="text-xs text-muted-foreground font-normal">G</span></p>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-900/50 border border-slate-800/80 p-2.5 rounded-xl text-right">
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mb-1 justify-end">
-                          السرعة
-                          <Gauge className="w-3 h-3 text-blue-400" />
-                        </div>
-                        <div className="text-sm font-mono font-bold text-slate-200">{selectedAccident.speedKmh} km/h</div>
-                      </div>
-                      <div className="bg-slate-900/50 border border-slate-800/80 p-2.5 rounded-xl text-right">
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mb-1 justify-end">
-                          شدة الصدمة
-                          <ShieldAlert className="w-3 h-3 text-red-400" />
-                        </div>
-                        <div className="text-sm font-mono font-bold text-slate-200">{selectedAccident.peakGForce.toFixed(2)} G</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="text-[10px] text-slate-500 font-medium">الموقع الجغرافي</div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">الموقع</p>
                       {selectedAccident.latitude && selectedAccident.longitude ? (
-                        <a 
+                        <a
                           href={`https://www.google.com/maps/search/?api=1&query=${selectedAccident.latitude},${selectedAccident.longitude}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-2 justify-between bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3 py-2 rounded-xl text-xs transition-colors"
+                          target="_blank" rel="noreferrer"
+                          className="flex items-center gap-2 justify-between bg-muted hover:bg-accent border rounded-md px-3 py-2 text-xs transition-colors group"
                         >
-                          <div className="flex items-center gap-1.5 font-mono">
-                            <MapPin className="w-3.5 h-3.5" />
+                          <span className="flex items-center gap-1.5 font-mono">
+                            <MapPin className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary" />
                             {selectedAccident.latitude.toFixed(6)}, {selectedAccident.longitude.toFixed(6)}
-                          </div>
-                          <span className="text-[10px] underline">خرائط Google</span>
+                          </span>
+                          <span className="text-[10px] text-primary">عرض الخريطة</span>
                         </a>
                       ) : (
-                        <div className="text-xs text-slate-500 italic px-2">إحداثيات الموقع غير متوفرة</div>
+                        <p className="text-xs text-muted-foreground bg-muted px-3 py-2 rounded-md">غير متوفرة</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Right Column: Visual Car Mockup highlighting the impact */}
-                  <div className="col-span-2 flex flex-col items-center justify-center border-r border-slate-800 pl-2">
-                    <div className="text-[10px] text-slate-500 font-medium mb-3">محاكاة منطقة الاصطدام</div>
-                    <svg viewBox="0 0 100 200" className="w-24 h-48 drop-shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-                      {/* Wheels */}
-                      <rect x="18" y="30" width="8" height="20" rx="3" fill="#0f172a" />
-                      <rect x="74" y="30" width="8" height="20" rx="3" fill="#0f172a" />
-                      <rect x="18" y="130" width="8" height="20" rx="3" fill="#0f172a" />
-                      <rect x="74" y="130" width="8" height="20" rx="3" fill="#0f172a" />
-
-                      {/* Main Car Body */}
-                      <rect x="25" y="20" width="50" height="140" rx="14" fill="#0f172a" stroke="#334155" strokeWidth="2" />
-                      
-                      {/* Windows */}
-                      <path d="M32 60 L68 60 L62 48 L38 48 Z" fill="#38bdf8" opacity="0.3" />
-                      <rect x="30" y="70" width="40" height="40" rx="2" fill="#38bdf8" opacity="0.2" />
-                      <path d="M32 125 L68 125 L62 135 L38 135 Z" fill="#38bdf8" opacity="0.3" />
-
-                      {/* FRONT IMPACT ZONE */}
-                      <path 
-                        d="M25 22 Q50 6 75 22" 
-                        fill="none" 
-                        stroke={isFront ? "#f43f5e" : "#475569"} 
-                        strokeWidth={isFront ? "5" : "2"} 
-                        className={isFront ? "animate-pulse" : ""} 
-                      />
-                      {isFront && <circle cx="50" cy="14" r="4" fill="#f43f5e" className="animate-ping" />}
-
-                      {/* REAR IMPACT ZONE */}
-                      <path 
-                        d="M25 158 Q50 174 75 158" 
-                        fill="none" 
-                        stroke={isRear ? "#f43f5e" : "#475569"} 
-                        strokeWidth={isRear ? "5" : "2"} 
-                        className={isRear ? "animate-pulse" : ""} 
-                      />
-                      {isRear && <circle cx="50" cy="166" r="4" fill="#f43f5e" className="animate-ping" />}
-
-                      {/* LEFT IMPACT ZONE */}
-                      <line 
-                        x1="24" y1="40" x2="24" y2="120" 
-                        stroke={isLeft ? "#f43f5e" : "#475569"} 
-                        strokeWidth={isLeft ? "5" : "2"} 
-                        className={isLeft ? "animate-pulse" : ""} 
-                      />
-                      {isLeft && <circle cx="18" cy="80" r="4" fill="#f43f5e" className="animate-ping" />}
-
-                      {/* RIGHT IMPACT ZONE */}
-                      <line 
-                        x1="76" y1="40" x2="76" y2="120" 
-                        stroke={isRight ? "#f43f5e" : "#475569"} 
-                        strokeWidth={isRight ? "5" : "2"} 
-                        className={isRight ? "animate-pulse" : ""} 
-                      />
-                      {isRight && <circle cx="82" cy="80" r="4" fill="#f43f5e" className="animate-ping" />}
+                  {/* Wireframe */}
+                  <div className="col-span-2 p-5 flex flex-col items-center justify-center bg-muted/10">
+                    <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-4">مخطط الضرر</p>
+                    <svg viewBox="0 0 100 200" className="w-20 h-40">
+                      <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.3" className="text-border" opacity="0.6" />
+                      </pattern>
+                      <rect width="100" height="200" fill="url(#grid)" />
+                      <rect x="18" y="30" width="6" height="18" rx="1" fill="none" stroke="currentColor" strokeWidth="1" className="text-muted-foreground" />
+                      <rect x="76" y="30" width="6" height="18" rx="1" fill="none" stroke="currentColor" strokeWidth="1" className="text-muted-foreground" />
+                      <rect x="18" y="132" width="6" height="18" rx="1" fill="none" stroke="currentColor" strokeWidth="1" className="text-muted-foreground" />
+                      <rect x="76" y="132" width="6" height="18" rx="1" fill="none" stroke="currentColor" strokeWidth="1" className="text-muted-foreground" />
+                      <rect x="25" y="20" width="50" height="140" rx="4" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-foreground" />
+                      <path d="M30 65 L70 65 L64 50 L36 50 Z" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-muted-foreground" />
+                      <rect x="28" y="75" width="44" height="35" rx="1" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-muted-foreground" />
+                      <path d="M30 120 L70 120 L64 130 L36 130 Z" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-muted-foreground" />
+                      {isFront && <><path d="M25 20 Q50 5 75 20" fill="hsl(var(--destructive))" opacity="0.15" /><path d="M25 20 Q50 5 75 20" fill="none" stroke="hsl(var(--destructive))" strokeWidth="2.5" /></>}
+                      {isRear && <><path d="M25 160 Q50 175 75 160" fill="hsl(var(--destructive))" opacity="0.15" /><path d="M25 160 Q50 175 75 160" fill="none" stroke="hsl(var(--destructive))" strokeWidth="2.5" /></>}
+                      {isLeft && <><rect x="20" y="45" width="5" height="90" fill="hsl(var(--destructive))" opacity="0.15" /><line x1="25" y1="45" x2="25" y2="135" stroke="hsl(var(--destructive))" strokeWidth="2.5" /></>}
+                      {isRight && <><rect x="75" y="45" width="5" height="90" fill="hsl(var(--destructive))" opacity="0.15" /><line x1="75" y1="45" x2="75" y2="135" stroke="hsl(var(--destructive))" strokeWidth="2.5" /></>}
                     </svg>
-                    <Badge variant="outline" className="mt-3 text-[10px] capitalize bg-slate-900 border-slate-800 text-slate-300">
+                    <p className="mt-3 text-[10px] font-semibold text-muted-foreground capitalize">
                       {selectedAccident.impactZone.replace(/-/g, " ")}
-                    </Badge>
+                    </p>
                   </div>
-                </div>
-
-                <div className="border-t border-slate-800 pt-4 flex justify-end">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setSelectedAccident(null)}
-                    className="border-slate-800 bg-slate-950/40 text-slate-300 hover:bg-slate-900 rounded-xl px-5"
-                  >
-                    إغلاق التفاصيل
-                  </Button>
                 </div>
               </>
             );

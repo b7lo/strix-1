@@ -1,24 +1,44 @@
-import { useState } from "react";
-import { LayoutDashboard, Table, BarChart3, Cross, Bell } from "lucide-react";
+import { useState, useCallback } from "react";
+import Sidebar, { type Page } from "./components/layout/Sidebar";
+import Topbar from "./components/layout/Topbar";
 import DashboardHome from "./components/mockups/DashboardHome";
 import DashboardAccidents from "./components/mockups/DashboardAccidents";
 import DashboardAssessments from "./components/mockups/DashboardAssessments";
 import DashboardMatched from "./components/mockups/DashboardMatched";
 import DashboardFalseAlarms from "./components/mockups/DashboardFalseAlarms";
+import { useTheme } from "./hooks/use-theme";
+import { ScrollArea } from "./components/ui/scroll-area";
+import {
+  LayoutDashboard,
+  Car,
+  FileBarChart,
+  GitMerge,
+  ShieldOff,
+  X,
+} from "lucide-react";
 
-type Page = "home" | "accidents" | "assessments" | "matched" | "false-alarms";
-
-const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
-  { id: "home", label: "الرئيسية", icon: <LayoutDashboard className="w-4 h-4" /> },
-  { id: "accidents", label: "الحوادث", icon: <Table className="w-4 h-4" /> },
-  { id: "assessments", label: "تقييم نجم", icon: <BarChart3 className="w-4 h-4" /> },
-  { id: "matched", label: "الحوادث المشتركة", icon: <Cross className="w-4 h-4" /> },
-  { id: "false-alarms", label: "الإنذارات الكاذبة", icon: <Bell className="w-4 h-4" /> },
+const mobileNavItems: { id: Page; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "home", label: "نظرة عامة", icon: LayoutDashboard },
+  { id: "accidents", label: "سجل الحوادث", icon: Car },
+  { id: "assessments", label: "تقييمات نجم", icon: FileBarChart },
+  { id: "matched", label: "الحوادث المشتركة", icon: GitMerge },
+  { id: "false-alarms", label: "الإنذارات الكاذبة", icon: ShieldOff },
 ];
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
+
+  const handleNavigate = useCallback((page: Page) => {
+    setCurrentPage(page);
+    setMobileSidebarOpen(false);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(resolvedTheme === "light" ? "dark" : "light");
+  }, [resolvedTheme, setTheme]);
 
   const pageComponents: Record<Page, React.ReactNode> = {
     home: <DashboardHome />,
@@ -29,52 +49,80 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <aside className={`fixed inset-y-0 right-0 z-50 w-64 bg-card border-l border-border transform transition-transform duration-200 lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-border">
-            <h1 className="text-lg font-bold text-primary">Strix</h1>
-            <p className="text-xs text-muted-foreground">لوحة التحكم</p>
-          </div>
-          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => { setCurrentPage(item.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  currentPage === item.id
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                <span className="w-4 h-4">{item.icon}</span>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-          <div className="p-4 border-t border-border">
-            <p className="text-xs text-muted-foreground">Strix Dashboard v2.0</p>
-          </div>
-        </div>
-      </aside>
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Desktop sidebar */}
+      <Sidebar
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <aside className="fixed inset-y-0 right-0 z-50 w-72 bg-sidebar text-sidebar-foreground shadow-2xl lg:hidden flex flex-col animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between h-16 px-5 border-b border-sidebar-border">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
+                  <span className="font-bold text-sidebar-primary-foreground text-xs tracking-wider">ST</span>
+                </div>
+                <div>
+                  <h1 className="text-sm font-bold text-sidebar-primary-foreground">Strix</h1>
+                  <p className="text-[10px] text-sidebar-foreground/60">لوحة التحكم</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                className="w-8 h-8 rounded-md flex items-center justify-center text-sidebar-foreground/60 hover:bg-sidebar-accent"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <ScrollArea className="flex-1 py-3 px-3">
+              <div className="space-y-1">
+                {mobileNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPage === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavigate(item.id)}
+                      className={`
+                        w-full flex items-center gap-3 rounded-lg text-sm font-medium px-3 py-3 transition-colors
+                        ${isActive
+                          ? "bg-sidebar-accent text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60"
+                        }
+                      `}
+                    >
+                      <Icon className={`w-5 h-5 ${isActive ? "text-sidebar-primary" : ""}`} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </aside>
+        </>
       )}
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b border-border lg:hidden">
-          <div className="flex items-center justify-between px-4 py-3">
-            <h1 className="text-lg font-bold text-primary">Strix</h1>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-md hover:bg-secondary">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        {pageComponents[currentPage]}
-      </main>
+      {/* Main area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Topbar
+          currentPage={currentPage}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+        />
+        <main className="flex-1 overflow-y-auto">
+          {pageComponents[currentPage]}
+        </main>
+      </div>
     </div>
   );
 }
