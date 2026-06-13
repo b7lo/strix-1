@@ -62,7 +62,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     },
     {
       title: "متوسط الانحراف",
-      value: stats.averageNajmDifference !== null ? `${stats.averageNajmDifference.toFixed(1)}%` : "—",
+      value: stats.averageNajmDifference !== null ? `${Number(stats.averageNajmDifference).toFixed(1)}%` : "—",
       trend: { value: 1.1, direction: "down" as const },
       icon: AlertTriangle,
       iconBg: "bg-warning/10",
@@ -70,7 +70,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     },
     {
       title: "متوسط القوة",
-      value: `${stats.averageGForce.toFixed(2)} G`,
+      value: `${Number(stats.averageGForce).toFixed(2)} G`,
       trend: { value: 0, direction: "neutral" as const },
       icon: Gauge,
       iconBg: "bg-chart-4/10",
