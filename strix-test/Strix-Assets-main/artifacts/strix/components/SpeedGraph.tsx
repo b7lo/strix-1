@@ -1,7 +1,9 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { Text } from "@/components/Text";;
 import Svg, { Polyline, Circle, Line, Text as SvgText, Defs, LinearGradient, Stop, Path } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   data: number[];
@@ -10,12 +12,13 @@ interface Props {
 }
 
 export function SpeedGraph({ data, width = 300, height = 150 }: Props) {
+  const { t } = useTranslation();
   const colors = useColors();
 
   if (!data || data.length === 0) {
     return (
       <View style={[styles.empty, { width, height }]}>
-        <Text style={{ color: colors.mutedForeground }}>لا تتوفر بيانات للسرعة</Text>
+        <Text style={{ color: colors.mutedForeground }}>{t("speedGraph.noData")}</Text>
       </View>
     );
   }
@@ -72,8 +75,8 @@ export function SpeedGraph({ data, width = 300, height = 150 }: Props) {
         ))}
       </Svg>
       <View style={styles.labels}>
-        <Text style={[styles.axisLabel, { color: colors.mutedForeground }]}>قبل 10 ثوانٍ</Text>
-        <Text style={[styles.axisLabel, { color: '#FF4444', fontWeight: 'bold' }]}>وقت الحادث</Text>
+        <Text style={[styles.axisLabel, { color: colors.mutedForeground }]}>{t("speedGraph.tenSecondsAgo")}</Text>
+        <Text style={[styles.axisLabel, { color: '#FF4444', fontWeight: 'bold' }]}>{t("speedGraph.crashTime")}</Text>
       </View>
     </View>
   );

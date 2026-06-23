@@ -35,19 +35,7 @@ const MULTI_IMPACT_WINDOW_MS = 3000;
 const GYRO_SPIN_THRESHOLD = 150;
 
 // ─── محركات الفلترة الذكية (v6) ───
-const kalmanAccel = new KalmanFilter3D(0.008, 0.1);
-const kalmanGyro = new KalmanFilter3D(0.005, 0.08);
-const adaptiveBaseline = new AdaptiveBaseline();
-const freqSeparator = new FrequencySeparator();
-
 // ─── حالة عامة ───
-let lastGForceMag = 0;
-let lastSampleTs = 0;
-let jerkAccumPeak = 0;
-let sampleRateHz = 50;
-let ringBufferSize = BUFFER_DURATION_SEC * sampleRateHz;
-let currentSpeedKmh = 0;
-
 // ═══════════════════════════════════════════
 // كشف وضعية الجوال تلقائياً (Gravity Tracking)
 // ═══════════════════════════════════════════
@@ -65,20 +53,18 @@ let currentSpeedKmh = 0;
 //
 
 const GRAVITY_ALPHA = 0.05; // فلتر بطيء جداً لتقدير ثابت للجاذبية
-let gravityEstimate = { x: 0, y: -1, z: 0 }; // Default: portrait
-
 export type PhoneOrientation = 'flat' | 'portrait' | 'landscape';
 
 function updateGravityEstimate(raw: { x: number; y: number; z: number }): void {
-  gravityEstimate.x = GRAVITY_ALPHA * raw.x + (1 - GRAVITY_ALPHA) * gravityEstimate.x;
-  gravityEstimate.y = GRAVITY_ALPHA * raw.y + (1 - GRAVITY_ALPHA) * gravityEstimate.y;
-  gravityEstimate.z = GRAVITY_ALPHA * raw.z + (1 - GRAVITY_ALPHA) * gravityEstimate.z;
+  sensorEngine.gravityEstimate.x = GRAVITY_ALPHA * raw.x + (1 - GRAVITY_ALPHA) * sensorEngine.gravityEstimate.x;
+  sensorEngine.gravityEstimate.y = GRAVITY_ALPHA * raw.y + (1 - GRAVITY_ALPHA) * sensorEngine.gravityEstimate.y;
+  sensorEngine.gravityEstimate.z = GRAVITY_ALPHA * raw.z + (1 - GRAVITY_ALPHA) * sensorEngine.gravityEstimate.z;
 }
 
 export function getPhoneOrientation(): PhoneOrientation {
-  const ax = Math.abs(gravityEstimate.x);
-  const ay = Math.abs(gravityEstimate.y);
-  const az = Math.abs(gravityEstimate.z);
+  const ax = Math.abs(sensorEngine.gravityEstimate.x);
+  const ay = Math.abs(sensorEngine.gravityEstimate.y);
+  const az = Math.abs(sensorEngine.gravityEstimate.z);
 
   if (az >= ay && az >= ax) return 'flat';
   if (ay >= ax && ay >= az) return 'portrait';
@@ -86,7 +72,7 @@ export function getPhoneOrientation(): PhoneOrientation {
 }
 
 export function getGravityVector(): { x: number; y: number; z: number } {
-  return { ...gravityEstimate };
+  return { ...sensorEngine.gravityEstimate };
 }
 
 /**
@@ -104,49 +90,172 @@ export function getGravityVector(): { x: number; y: number; z: number } {
  *   - Landscape (الجاذبية على X): الجوال أفقي في حامل
  *     → Y=يمين/يسار (حسب الاتجاه)، Z=أمام/خلف
  */
-function toVehicleFrame(filtered: FilteredReading): { vX: number; vY: number } {
+
+function mapToVehicleFrame(vec: { x: number; y: number; z: number }): { vX: number; vY: number; vZ: number } {
   const orientation = getPhoneOrientation();
+  const gx = sensorEngine.gravityEstimate.x;
+  const gy = sensorEngine.gravityEstimate.y;
+  const gz = sensorEngine.gravityEstimate.z;
+  const gMag = Math.sqrt(gx*gx + gy*gy + gz*gz);
+
+  if (gMag < 0.1) {
+    // Fallback if gravity is not yet estimated
+    if (orientation === 'flat') return { vX: vec.x, vY: vec.y, vZ: vec.z };
+    if (orientation === 'portrait') return { vX: vec.x, vY: -vec.z, vZ: vec.y };
+    return { vX: gx > 0 ? -vec.y : vec.y, vY: -vec.z, vZ: gx > 0 ? -vec.x : vec.x };
+  }
+
+  // Normalize gravity to get true UP vector
+  const uX = gx / gMag;
+  const uY = gy / gMag;
+  const uZ = gz / gMag;
 
   switch (orientation) {
-    case 'flat':
-      // X → lateral, Y → longitudinal
-      return { vX: filtered.x, vY: filtered.y };
+    case 'flat': {
+      // UP is Z. Lateral is X. Forward = UP x Lateral = +Y
+      const fMag = Math.sqrt(uZ*uZ + uY*uY);
+      const vX = vec.x;
+      const vY = fMag > 0.1 ? (vec.y * (uZ / fMag) - vec.z * (uY / fMag)) : vec.y;
+      const vZ = vec.x * uX + vec.y * uY + vec.z * uZ; // True UP
+      return { vX, vY, vZ };
+    }
+    case 'portrait': {
+      // UP is Y. Lateral is X. Forward = UP x Lateral = -Z
+      const fMag = Math.sqrt(uZ*uZ + uY*uY);
+      const vX = vec.x;
+      const vY = fMag > 0.1 ? (vec.y * (uZ / fMag) - vec.z * (uY / fMag)) : -vec.z;
+      const vZ = vec.x * uX + vec.y * uY + vec.z * uZ;
+      return { vX, vY, vZ };
+    }
+    case 'landscape': {
+      // UP is X. Lateral is Y. 
+      const latY = gx > 0 ? -1 : 1;
+      const fMag = Math.sqrt(uZ*uZ + uX*uX);
+      const vX = gx > 0 ? -vec.y : vec.y;
+      if (fMag < 0.1) return { vX, vY: -vec.z, vZ: vec.x * uX + vec.y * uY + vec.z * uZ };
+      
+      const fX = -uZ * latY / fMag;
+      const fZ = uX * latY / fMag;
+      
+      const vY = vec.x * fX + vec.z * fZ;
+      const vZ = vec.x * uX + vec.y * uY + vec.z * uZ;
+      return { vX, vY, vZ };
+    }
+  }
+}
 
-    case 'portrait':
-      // X → lateral, -Z → longitudinal
-      // (لأن +Z يشير نحو السائق = خلف المركبة)
-      return { vX: filtered.x, vY: -filtered.z };
 
-    case 'landscape':
-      // حسب اتجاه الميلان
-      if (gravityEstimate.x > 0) {
-        // landscape right: -Y → lateral, -Z → longitudinal
-        return { vX: -filtered.y, vY: -filtered.z };
+class TimeWindowBuffer<T extends { ts: number }> {
+  private buffer: T[];
+  private head = 0;
+  private tail = 0;
+  public length = 0;
+
+  constructor(public capacity: number) {
+    this.buffer = new Array(capacity);
+  }
+
+  push(item: T) {
+    this.buffer[this.head] = item;
+    this.head = (this.head + 1) % this.capacity;
+    if (this.length < this.capacity) {
+      this.length++;
+    } else {
+      this.tail = (this.tail + 1) % this.capacity;
+    }
+  }
+
+  dropOlderThan(cutoff: number) {
+    while (this.length > 0) {
+      if (this.buffer[this.tail].ts < cutoff) {
+        this.tail = (this.tail + 1) % this.capacity;
+        this.length--;
       } else {
-        // landscape left: Y → lateral, -Z → longitudinal
-        return { vX: filtered.y, vY: -filtered.z };
+        break;
       }
+    }
+  }
+
+  // Iterate over elements (from oldest to newest)
+  forEach(callback: (item: T) => void) {
+    for (let i = 0; i < this.length; i++) {
+      callback(this.buffer[(this.tail + i) % this.capacity]);
+    }
+  }
+
+  // Get last element
+  getLast(): T | undefined {
+    if (this.length === 0) return undefined;
+    return this.buffer[(this.tail + this.length - 1) % this.capacity];
+  }
+  
+  // Get slice from the end
+  sliceFromEnd(count: number): T[] {
+    const result: T[] = [];
+    const elementsToGet = Math.min(count, this.length);
+    for (let i = this.length - elementsToGet; i < this.length; i++) {
+      result.push(this.buffer[(this.tail + i) % this.capacity]);
+    }
+    return result;
+  }
+  
+  sliceByTimeRange(from: number, to: number): T[] {
+    const result: T[] = [];
+    for (let i = 0; i < this.length; i++) {
+      const item = this.buffer[(this.tail + i) % this.capacity];
+      if (item.ts > from && item.ts <= to) result.push(item);
+      else if (item.ts > to) break; // Buffer مرتّب زمنياً
+    }
+    return result;
+  }
+  
+  toArray(): T[] {
+    const result: T[] = [];
+    for (let i = 0; i < this.length; i++) {
+      result.push(this.buffer[(this.tail + i) % this.capacity]);
+    }
+    return result;
   }
 }
 
 // ─── حالة الجيروسكوب ───
-let peakRotationRate = 0;
-let peakYaw = 0;
-let peakPitch = 0;
-let peakRoll = 0;
-let gyroHistory: Array<{ x: number; y: number; z: number; ts: number }> = [];
-
 // ─── حالة الاصطدامات ───
-let impactTimestamps: number[] = [];
-
 // ─── حالة Impulse (v6) ───
-let impulseStartTs = 0;
-let impulseActive = false;
-let impulsePeakG = 0;
-let lastImpulseDurationMs = 0;
-
 // ─── حالة Frequency (v6) ───
-let lastFreqImpulsive = false;
+export class SensorEngine {
+  kalmanAccel = new KalmanFilter3D(0.008, 0.1);
+  kalmanGyro = new KalmanFilter3D(0.005, 0.08);
+  adaptiveBaseline = new AdaptiveBaseline();
+  freqSeparator = new FrequencySeparator();
+
+  lastGForceMag = 0;
+  lastSampleTs = 0;
+  jerkAccumPeak = 0;
+  sampleRateHz = 50;
+  ringBufferSize = 5 * 50;
+  currentSpeedKmh = 0;
+
+  gravityEstimate = { x: 0, y: -1, z: 0 };
+
+  peakRotationRate = 0;
+  peakYaw = 0;
+  peakPitch = 0;
+  peakRoll = 0;
+  gyroHistory = new TimeWindowBuffer<{ x: number; y: number; z: number; ts: number }>(400);
+
+  impactTimestamps: number[] = [];
+
+  impulseStartTs = 0;
+  impulseActive = false;
+  impulsePeakG = 0;
+  lastImpulseDurationMs = 0;
+
+  lastFreqImpulsive = false;
+
+  ringBuffer = new TimeWindowBuffer<RingSample>(1000);
+}
+
+export const sensorEngine = new SensorEngine();
 
 export interface RingSample {
   gForce: number;
@@ -159,8 +268,6 @@ export interface RingSample {
   highFreqMag: number;
 }
 
-const ringBuffer: RingSample[] = [];
-
 export interface FilteredReading {
   x: number;
   y: number;
@@ -170,17 +277,17 @@ export interface FilteredReading {
 // ─── تهيئة ───
 
 export function setSampleRate(hz: number): void {
-  sampleRateHz = Math.max(10, Math.min(100, hz));
-  ringBufferSize = BUFFER_DURATION_SEC * sampleRateHz;
+  sensorEngine.sampleRateHz = Math.max(10, Math.min(100, hz));
+  sensorEngine.ringBufferSize = BUFFER_DURATION_SEC * sensorEngine.sampleRateHz;
 }
 
 export function getSampleRate(): number {
-  return sampleRateHz;
+  return sensorEngine.sampleRateHz;
 }
 
 export function updateCurrentSpeed(speedKmh: number): void {
-  currentSpeedKmh = Math.max(0, speedKmh);
-  kalmanAccel.adaptToSpeed(currentSpeedKmh);
+  sensorEngine.currentSpeedKmh = Math.max(0, speedKmh);
+  sensorEngine.kalmanAccel.adaptToSpeed(sensorEngine.currentSpeedKmh);
 }
 
 // ─── فلتر الإشارة (v6: Kalman) ───
@@ -188,7 +295,7 @@ export function updateCurrentSpeed(speedKmh: number): void {
 /**
  * v7.2: Kalman Filter + إزالة الجاذبية
  * ─ Kalman يزيل الضوضاء العشوائية مع الحفاظ على الإشارة الحقيقية
- * ─ طرح gravityEstimate يعطي تسارع المستخدم الصافي (بدون جاذبية)
+ * ─ طرح sensorEngine.gravityEstimate يعطي تسارع المستخدم الصافي (بدون جاذبية)
  *
  * ملاحظة: الكود يستخدم Accelerometer (يشمل الجاذبية بوحدة g)
  * وليس DeviceMotion.acceleration (بدون جاذبية بوحدة m/s²).
@@ -202,7 +309,7 @@ export function applyHighPassFilter(raw: {
   updateGravityEstimate(raw);
 
   // Kalman: تنظيف الضوضاء العشوائية
-  const smoothed = kalmanAccel.update(raw);
+  const smoothed = sensorEngine.kalmanAccel.update(raw);
 
   // v7.2 FIX: إزالة الجاذبية للحصول على التسارع الصافي
   // بدون هذا الطرح: الجوال الثابت يقرأ ~1g (جاذبية الأرض)
@@ -212,9 +319,9 @@ export function applyHighPassFilter(raw: {
   //   2. قوة الصدمة — تمثل القوة الحقيقية للاصطدام فقط
   //   3. تحليل الفرملة — يقيس التباطؤ الفعلي بدون انحياز
   return {
-    x: smoothed.x - gravityEstimate.x,
-    y: smoothed.y - gravityEstimate.y,
-    z: smoothed.z - gravityEstimate.z,
+    x: smoothed.x - sensorEngine.gravityEstimate.x,
+    y: smoothed.y - sensorEngine.gravityEstimate.y,
+    z: smoothed.z - sensorEngine.gravityEstimate.z,
   };
 }
 
@@ -222,35 +329,35 @@ export function applyHighPassFilter(raw: {
 
 
 export function resetFilter(): void {
-  kalmanAccel.reset();
-  kalmanGyro.reset();
-  adaptiveBaseline.reset();
-  freqSeparator.reset();
-  lastGForceMag = 0;
-  lastSampleTs = 0;
-  jerkAccumPeak = 0;
-  ringBuffer.length = 0;
-  peakRotationRate = 0;
-  peakYaw = 0;
-  peakPitch = 0;
-  peakRoll = 0;
-  gyroHistory = [];
-  impactTimestamps = [];
-  impulseStartTs = 0;
-  impulseActive = false;
-  impulsePeakG = 0;
-  lastImpulseDurationMs = 0;
-  lastFreqImpulsive = false;
-  currentSpeedKmh = 0;
-  gravityEstimate = { x: 0, y: -1, z: 0 };
+  sensorEngine.kalmanAccel.reset();
+  sensorEngine.kalmanGyro.reset();
+  sensorEngine.adaptiveBaseline.reset();
+  sensorEngine.freqSeparator.reset();
+  sensorEngine.lastGForceMag = 0;
+  sensorEngine.lastSampleTs = 0;
+  sensorEngine.jerkAccumPeak = 0;
+  sensorEngine.ringBuffer.length = 0;
+  sensorEngine.peakRotationRate = 0;
+  sensorEngine.peakYaw = 0;
+  sensorEngine.peakPitch = 0;
+  sensorEngine.peakRoll = 0;
+  sensorEngine.gyroHistory = new TimeWindowBuffer<{ x: number; y: number; z: number; ts: number }>(400);
+  sensorEngine.impactTimestamps = [];
+  sensorEngine.impulseStartTs = 0;
+  sensorEngine.impulseActive = false;
+  sensorEngine.impulsePeakG = 0;
+  sensorEngine.lastImpulseDurationMs = 0;
+  sensorEngine.lastFreqImpulsive = false;
+  sensorEngine.currentSpeedKmh = 0;
+  sensorEngine.gravityEstimate = { x: 0, y: -1, z: 0 };
 }
 
 export function resetGyroPeaks(): void {
-  peakRotationRate = 0;
-  peakYaw = 0;
-  peakPitch = 0;
-  peakRoll = 0;
-  jerkAccumPeak = 0;
+  sensorEngine.peakRotationRate = 0;
+  sensorEngine.peakYaw = 0;
+  sensorEngine.peakPitch = 0;
+  sensorEngine.peakRoll = 0;
+  sensorEngine.jerkAccumPeak = 0;
 }
 
 // ─── حساب القوى ───
@@ -267,39 +374,43 @@ export function recordSample(
   raw: { x: number; y: number; z: number }
 ): void {
   const now = Date.now();
-  const dt = lastSampleTs > 0 ? (now - lastSampleTs) / 1000 : 1 / sampleRateHz;
+  const dt = sensorEngine.lastSampleTs > 0 ? (now - sensorEngine.lastSampleTs) / 1000 : 1 / sensorEngine.sampleRateHz;
 
   // Jerk calculation
-  if (lastSampleTs > 0 && dt > 0 && dt < 1.0) {
-    const jerk = Math.abs(gForce - lastGForceMag) / dt;
-    if (jerk > jerkAccumPeak) jerkAccumPeak = jerk;
+  if (sensorEngine.lastSampleTs > 0 && dt > 0 && dt < 1.0) {
+    const jerk = Math.abs(gForce - sensorEngine.lastGForceMag) / dt;
+    if (jerk > sensorEngine.jerkAccumPeak) sensorEngine.jerkAccumPeak = jerk;
   }
 
   // v6: Adaptive Baseline
-  adaptiveBaseline.addSample(gForce);
+  sensorEngine.adaptiveBaseline.addSample(gForce);
+  
+  // v8 (I-1): التكيف التلقائي لضوضاء العملية بناءً على نوع الطريق
+  const roadType = sensorEngine.adaptiveBaseline.getRoadType();
+  sensorEngine.kalmanAccel.adaptToRoadType(roadType);
 
   // v6: Frequency Analysis
-  const freq = freqSeparator.analyze(gForce);
-  lastFreqImpulsive = freq.isImpulsive;
+  const freq = sensorEngine.freqSeparator.analyze(gForce);
+  sensorEngine.lastFreqImpulsive = freq.isImpulsive;
 
   // v6: Impulse Duration Tracking
-  if (gForce > 1.5 && !impulseActive) {
-    impulseActive = true;
-    impulseStartTs = now;
-    impulsePeakG = gForce;
-  } else if (impulseActive) {
-    if (gForce > impulsePeakG) impulsePeakG = gForce;
+  if (gForce > 1.5 && !sensorEngine.impulseActive) {
+    sensorEngine.impulseActive = true;
+    sensorEngine.impulseStartTs = now;
+    sensorEngine.impulsePeakG = gForce;
+  } else if (sensorEngine.impulseActive) {
+    if (gForce > sensorEngine.impulsePeakG) sensorEngine.impulsePeakG = gForce;
     if (gForce < 0.8) {
       // الصدمة انتهت
-      lastImpulseDurationMs = now - impulseStartTs;
-      impulseActive = false;
+      sensorEngine.lastImpulseDurationMs = now - sensorEngine.impulseStartTs;
+      sensorEngine.impulseActive = false;
     }
   }
 
-  lastGForceMag = gForce;
-  lastSampleTs = now;
+  sensorEngine.lastGForceMag = gForce;
+  sensorEngine.lastSampleTs = now;
 
-  ringBuffer.push({
+  sensorEngine.ringBuffer.push({
     gForce,
     filtered,
     raw,
@@ -307,7 +418,7 @@ export function recordSample(
     isImpulsive: freq.isImpulsive,
     highFreqMag: Math.abs(freq.highFrequency),
   });
-  while (ringBuffer.length > ringBufferSize) ringBuffer.shift();
+
 }
 
 // ─── الجيروسكوب (v6: Kalman filtered) ───
@@ -316,36 +427,45 @@ export function recordGyroscopeSample(gyro: { x: number; y: number; z: number })
   const now = Date.now();
 
   // v6: تنعيم الجيروسكوب بـ Kalman
-  const smoothed = kalmanGyro.update(gyro);
+  const smoothed = sensorEngine.kalmanGyro.update(gyro);
 
   const rate = Math.sqrt(smoothed.x * smoothed.x + smoothed.y * smoothed.y + smoothed.z * smoothed.z);
   const rateDegS = rate * (180 / Math.PI);
-  if (rateDegS > peakRotationRate) peakRotationRate = rateDegS;
+  if (rateDegS > sensorEngine.peakRotationRate) sensorEngine.peakRotationRate = rateDegS;
 
   const yawDeg = Math.abs(smoothed.z) * (180 / Math.PI);
   const pitchDeg = Math.abs(smoothed.x) * (180 / Math.PI);
   const rollDeg = Math.abs(smoothed.y) * (180 / Math.PI);
-  if (yawDeg > peakYaw) peakYaw = yawDeg;
-  if (pitchDeg > peakPitch) peakPitch = pitchDeg;
-  if (rollDeg > peakRoll) peakRoll = rollDeg;
+  if (yawDeg > sensorEngine.peakYaw) sensorEngine.peakYaw = yawDeg;
+  if (pitchDeg > sensorEngine.peakPitch) sensorEngine.peakPitch = pitchDeg;
+  if (rollDeg > sensorEngine.peakRoll) sensorEngine.peakRoll = rollDeg;
 
-  gyroHistory.push({ ...smoothed, ts: now });
+  sensorEngine.gyroHistory.push({ ...smoothed, ts: now });
   // v7.1 FIX: موسّع من 3 إلى 6 ثوانٍ لدعم Module 3 (كشف الدوار يحتاج 5 ثوانٍ)
   const cutoff = now - 6000;
-  while (gyroHistory.length > 0 && gyroHistory[0].ts < cutoff) {
-    gyroHistory.shift();
-  }
+  sensorEngine.gyroHistory.dropOlderThan(cutoff);
 }
 
 export function getGyroscopeSnapshot(): GyroscopeSnapshot {
-  const spinDetected = peakRotationRate > GYRO_SPIN_THRESHOLD;
+  const spinDetected = sensorEngine.peakRotationRate > GYRO_SPIN_THRESHOLD;
 
   let maxX = 0, maxY = 0, maxZ = 0;
-  for (const s of gyroHistory) {
-    maxX = Math.max(maxX, Math.abs(s.x));
-    maxY = Math.max(maxY, Math.abs(s.y));
-    maxZ = Math.max(maxZ, Math.abs(s.z));
-  }
+  let highRollCount = 0;
+  let highPitchCount = 0;
+
+  sensorEngine.gyroHistory.forEach(s => {
+    // Project gyro into true vehicle axes
+    const veh = mapToVehicleFrame(s);
+    
+    // vX: Pitch Rate, vY: Roll Rate, vZ: Yaw Rate
+    maxX = Math.max(maxX, Math.abs(veh.vX));
+    maxY = Math.max(maxY, Math.abs(veh.vY));
+    maxZ = Math.max(maxZ, Math.abs(veh.vZ));
+    
+    // Use 2.0 rad/s (~115 deg/s) as realistic vehicle rollover threshold
+    if (Math.abs(veh.vY) > 2.0) highRollCount++;
+    if (Math.abs(veh.vX) > 2.0) highPitchCount++;
+  });
 
   let dominantAxis: GyroscopeSnapshot["dominantAxis"] = "none";
   const maxAll = Math.max(maxX, maxY, maxZ);
@@ -355,23 +475,17 @@ export function getGyroscopeSnapshot(): GyroscopeSnapshot {
     else dominantAxis = "roll";
   }
 
-  let highRollCount = 0;
-  let highPitchCount = 0;
-  for (const s of gyroHistory) {
-    if (Math.abs(s.y) > 2.5) highRollCount++;
-    if (Math.abs(s.x) > 2.5) highPitchCount++;
-  }
-
+  // Require sustained roll over multiple samples
   const rolloverDetected = highRollCount > 4 || highPitchCount > 4;
 
-  return {
-    peakRotationRate,
+    return {
+    peakRotationRate: sensorEngine.peakRotationRate,
     spinDetected,
     dominantAxis,
-    yawRate: peakYaw,
-    pitchRate: peakPitch,
-    rollRate: peakRoll,
     rolloverDetected,
+    pitchRate: maxX,
+    rollRate: maxY,
+    yawRate: maxZ,
   };
 }
 
@@ -394,16 +508,16 @@ export function validateCrashWithGyro(
   baseCrashThreshold: number
 ): { isValid: boolean; confidence: number } {
   const gyro = getGyroscopeSnapshot();
-  const baseline = adaptiveBaseline.getBaseline();
+  const baseline = sensorEngine.adaptiveBaseline.getBaseline();
   const adjustedG = Math.max(0, gForce - baseline);
-  const roadType = adaptiveBaseline.getRoadType();
+  const roadType = sensorEngine.adaptiveBaseline.getRoadType();
 
   // صدمة قوية جداً — مؤكدة بدون أي شروط إضافية
   if (adjustedG >= baseCrashThreshold * 2.0) return { isValid: true, confidence: 98 };
 
   // فحص Frequency — هل الإشارة لحظية (صدمة) أم مستمرة (اهتزاز)؟
   // v7.2: خُفّض من 2.0× إلى 1.5× لاحترام العتبة المنخفضة
-  if (!lastFreqImpulsive && adjustedG < baseCrashThreshold * 1.5) {
+  if (!sensorEngine.lastFreqImpulsive && adjustedG < baseCrashThreshold * 1.5) {
     return { isValid: false, confidence: 10 };
   }
 
@@ -428,18 +542,18 @@ export function validateCrashWithGyro(
 
 // ─── الاستخراجات ───
 
-export function getJerkPeak(): number { return jerkAccumPeak; }
-export function getBaselineG(): number { return adaptiveBaseline.getBaseline(); }
-export function getRingBuffer(): readonly RingSample[] { return ringBuffer; }
-export function getRoadType(): "smooth" | "normal" | "rough" { return adaptiveBaseline.getRoadType(); }
-export function getImpulseDurationMs(): number { return lastImpulseDurationMs; }
+export function getJerkPeak(): number { return sensorEngine.jerkAccumPeak; }
+export function getBaselineG(): number { return sensorEngine.adaptiveBaseline.getBaseline(); }
+export function getRingBuffer(): readonly RingSample[] { return sensorEngine.ringBuffer.toArray(); }
+export function getRoadType(): "smooth" | "normal" | "rough" { return sensorEngine.adaptiveBaseline.getRoadType(); }
+export function getImpulseDurationMs(): number { return sensorEngine.lastImpulseDurationMs; }
 
 /**
  * v7: تصدير تاريخ الجيروسكوب للتحليل المتقدم
  * يُستخدم في Module 1 (Angular Stability) و Module 3 (Road Context)
  */
 export function getGyroHistory(): readonly { x: number; y: number; z: number; ts: number }[] {
-  return gyroHistory;
+  return sensorEngine.gyroHistory.toArray();
 }
 
 /**
@@ -449,10 +563,10 @@ export function getGyroHistory(): readonly { x: number; y: number; z: number; ts
  */
 export function getPreCrashBuffer(seconds: number = 5): readonly RingSample[] {
   const requestedSamples = Math.min(
-    Math.ceil(seconds * sampleRateHz),
-    ringBuffer.length
+    Math.ceil(seconds * sensorEngine.sampleRateHz),
+    sensorEngine.ringBuffer.length
   );
-  return ringBuffer.slice(-requestedSamples);
+  return sensorEngine.ringBuffer.sliceFromEnd(requestedSamples);
 }
 
 /**
@@ -463,7 +577,7 @@ export function getPreCrashBuffer(seconds: number = 5): readonly RingSample[] {
  */
 export function getPostCrashBuffer(crashTimestamp: number, durationMs: number = 2500): readonly RingSample[] {
   const endTs = crashTimestamp + durationMs;
-  return ringBuffer.filter(s => s.ts > crashTimestamp && s.ts <= endTs);
+  return sensorEngine.ringBuffer.sliceByTimeRange(crashTimestamp, endTs);
 }
 
 /**
@@ -473,44 +587,48 @@ export function getPostCrashBuffer(crashTimestamp: number, durationMs: number = 
  */
 export function getPostCrashGyro(crashTimestamp: number, durationMs: number = 2500): readonly { x: number; y: number; z: number; ts: number }[] {
   const endTs = crashTimestamp + durationMs;
-  return gyroHistory.filter(s => s.ts > crashTimestamp && s.ts <= endTs);
+  return sensorEngine.gyroHistory.sliceByTimeRange(crashTimestamp, endTs);
 }
 
 /**
  * v6: الحد المعدّل حسب نوع الطريق
  */
 export function getAdjustedThreshold(baseThreshold: number): number {
-  return adaptiveBaseline.getAdjustedThreshold(baseThreshold);
+  return sensorEngine.adaptiveBaseline.getAdjustedThreshold(baseThreshold);
 }
 
 // ─── كشف الفرملة ───
 
 export function analyzeBraking(speedKmh: number): BrakingAnalysis {
-  if (ringBuffer.length < BRAKING_MIN_SAMPLES * 2) {
+  if (sensorEngine.ringBuffer.length < BRAKING_MIN_SAMPLES * 2) {
     return { brakingDetected: false, brakingDurationSec: 0, decelerationG: 0, speedBeforeBraking: speedKmh };
   }
 
-  const searchWindow = Math.min(ringBuffer.length - 1, sampleRateHz * 2);
-  const samples = ringBuffer.slice(-searchWindow - 1, -1);
+  const searchWindow = Math.min(sensorEngine.ringBuffer.length - 1, sensorEngine.sampleRateHz * 2);
+  const samples = sensorEngine.ringBuffer.sliceFromEnd(searchWindow);
 
   let consecutiveDecel = 0;
   let peakDecel = 0;
+  let totalDecel = 0;
 
   for (let i = 0; i < samples.length; i++) {
-    const vehicle = toVehicleFrame(samples[i].filtered);
+    const vehicle = mapToVehicleFrame(samples[i].filtered);
     const yDecel = -vehicle.vY;
     if (yDecel > Math.abs(BRAKING_DECEL_THRESHOLD)) {
       consecutiveDecel++;
+      totalDecel += yDecel;
       if (yDecel > peakDecel) peakDecel = yDecel;
     } else {
       consecutiveDecel = 0;
+      totalDecel = 0;
       peakDecel = 0;
     }
   }
 
   if (consecutiveDecel >= BRAKING_MIN_SAMPLES) {
-    const durationSec = consecutiveDecel / sampleRateHz;
-    const speedBeforeBraking = speedKmh + (peakDecel * 9.81 * durationSec * 3.6);
+    const durationSec = consecutiveDecel / sensorEngine.sampleRateHz;
+    const avgDecel = totalDecel / consecutiveDecel;
+    const speedBeforeBraking = speedKmh + (avgDecel * 9.81 * durationSec * 3.6);
     return {
       brakingDetected: true,
       brakingDurationSec: Math.round(durationSec * 100) / 100,
@@ -527,8 +645,8 @@ export function analyzeBraking(speedKmh: number): BrakingAnalysis {
 // ═══════════════════════════════════════════
 
 export function findPeakZone(): { zone: ImpactZone; peakG: number; peakFiltered: FilteredReading } {
-  const windowSize = Math.min(ringBuffer.length, Math.ceil(sampleRateHz * 0.3));
-  const window = ringBuffer.slice(-windowSize);
+  const windowSize = Math.min(sensorEngine.ringBuffer.length, Math.ceil(sensorEngine.sampleRateHz * 0.3));
+  const window = sensorEngine.ringBuffer.sliceFromEnd(windowSize);
 
   if (window.length === 0) {
     return { zone: "unknown", peakG: 0, peakFiltered: { x: 0, y: 0, z: 0 } };
@@ -544,17 +662,22 @@ export function findPeakZone(): { zone: ImpactZone; peakG: number; peakFiltered:
 }
 
 function getWindowedYaw(): { yawDeg: number; hasData: boolean } {
-  if (gyroHistory.length < 3) return { yawDeg: 0, hasData: false };
+  if (sensorEngine.gyroHistory.length < 3) return { yawDeg: 0, hasData: false };
 
-  const now = gyroHistory[gyroHistory.length - 1].ts;
+  const last = sensorEngine.gyroHistory.getLast();
+  if (!last) return { yawDeg: 0, hasData: false };
+  const now = last.ts;
   const windowStart = now - 500;
   let maxYaw = 0;
 
-  for (let i = gyroHistory.length - 1; i >= 0; i--) {
-    if (gyroHistory[i].ts < windowStart) break;
-    const yaw = Math.abs(gyroHistory[i].z) * (180 / Math.PI);
-    if (yaw > maxYaw) maxYaw = yaw;
-  }
+  sensorEngine.gyroHistory.forEach(s => {
+    if (s.ts >= windowStart) {
+      // Map to vehicle frame to get true yaw
+      const veh = mapToVehicleFrame(s);
+      const yaw = Math.abs(veh.vZ) * (180 / Math.PI);
+      if (yaw > maxYaw) maxYaw = yaw;
+    }
+  });
 
   return { yawDeg: maxYaw, hasData: true };
 }
@@ -564,7 +687,7 @@ export function detectImpactZone(filtered: FilteredReading): ImpactZone {
   // v6.1: تحويل من إطار الجهاز إلى إطار المركبة
   // يعمل مع كل وضعيات الجوال (مسطح، عمودي، أفقي)
   // ═══════════════════════════════════════════
-  const vehicle = toVehicleFrame(filtered);
+  const vehicle = mapToVehicleFrame(filtered);
 
   const absX = Math.abs(vehicle.vX);
   const absY = Math.abs(vehicle.vY);
@@ -573,9 +696,7 @@ export function detectImpactZone(filtered: FilteredReading): ImpactZone {
   if (totalXY < 0.05) return "unknown";
 
   // المعدل المرجّح من آخر 8 عينات قوية (في إطار المركبة)
-  const recentHigh = ringBuffer
-    .slice(-8)
-    .filter((s) => s.gForce > 0.5);
+  const recentHigh = sensorEngine.ringBuffer.sliceFromEnd(8).filter(s => s.gForce > 0.5);
 
   let avgX = vehicle.vX;
   let avgY = vehicle.vY;
@@ -583,7 +704,7 @@ export function detectImpactZone(filtered: FilteredReading): ImpactZone {
   if (recentHigh.length >= 3) {
     let wX = 0, wY = 0, totalW = 0;
     for (const s of recentHigh) {
-      const sv = toVehicleFrame(s.filtered);
+      const sv = mapToVehicleFrame(s.filtered);
       wX += sv.vX * s.gForce;
       wY += sv.vY * s.gForce;
       totalW += s.gForce;
@@ -655,16 +776,16 @@ export function detectDirection(filtered: FilteredReading): ImpactDirection {
 
 export function recordImpact(): number {
   const now = Date.now();
-  impactTimestamps.push(now);
+  sensorEngine.impactTimestamps.push(now);
   const cutoff = now - MULTI_IMPACT_WINDOW_MS;
-  impactTimestamps = impactTimestamps.filter((t) => t >= cutoff);
-  return impactTimestamps.length;
+  sensorEngine.impactTimestamps = sensorEngine.impactTimestamps.filter((t) => t >= cutoff);
+  return sensorEngine.impactTimestamps.length;
 }
 
 export function getImpactCount(): number {
   const now = Date.now();
   const cutoff = now - MULTI_IMPACT_WINDOW_MS;
-  return impactTimestamps.filter((t) => t >= cutoff).length;
+  return sensorEngine.impactTimestamps.filter((t) => t >= cutoff).length;
 }
 
 // ─── تشخيص (v6: موسّع) ───
@@ -686,16 +807,16 @@ export interface SensorDiagnostics {
 
 export function getDiagnostics(): SensorDiagnostics {
   return {
-    sampleRate: sampleRateHz,
-    bufferSize: ringBufferSize,
-    currentBufferLength: ringBuffer.length,
-    baselineG: adaptiveBaseline.getBaseline(),
-    baselineSettled: adaptiveBaseline.isSettled(),
-    jerkPeak: jerkAccumPeak,
-    peakGyroRate: peakRotationRate,
+    sampleRate: sensorEngine.sampleRateHz,
+    bufferSize: sensorEngine.ringBufferSize,
+    currentBufferLength: sensorEngine.ringBuffer.length,
+    baselineG: sensorEngine.adaptiveBaseline.getBaseline(),
+    baselineSettled: sensorEngine.adaptiveBaseline.isSettled(),
+    jerkPeak: sensorEngine.jerkAccumPeak,
+    peakGyroRate: sensorEngine.peakRotationRate,
     impactCount: getImpactCount(),
-    roadType: adaptiveBaseline.getRoadType(),
-    lastImpulseDurationMs: lastImpulseDurationMs,
-    currentSpeed: currentSpeedKmh,
+    roadType: sensorEngine.adaptiveBaseline.getRoadType(),
+    lastImpulseDurationMs: sensorEngine.lastImpulseDurationMs,
+    currentSpeed: sensorEngine.currentSpeedKmh,
   };
 }

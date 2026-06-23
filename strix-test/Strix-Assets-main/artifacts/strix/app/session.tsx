@@ -1,14 +1,6 @@
 import React, { useEffect, useCallback, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  Animated,
-  // Linking, // DEMO: disabled for client demo
-  ScrollView,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Platform, Animated, ScrollView } from "react-native";
+import { Text } from "@/components/Text";;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -16,22 +8,17 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSession } from "@/context/SessionContext";
 import { useReports } from "@/context/ReportsContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { SensorGauge } from "@/components/SensorGauge";
+import { flipIconName } from "@/lib/rtl";
 import type { Severity } from "@/lib/types";
 import { ZONE_LABELS_AR } from "@/lib/types";
 
 const SEVERITY_COLOR: Record<Severity, string> = {
-  critical: "#FF4444",
+  critical: "#FF3B30",
   severe: "#FF6B35",
-  moderate: "#D29922",
-  minor: "#3FB950",
-};
-
-const SEVERITY_LABEL_AR: Record<Severity, string> = {
-  critical: "حرج",
-  severe: "شديد",
-  moderate: "متوسط",
-  minor: "خفيف",
+  moderate: "#F59E0B",
+  minor: "#34C759",
 };
 
 function formatDuration(sec: number): string {
@@ -40,20 +27,10 @@ function formatDuration(sec: number): string {
   return `${m}:${s}`;
 }
 
-function directionLabelAr(d: string): string {
-  const map: Record<string, string> = {
-    front: "أمامي",
-    rear: "خلفي",
-    "side-left": "جانبي أيسر",
-    "side-right": "جانبي أيمن",
-    unknown: "غير محدد",
-  };
-  return map[d] ?? d;
-}
-
 export default function SessionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { t, isRTL, locale, rtl } = useLanguage();
   const {
     isActive,
     currentGForce,
@@ -67,11 +44,7 @@ export default function SessionScreen() {
     stopSession,
     resetCrash,
   } = useSession();
-  const { addReport, /* contacts, */ settings } = useReports();
-  // DEMO: emergency contact state disabled for client demo
-  // const [alertDismissed, setAlertDismissed] = useState(false);
-  // const [countdown, setCountdown] = useState(15);
-  // const countdownIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const { addReport, settings } = useReports();
   const addedReportIdRef = React.useRef<string | null>(null);
 
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
@@ -97,8 +70,6 @@ export default function SessionScreen() {
     }
   }, [crashDetected, latestReport]);
 
-  // DEMO: Emergency countdown logic removed for client demo
-
   const handleStop = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     stopSession();
@@ -113,31 +84,51 @@ export default function SessionScreen() {
     });
   }, [latestReport]);
 
-  // DEMO: Emergency call function removed for client demo
-  // const handleEmergencyCall = useCallback(async (phone: string) => {
-  //   await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-  //   Linking.openURL(`tel:${phone}`);
-  // }, []);
-
   const sev = latestReport?.severity ?? "moderate";
   const sevColor = SEVERITY_COLOR[sev];
 
+  // Severity label — uses locale
+  const SEVERITY_LABEL: Record<Severity, string> = {
+    critical: t("severity.critical"),
+    severe: t("severity.severe"),
+    moderate: t("severity.moderate"),
+    minor: t("severity.minor"),
+  };
+
+  // Direction label uses locale
+  function directionLabel(d: string): string {
+    const map: Record<string, string> = {
+      front: t("direction.front"),
+      rear: t("direction.rear"),
+      "side-left": t("direction.sideLeft"),
+      "side-right": t("direction.sideRight"),
+      unknown: t("direction.unknown"),
+    };
+    return map[d] ?? d;
+  }
+
+  const zoneLabel =
+    locale === "ar"
+      ? t(`zone.${latestReport?.impactZone}`) ??
+        directionLabel(latestReport?.impactDirection ?? "unknown")
+      : directionLabel(latestReport?.impactDirection ?? "unknown");
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, flexDirection: rtl.flexDirection }]}>
         <View style={styles.statusDot}>
           <View
             style={[
               styles.statusDotInner,
               {
-                backgroundColor: isActive ? "#3FB950" : colors.mutedForeground,
+                backgroundColor: isActive ? colors.primary : colors.mutedForeground,
               },
             ]}
           />
         </View>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            المراقبة المباشرة
+            {t("session.title")}
           </Text>
           {isActive && (
             <Text style={[styles.timerText, { color: colors.mutedForeground }]}>
@@ -157,97 +148,14 @@ export default function SessionScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {crashDetected && latestReport ? (
-          <>
-            <Animated.View
-              style={[
-                styles.crashCard,
-                {
-                  borderColor: sevColor,
-                  transform: [{ scale: pulseAnim }],
-                },
-              ]}
-            >
-              <View style={styles.crashHeader}>
-                <Feather name="alert-triangle" size={22} color={sevColor} />
-                <Text style={styles.crashTitle}>تم رصد حادث</Text>
-                <View
-                  style={[
-                    styles.sevBadge,
-                    { backgroundColor: sevColor + "30" },
-                  ]}
-                >
-                  <Text style={[styles.sevText, { color: sevColor }]}>
-                    {SEVERITY_LABEL_AR[sev]}
-                  </Text>
-                </View>
-              </View>
+        <View style={{ width: "100%", alignItems: "center", gap: 14 }}>
+          <SensorGauge
+            gForce={currentGForce}
+            size={180}
+            label={t("session.gForceLabel")}
+          />
 
-              <View style={styles.crashStats}>
-                <View style={styles.crashStat}>
-                  <Text style={[styles.crashStatVal, { color: sevColor }]}>
-                    {latestReport.peakGForce.toFixed(1)}g
-                  </Text>
-                  <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
-                    ذروة G
-                  </Text>
-                </View>
-                <View
-                  style={[styles.crashStatDiv, { backgroundColor: "#30363D" }]}
-                />
-                <View style={styles.crashStat}>
-                  <Text style={styles.crashStatVal2}>
-                    {latestReport.speedKmh} كم/س
-                  </Text>
-                  <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
-                    السرعة
-                  </Text>
-                </View>
-                <View
-                  style={[styles.crashStatDiv, { backgroundColor: "#30363D" }]}
-                />
-                <View style={styles.crashStat}>
-                  <Text style={[styles.crashStatVal2, { textAlign: 'center', maxWidth: 90 }]} numberOfLines={2}>
-                    {ZONE_LABELS_AR[latestReport.impactZone] || directionLabelAr(latestReport.impactDirection)}
-                  </Text>
-                  <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
-                    المنطقة
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.crashActions}>
-                <TouchableOpacity
-                  onPress={handleViewReport}
-                  style={[styles.viewReportBtn, { backgroundColor: sevColor }]}
-                >
-                  <Text style={styles.viewReportText}>عرض التقرير الكامل</Text>
-                  <Feather name="arrow-left" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={resetCrash}
-                  style={styles.dismissBtn}
-                >
-                  <Text
-                    style={[styles.dismissText, { color: colors.mutedForeground }]}
-                  >
-                    تجاهل — متابعة المراقبة
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-
-            {/* DEMO: Emergency contact panel removed for client demo */}
-          </>
-        ) : (
-          <>
-            <SensorGauge
-              gForce={currentGForce}
-              size={180}
-              label="قوة الاصطدام G"
-            />
-
-            <View style={styles.statsGrid}>
+            <View style={[styles.statsGrid, { flexDirection: rtl.flexDirection }]}>
               <View
                 style={[
                   styles.statCard,
@@ -258,7 +166,7 @@ export default function SessionScreen() {
                   {peakGForce.toFixed(1)}g
                 </Text>
                 <Text style={[styles.statLbl, { color: colors.mutedForeground }]}>
-                  الذروة
+                  {t("session.peak")}
                 </Text>
               </View>
 
@@ -268,11 +176,11 @@ export default function SessionScreen() {
                   { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
               >
-                <Text style={[styles.statVal, { color: "#3FB950" }]}>
+                <Text style={[styles.statVal, { color: colors.primary }]}>
                   {currentSpeedKmh}
                 </Text>
                 <Text style={[styles.statLbl, { color: colors.mutedForeground }]}>
-                  كم/س
+                  {t("session.kmh")}
                 </Text>
               </View>
 
@@ -282,31 +190,31 @@ export default function SessionScreen() {
                   { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
               >
-                <View style={styles.statusRow}>
+                <View style={[styles.statusRow, { flexDirection: rtl.flexDirection }]}>
                   <Text
                     style={[
                       styles.statVal,
                       {
-                        color: isActive ? "#3FB950" : colors.mutedForeground,
+                        color: isActive ? colors.primary : colors.mutedForeground,
                         fontSize: 14,
                       },
                     ]}
                   >
-                    {isActive ? "نشط" : "متوقف"}
+                    {isActive ? t("session.active") : t("session.stopped")}
                   </Text>
                   <View
                     style={[
                       styles.liveDot,
                       {
                         backgroundColor: isActive
-                          ? "#3FB950"
+                          ? colors.primary
                           : colors.mutedForeground,
                       },
                     ]}
                   />
                 </View>
                 <Text style={[styles.statLbl, { color: colors.mutedForeground }]}>
-                  الحساس
+                  {t("session.sensor")}
                 </Text>
               </View>
             </View>
@@ -318,25 +226,116 @@ export default function SessionScreen() {
                   {
                     backgroundColor: "#D29922" + "22",
                     borderColor: "#D29922" + "44",
+                    flexDirection: rtl.flexDirection
                   },
                 ]}
               >
                 <Feather name="cpu" size={16} color="#D29922" />
                 <Text style={[styles.analyzingText, { color: "#D29922" }]}>
-                  جاري تحليل الحادث...
+                  {t("session.analyzing")}
                 </Text>
               </View>
+            )}
+
+            {crashDetected && !isAnalyzing && latestReport && (
+              <Animated.View
+                style={[
+                  styles.crashCard,
+                  {
+                    borderColor: sevColor,
+                    transform: [{ scale: pulseAnim }],
+                  },
+                ]}
+              >
+                <View style={[styles.crashHeader, { flexDirection: rtl.flexDirection }]}>
+                  <Feather name="alert-triangle" size={22} color={sevColor} />
+                  <Text style={[styles.crashTitle, { textAlign: rtl.textAlign }]}>
+                    {t("session.crashDetectedTitle")}
+                  </Text>
+                  <View
+                    style={[
+                      styles.sevBadge,
+                      { backgroundColor: sevColor + "30" },
+                    ]}
+                  >
+                    <Text style={[styles.sevText, { color: sevColor }]}>
+                      {SEVERITY_LABEL[sev]}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.crashStats, { flexDirection: rtl.flexDirection }]}>
+                  <View style={styles.crashStat}>
+                    <Text style={[styles.crashStatVal, { color: sevColor }]}>
+                      {latestReport.peakGForce.toFixed(1)}g
+                    </Text>
+                    <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
+                      {t("session.peakG")}
+                    </Text>
+                  </View>
+                  <View
+                    style={[styles.crashStatDiv, { backgroundColor: "#30363D" }]}
+                  />
+                  <View style={styles.crashStat}>
+                    <Text style={styles.crashStatVal2}>
+                      {latestReport.speedKmh} {t("session.kmh")}
+                    </Text>
+                    <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
+                      {t("session.speed")}
+                    </Text>
+                  </View>
+                  <View
+                    style={[styles.crashStatDiv, { backgroundColor: "#30363D" }]}
+                  />
+                  <View style={styles.crashStat}>
+                    <Text style={[styles.crashStatVal2, { textAlign: 'center', maxWidth: 90 }]} numberOfLines={2}>
+                      {zoneLabel}
+                    </Text>
+                    <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
+                      {t("session.zone")}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.crashActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewReportBtn,
+                      { backgroundColor: sevColor, flexDirection: rtl.flexDirection },
+                    ]}
+                    onPress={handleViewReport}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.viewReportText}>
+                      {t("session.viewFullReport")}
+                    </Text>
+                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                      <Feather name={flipIconName("arrow-right", isRTL) as any} size={18} color="#FFFFFF" />
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dismissBtn}
+                    onPress={resetCrash}
+                  >
+                    <Text style={[styles.dismissText, { color: "#8B949E" }]}>
+                      {t("session.dismissContinue")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
             )}
 
             <View
               style={[
                 styles.infoBar,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                { backgroundColor: colors.card, borderColor: colors.border, flexDirection: rtl.flexDirection },
               ]}
             >
               <Feather name="info" size={14} color={colors.mutedForeground} />
               <Text style={[styles.infoBarText, { color: colors.mutedForeground }]}>
-                عتبة الكشف: {settings.crashThresholdG.toFixed(1)}g
+                {t("session.detectionThreshold", {
+                  g: settings.crashThresholdG.toFixed(1),
+                })}
               </Text>
             </View>
 
@@ -347,6 +346,7 @@ export default function SessionScreen() {
                   {
                     backgroundColor: colors.secondary,
                     borderColor: colors.border,
+                    flexDirection: rtl.flexDirection
                   },
                 ]}
               >
@@ -358,27 +358,26 @@ export default function SessionScreen() {
                 <Text
                   style={[
                     styles.webWarningText,
-                    { color: colors.mutedForeground },
+                    { color: colors.mutedForeground, textAlign: rtl.textAlign },
                   ]}
                 >
-                  الحساسات تعمل على iPhone حقيقي فقط. امسح رمز QR بتطبيق Expo Go.
+                  {t("session.webWarning")}
                 </Text>
               </View>
             )}
-          </>
-        )}
+        </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: bottomPad + 16 }]}>
         <TouchableOpacity
           onPress={handleStop}
           activeOpacity={0.85}
-          style={[styles.stopBtn, { backgroundColor: colors.secondary }]}
+          style={[styles.stopBtn, { backgroundColor: colors.primary, flexDirection: rtl.flexDirection }]}
         >
-          <Text style={[styles.stopText, { color: colors.foreground }]}>
-            إيقاف الجلسة
+          <Text style={[styles.stopText, { color: "#FFFFFF" }]}>
+            {t("session.stopSession")}
           </Text>
-          <Feather name="square" size={18} color={colors.foreground} />
+          <Feather name="square" size={18} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </View>
@@ -391,21 +390,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 14,
     gap: 12,
   },
-  headerCenter: { flex: 1, alignItems: "center", gap: 2 },
+  headerCenter: { flex: 1, alignItems: "center", gap: 3 },
   closeBtn: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: { fontSize: 17, fontWeight: "700" },
-  timerText: { fontSize: 13, fontVariant: ["tabular-nums"] },
+  headerTitle: { fontSize: 17, fontWeight: "800", letterSpacing: 0.2 },
+  timerText: { fontSize: 13, fontVariant: ["tabular-nums"], letterSpacing: 1 },
   statusDot: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -413,57 +413,57 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: 20,
     alignItems: "center",
-    gap: 16,
+    gap: 14,
     paddingTop: 8,
   },
   statsGrid: { flexDirection: "row", gap: 10, width: "100%" },
   statCard: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 14,
+    padding: 16,
     alignItems: "center",
     gap: 5,
   },
-  statVal: { fontSize: 20, fontWeight: "700" },
-  statLbl: { fontSize: 11 },
+  statVal: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+  statLbl: { fontSize: 11, letterSpacing: 0.2 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   liveDot: { width: 7, height: 7, borderRadius: 4 },
   analyzingBanner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 14,
     borderWidth: 1,
     width: "100%",
     justifyContent: "flex-start",
   },
-  analyzingText: { fontSize: 14, fontWeight: "500" },
+  analyzingText: { fontSize: 14, fontWeight: "600" },
   infoBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
     borderWidth: 1,
     width: "100%",
     justifyContent: "flex-start",
   },
-  infoBarText: { fontSize: 12 },
+  infoBarText: { fontSize: 13 },
   webWarning: {
     flexDirection: "row",
     gap: 10,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     width: "100%",
     alignItems: "center",
     justifyContent: "flex-start",
   },
-  webWarningText: { flex: 1, fontSize: 13, lineHeight: 18, textAlign: "right" },
+  webWarningText: { flex: 1, fontSize: 13, lineHeight: 18 },
   crashCard: {
     backgroundColor: "#120B0B",
     borderWidth: 1.5,
@@ -473,7 +473,6 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   crashHeader: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 10,
     justifyContent: "flex-start",
@@ -484,9 +483,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sevText: { fontSize: 12, fontWeight: "700" },
-  crashTitle: { color: "#F0F6FF", fontSize: 18, fontWeight: "800", flex: 1, textAlign: "right" },
+  crashTitle: { color: "#F0F6FF", fontSize: 18, fontWeight: "800", flex: 1 },
   crashStats: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
   },
@@ -498,7 +496,6 @@ const styles = StyleSheet.create({
   crashActions: { gap: 10 },
   viewReportBtn: {
     borderRadius: 12,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -507,23 +504,15 @@ const styles = StyleSheet.create({
   viewReportText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
   dismissBtn: { borderRadius: 12, alignItems: "center", paddingVertical: 10 },
   dismissText: { fontSize: 13, fontWeight: "500" },
-  // DEMO: Emergency styles removed for client demo
-  // emergencyCard: { ... },
-  // emergencyHeader: { ... },
-  // emergencyDismiss: { ... },
-  // emergencyTitle: { ... },
-  // emergencySub: { ... },
-  // emergencyCallBtn: { ... },
-  // emergencyCallName: { ... },
-  // emergencyCallPhone: { ... },
+
   footer: { paddingHorizontal: 20, paddingTop: 8 },
   stopBtn: {
-    borderRadius: 14,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    paddingVertical: 16,
+    paddingVertical: 17,
   },
-  stopText: { fontSize: 16, fontWeight: "600" },
+  stopText: { fontSize: 16, fontWeight: "700" },
 });

@@ -1,16 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Platform,
-  KeyboardAvoidingView,
-  Switch,
-} from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, KeyboardAvoidingView, Switch } from "react-native";
+import { Text } from "@/components/Text";;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -18,22 +8,23 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useReports } from "@/context/ReportsContext";
 import { useLanguage, type Locale } from "@/context/LanguageContext";
-// import type { EmergencyContact } from "@/lib/storage"; // DEMO: disabled for client demo
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { flipIconName } from "@/lib/rtl";
 
-const THRESHOLD_OPTIONS: Array<{ value: number; labelAr: string }> = [
-  { value: 1.5, labelAr: "عالية جداً" },
-  { value: 2.0, labelAr: "قياسي" },
-  { value: 2.5, labelAr: "متوسطة" },
-  { value: 3.0, labelAr: "منخفضة" },
-  { value: 3.5, labelAr: "شديدة" },
-  { value: 4.0, labelAr: "قوية فقط" },
+const THRESHOLD_OPTIONS: Array<{ value: number; labelKey: string }> = [
+  { value: 1.5, labelKey: "settings.thresholdOptions.veryHigh" },
+  { value: 2.0, labelKey: "settings.thresholdOptions.standard" },
+  { value: 2.5, labelKey: "settings.thresholdOptions.medium" },
+  { value: 3.0, labelKey: "settings.thresholdOptions.low" },
+  { value: 3.5, labelKey: "settings.thresholdOptions.severe" },
+  { value: 4.0, labelKey: "settings.thresholdOptions.strongOnly" },
 ];
 
-const SAMPLE_RATE_OPTIONS: Array<{ value: number; labelAr: string }> = [
-  { value: 10, labelAr: "اقتصادي" },
-  { value: 25, labelAr: "متوازن" },
-  { value: 50, labelAr: "قياسي" },
-  { value: 100, labelAr: "أقصى دقة" },
+const SAMPLE_RATE_OPTIONS: Array<{ value: number; labelKey: string }> = [
+  { value: 10, labelKey: "settings.sampleOptions.economic" },
+  { value: 25, labelKey: "settings.sampleOptions.balanced" },
+  { value: 50, labelKey: "settings.sampleOptions.standard" },
+  { value: 100, labelKey: "settings.sampleOptions.maxPrecision" },
 ];
 
 export default function SettingsScreen() {
@@ -41,12 +32,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { contacts, settings, loadAll, updateContacts, updateSettings, reports } =
     useReports();
-  const { locale, setLocale, t } = useLanguage();
-
-  // DEMO: Emergency contact state disabled for client demo
-  // const [name, setName] = useState("");
-  // const [phone, setPhone] = useState("");
-  // const [isAdding, setIsAdding] = useState(false);
+  const { locale, setLocale, t, isRTL, rtl, formatGForce: fmtG, formatDecimal: fmtD } = useLanguage();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -55,10 +41,6 @@ export default function SettingsScreen() {
     loadAll();
   }, [loadAll]);
 
-  // DEMO: Emergency contact handlers disabled for client demo
-  // const handleAddContact = useCallback(async () => { ... }, []);
-  // const handleRemove = useCallback((id: string) => { ... }, []);
-
   const handleThreshold = useCallback(
     async (value: number) => {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -66,14 +48,6 @@ export default function SettingsScreen() {
     },
     [settings, updateSettings]
   );
-
-  // DEMO: Auto-alert handler disabled for client demo
-  // const handleAutoAlert = useCallback(
-  //   async (value: boolean) => {
-  //     await updateSettings({ ...settings, autoAlertEnabled: value });
-  //   },
-  //   [settings, updateSettings]
-  // );
 
   const handleGyroscope = useCallback(
     async (value: boolean) => {
@@ -106,10 +80,14 @@ export default function SettingsScreen() {
         <View style={[styles.header, { paddingTop: topPad + 8 }]}>
           <View style={{ width: 36 }} />
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            الإعدادات
+            {t("settings.title")}
           </Text>
           <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-            <Feather name="arrow-right" size={22} color={colors.foreground} />
+            <Feather
+              name={flipIconName("arrow-left", isRTL) as any}
+              size={22}
+              color={colors.foreground}
+            />
           </TouchableOpacity>
         </View>
 
@@ -120,12 +98,7 @@ export default function SettingsScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* DEMO: اللغة / Language — hidden for client demo */}
-
-          {/* DEMO: جهات الطوارئ — hidden for client demo */}
-          {/* DEMO: إعدادات التنبيه التلقائي — hidden for client demo */}
-
-          {/* الجيروسكوب */}
+          {/* ── Language ── */}
           <View
             style={[
               styles.section,
@@ -135,12 +108,40 @@ export default function SettingsScreen() {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTextBlock}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  التحقق بالجيروسكوب
+                  {t("settings.language")}
+                </Text>
+                <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+                  {t("settings.languageSub")}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.sectionIcon,
+                  { backgroundColor: "#8B5CF6" + "22" },
+                ]}
+              >
+                <Feather name="globe" size={16} color="#8B5CF6" />
+              </View>
+            </View>
+            <LanguageSwitcher />
+          </View>
+
+          {/* ── Gyroscope ── */}
+          <View
+            style={[
+              styles.section,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTextBlock}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  {t("settings.gyroscope")}
                 </Text>
                 <Text
                   style={[styles.sectionSub, { color: colors.mutedForeground }]}
                 >
-                  تقليل الإنذارات الكاذبة عبر تأكيد الدوران
+                  {t("settings.gyroscopeSub")}
                 </Text>
               </View>
               <Switch
@@ -152,7 +153,7 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* تردد أخذ العينات */}
+          {/* ── Sample Rate ── */}
           <View
             style={[
               styles.section,
@@ -162,12 +163,12 @@ export default function SettingsScreen() {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTextBlock}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  تردد أخذ العينات
+                  {t("settings.sampleRate")}
                 </Text>
                 <Text
                   style={[styles.sectionSub, { color: colors.mutedForeground }]}
                 >
-                  كلما زاد التردد زادت الدقة واستهلاك البطارية
+                  {t("settings.sampleRateSub")}
                 </Text>
               </View>
               <View
@@ -217,7 +218,7 @@ export default function SettingsScreen() {
                         },
                       ]}
                     >
-                      {opt.labelAr}
+                      {t(opt.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -225,7 +226,7 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* حساسية الكشف */}
+          {/* ── Sensitivity ── */}
           <View
             style={[
               styles.section,
@@ -235,12 +236,12 @@ export default function SettingsScreen() {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTextBlock}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  حساسية الكشف
+                  {t("settings.sensitivity")}
                 </Text>
                 <Text
                   style={[styles.sectionSub, { color: colors.mutedForeground }]}
                 >
-                  عتبة التسارع المطلوبة لتفعيل الكشف
+                  {t("settings.sensitivitySub")}
                 </Text>
               </View>
               <View
@@ -291,25 +292,23 @@ export default function SettingsScreen() {
                         },
                       ]}
                     >
-                      {opt.labelAr}
+                      {t(opt.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            <Text style={[styles.thresholdHint, { color: colors.mutedForeground }]}>
+            <Text style={[styles.thresholdHint, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
               {settings.crashThresholdG <= 1.5
-                ? "قد تُسجَّل اهتزازات الطريق كحوادث — استخدم في السيارات الرياضية"
+                ? t("settings.hintLow")
                 : settings.crashThresholdG >= 3.5
-                ? "يكتشف الحوادث القوية فقط — مناسب للطرق الوعرة"
-                : "مناسب للاستخدام اليومي في السيارات العادية"}
+                ? t("settings.hintHigh")
+                : t("settings.hintNormal")}
             </Text>
           </View>
 
-
-
-          {/* إحصائيات */}
+          {/* ── Stats ── */}
           {totalCrashes > 0 && (
             <View
               style={[
@@ -322,7 +321,7 @@ export default function SettingsScreen() {
                   <Text
                     style={[styles.sectionTitle, { color: colors.foreground }]}
                   >
-                    إحصائيات
+                    {t("settings.stats")}
                   </Text>
                 </View>
                 <View
@@ -335,10 +334,10 @@ export default function SettingsScreen() {
                 </View>
               </View>
               {[
-                { label: "إجمالي الحوادث المسجّلة", value: String(totalCrashes) },
-                { label: "متوسط قوة G", value: `${avgGForce.toFixed(1)}g` },
+                { label: t("settings.totalIncidents"), value: String(totalCrashes) },
+                { label: t("settings.avgGForce"), value: fmtG(avgGForce) },
                 {
-                  label: "تقييمات صحيحة",
+                  label: t("settings.correctRatings"),
                   value: `${correctFeedback} / ${reports.filter((r) => r.feedback !== null).length}`,
                 },
               ].map((item) => (
@@ -359,7 +358,7 @@ export default function SettingsScreen() {
             </View>
           )}
 
-          {/* عن ستركس */}
+          {/* ── About ── */}
           <View
             style={[
               styles.section,
@@ -371,12 +370,12 @@ export default function SettingsScreen() {
                 <Text
                   style={[styles.sectionTitle, { color: colors.foreground }]}
                 >
-                  عن ستركس
+                  {t("settings.about")}
                 </Text>
                 <Text
                   style={[styles.sectionSub, { color: colors.mutedForeground }]}
                 >
-                  v3.0 — محرك Fusion متعدد الحساسات
+                  {t("settings.aboutVersion")}
                 </Text>
               </View>
               <View
@@ -388,39 +387,39 @@ export default function SettingsScreen() {
                 <Feather name="info" size={16} color={colors.mutedForeground} />
               </View>
             </View>
-            <Text style={[styles.aboutText, { color: colors.mutedForeground }]}>
-              يستخدم ستركس مستشعر التسارع (Accelerometer) والجيروسكوب (Gyroscope)
-              معاً في نظام Sensor Fusion مع خوارزمية High-Pass Filter لعزل حركة
-              الاصطدام عن جاذبية الأرض. يحسب محرك التحليل v4 قوة G الذروة
-              والتسارع المفاجئ (Jerk) واتجاه الاصطدام والسرعة وبيانات الفرملة
-              والدوران معاً لتقدير نسبة المسؤولية بدقة أعلى.
+            <Text style={[styles.aboutText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+              {t("settings.aboutDescription")}
             </Text>
             <View style={[styles.techRow, { borderColor: colors.border }]}>
               {[
-                { k: "معدل أخذ العينات", v: `${settings.sampleRateHz} Hz` },
-                { k: "فلتر الإشارة", v: "α=0.8" },
-                { k: "ذاكرة الحلقة", v: "3 ثوان" },
-                { k: "فترة التبريد", v: "8 ثوان" },
-                { k: "الجيروسكوب", v: settings.gyroscopeEnabled ? "مُفعّل" : "معطّل" },
-                { k: "كشف الفرملة", v: "تلقائي" },
-              ].map((t) => (
-                <View key={t.k} style={styles.techChip}>
+                { k: t("settings.techSampleRate"), v: `${settings.sampleRateHz} Hz` },
+                { k: t("settings.techFilter"), v: t("settings.techFilterVal") },
+                { k: t("settings.techBuffer"), v: t("settings.techBufferVal") },
+                { k: t("settings.techCooldown"), v: t("settings.techCooldownVal") },
+                {
+                  k: t("settings.techGyro"),
+                  v: settings.gyroscopeEnabled
+                    ? t("settings.techEnabled")
+                    : t("settings.techDisabled"),
+                },
+                { k: t("settings.techBrake"), v: t("settings.techAuto") },
+              ].map((tc) => (
+                <View key={tc.k} style={styles.techChip}>
                   <Text style={[styles.techVal, { color: colors.foreground }]}>
-                    {t.v}
+                    {tc.v}
                   </Text>
                   <Text
                     style={[styles.techKey, { color: colors.mutedForeground }]}
                   >
-                    {t.k}
+                    {tc.k}
                   </Text>
                 </View>
               ))}
             </View>
             <Text
-              style={[styles.disclaimer, { color: colors.mutedForeground }]}
+              style={[styles.disclaimer, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}
             >
-              البيانات محفوظة محلياً على الجهاز فقط. هذا التطبيق للأغراض
-              الاستعلامية ولا يُعدّ بديلاً عن الجهات الرسمية.
+              {t("settings.disclaimer")}
             </Text>
           </View>
         </ScrollView>
@@ -471,8 +470,52 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sectionTextBlock: { flex: 1, gap: 2, alignItems: "flex-start" },
-  sectionTitle: { fontSize: 16, fontWeight: "600" },
-  sectionSub: { fontSize: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: "700" },
+  sectionSub: { fontSize: 12, letterSpacing: 0.1 },
+  thresholdGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-start",
+  },
+  thresholdChip: {
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    minWidth: 84,
+    gap: 2,
+  },
+  thresholdVal: { fontSize: 17, fontWeight: "800" },
+  thresholdLbl: { fontSize: 10, letterSpacing: 0.2 },
+  thresholdHint: { fontSize: 12, lineHeight: 18, fontStyle: "italic" },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+  infoLabel: { fontSize: 14, letterSpacing: 0.1 },
+  infoValue: { fontSize: 14, fontWeight: "700" },
+  aboutText: { fontSize: 13, lineHeight: 22 },
+  techRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    justifyContent: "flex-start",
+  },
+  techChip: { alignItems: "center", gap: 2 },
+  techVal: { fontSize: 13, fontWeight: "700" },
+  techKey: { fontSize: 10 },
+  disclaimer: {
+    fontSize: 11,
+    lineHeight: 18,
+    fontStyle: "italic",
+  },
   emptyContacts: {
     borderRadius: 10,
     padding: 14,
@@ -504,26 +547,26 @@ const styles = StyleSheet.create({
   },
   addForm: { gap: 10, paddingTop: 4 },
   input: {
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
     fontSize: 15,
   },
   formActions: { flexDirection: "row", gap: 10, marginTop: 2 },
   saveBtn: {
     flex: 2,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
-  saveBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
+  saveBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
   cancelBtn: {
     flex: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
   cancelText: { fontSize: 15, fontWeight: "500" },
   addBtn: {
@@ -536,49 +579,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   addBtnText: { fontSize: 14, fontWeight: "500" },
-  thresholdGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "flex-start",
-  },
-  thresholdChip: {
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    minWidth: 80,
-    gap: 2,
-  },
-  thresholdVal: { fontSize: 16, fontWeight: "700" },
-  thresholdLbl: { fontSize: 10 },
-  thresholdHint: { fontSize: 12, lineHeight: 18, textAlign: "right", fontStyle: "italic" },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderTopWidth: 1,
-  },
-  infoLabel: { fontSize: 14 },
-  infoValue: { fontSize: 14, fontWeight: "600" },
-  aboutText: { fontSize: 13, lineHeight: 22, textAlign: "right" },
-  techRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    justifyContent: "flex-start",
-  },
-  techChip: { alignItems: "center", gap: 2 },
-  techVal: { fontSize: 13, fontWeight: "700" },
-  techKey: { fontSize: 10 },
-  disclaimer: {
-    fontSize: 11,
-    lineHeight: 18,
-    fontStyle: "italic",
-    textAlign: "right",
-  },
 });

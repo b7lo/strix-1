@@ -1,181 +1,86 @@
+import i18n from "./i18n";
+
 export function getRandomPhrase(phrases: string[]): string {
-  return phrases[Math.floor(Math.random() * Math.random() * phrases.length) || Math.floor(Math.random() * phrases.length)];
+  if (!Array.isArray(phrases) || phrases.length === 0) return "";
+  return phrases[Math.floor(Math.random() * phrases.length)];
 }
 
 export const DynamicText = {
-  // ─── العوامل المشتركة والثقة ───
-  directionKnown: () => getRandomPhrase([
-    "اتجاه الاصطدام مُحدَّد وواضح.",
-    "زاوية التصادم مرصودة بدقة استشعارية.",
-    "مسار القوة والاصطدام واضح ومؤكد.",
-    "تم تحديد نقطة الارتطام بدقة عالية."
-  ]),
-  directionUnknown: () => getRandomPhrase([
-    "اتجاه الاصطدام غير واضح — قد يكون الهاتف غير مثبّت بإحكام.",
-    "تشتت في قراءة الاتجاه، ربما سقط الهاتف داخل المركبة وقت الحادث.",
-    "زاوية التأثير غير محددة (احتمال اهتزاز الهاتف بحرية)."
-  ]),
-  highGForce: (g: number) => getRandomPhrase([
-    `قوة تأثير عالية جداً (${g.toFixed(1)}g) تؤكد وقوع حادث جسيم.`,
-    `تم تسجيل قوة صدمة عنيفة بلغت ${g.toFixed(1)}g، مما يدل على اصطدام قوي.`,
-    `الارتطام نتج عنه قوة ${g.toFixed(1)}g، وهو مؤشر لحادث عالي الشدة.`
-  ]),
-  mediumGForce: (g: number) => getRandomPhrase([
-    `قوة تأثير متوسطة (${g.toFixed(1)}g) تشير إلى وقوع تصادم.`,
-    `تم رصد صدمة بقوة ${g.toFixed(1)}g تؤكد حدوث تلامس أو احتكاك قوي.`,
-    `مؤشرات الجاذبية (${g.toFixed(1)}g) تدل على حادث ذو شدة متوسطة.`
-  ]),
-  lowGForce: (g: number) => getRandomPhrase([
-    `قوة تأثير منخفضة (${g.toFixed(1)}g) — قد تكون ناجمة عن مطب أو سقوط الهاتف.`,
-    `تم تسجيل اهتزاز خفيف (${g.toFixed(1)}g)، قد لا يكون حادثاً مرورياً بالضرورة.`,
-    `صدمة خفيفة جداً، يُحتمل أن تكون ناتجة عن احتكاك بسيط أو حركة مفاجئة.`
-  ]),
-  speedHigh: (speed: number) => getRandomPhrase([
-    `تأكيد حركة المركبة (السرعة وقت الحادث: ${speed.toFixed(0)} كم/س).`,
-    `المركبة كانت تسير بسرعة ${speed.toFixed(0)} كم/س لحظة وقوع الحادث.`,
-    `الصدمة وقعت أثناء تحرك المركبة بسرعة تُقدر بـ ${speed.toFixed(0)} كم/س.`
-  ]),
-  speedLow: (speed: number) => getRandomPhrase([
-    `المركبة كانت تتحرك ببطء شديد أو في حالة وقوف تقريباً (${speed.toFixed(0)} كم/س).`,
-    `السرعة شبه معدومة (${speed.toFixed(0)} كم/س)، المركبة متوقفة أو تتحرك ببطء.`,
-    `سُجلت سرعة منخفضة جداً (${speed.toFixed(0)} كم/س) وقت التصادم.`
-  ]),
-  jerkHigh: (jerk: number) => getRandomPhrase([
-    `تغيّر مفاجئ وحاد في حركة المركبة (${jerk.toFixed(1)} g/s) يؤكد حدوث صدمة مباغتة.`,
-    `تسارع لحظي شديد (${jerk.toFixed(1)} g/s)، دليل قاطع على توقف مباغت أو صدمة خارجية.`,
-    `قوة الجيرك المرتفعة (${jerk.toFixed(1)} g/s) تشير إلى تصادم دون سابق إنذار.`
-  ]),
-  spinDetected: () => getRandomPhrase([
-    "رصد انحراف أو دوران للمركبة فور وقوع الاصطدام — دليل قاطع على الحادث.",
-    "مستشعر الدوران يؤكد التفاف هيكل المركبة بسبب قوة الصدمة.",
-    "المركبة فقدت مسارها المستقيم وانحرفت لحظة الارتطام."
-  ]),
-  shakeDetected: () => getRandomPhrase([
-    "رصد اهتزاز حاد في هيكل المركبة تزامناً مع الصدمة.",
-    "تذبذب ملحوظ في قراءات الجيروسكوب يدل على ارتجاج المركبة.",
-    "اهتزازات هيكلية قوية تم توثيقها لحظة التصادم."
-  ]),
-  brakingDetected: () => getRandomPhrase([
-    "تم رصد محاولة فرملة قبل وقوع الحادث — يُشير إلى الانتباه ومحاولة تفادي الاصطدام.",
-    "البيانات تظهر استخدام المكابح قبل الصدمة مباشرة.",
-    "السائق حاول التوقف المباغت قبل وقوع الارتطام بثوانٍ معدودة."
-  ]),
+  // ─── Shared & Confidence Factors ───
+  directionKnown: () => getRandomPhrase(i18n.t("dynamic.directionKnown", { returnObjects: true }) as string[]),
+  directionUnknown: () => getRandomPhrase(i18n.t("dynamic.directionUnknown", { returnObjects: true }) as string[]),
+  highGForce: (g: number) => getRandomPhrase(i18n.t("dynamic.highGForce", { g: g.toFixed(1), returnObjects: true }) as string[]),
+  mediumGForce: (g: number) => getRandomPhrase(i18n.t("dynamic.mediumGForce", { g: g.toFixed(1), returnObjects: true }) as string[]),
+  lowGForce: (g: number) => getRandomPhrase(i18n.t("dynamic.lowGForce", { g: g.toFixed(1), returnObjects: true }) as string[]),
+  speedHigh: (speed: number) => getRandomPhrase(i18n.t("dynamic.speedHigh", { speed: speed.toFixed(0), returnObjects: true }) as string[]),
+  speedLow: (speed: number) => getRandomPhrase(i18n.t("dynamic.speedLow", { speed: speed.toFixed(0), returnObjects: true }) as string[]),
+  jerkHigh: (jerk: number) => getRandomPhrase(i18n.t("dynamic.jerkHigh", { jerk: jerk.toFixed(1), returnObjects: true }) as string[]),
+  spinDetected: () => getRandomPhrase(i18n.t("dynamic.spinDetected", { returnObjects: true }) as string[]),
+  shakeDetected: () => getRandomPhrase(i18n.t("dynamic.shakeDetected", { returnObjects: true }) as string[]),
+  brakingDetected: () => getRandomPhrase(i18n.t("dynamic.brakingDetected", { returnObjects: true }) as string[]),
 
-  // ─── الحوادث الخلفية ───
-  rearBase: () => getRandomPhrase([
-    "قاعدة المرور المعتمدة: الاصطدام من الخلف يُحمل الطرف الصادم المسؤولية الكاملة لعدم ترك مسافة أمان.",
-    "وفقاً لقواعد المرور، يتحمل الطرف المتواجد بالخلف خطأ بنسبة 100٪ نتيجة الفشل في التوقف في الوقت المناسب.",
-    "الاصطدام وقع من الجهة الخلفية، مما يضع المسؤولية القانونية كاملة على المركبة اللاحقة."
-  ]),
-  rearBraking: () => getRandomPhrase([
-    "رغم رصد محاولة توقف من السائق، تبقى مسؤولية الحفاظ على مسافة آمنة على عاتق المركبة الخلفية.",
-    "التوقف المفاجئ للمركبة الأمامية لا يُعفي المركبة الخلفية من خطأ عدم ترك مسافة كافية.",
-    "السائق فرمل بشكل مفاجئ، ولكن القوانين تُلزم الطرف الخلفي بترك مسافة تُتيح التوقف التام."
-  ]),
-  rearSpeedLow: () => getRandomPhrase([
-    "المركبة كانت متوقفة أو شبه متوقفة وقت الاصطدام، مما يؤكد تماماً مسؤولية الطرف الخلفي.",
-    "الصدمة حدثت أثناء وقوف المركبة أو سيرها ببطء شديد، الخطأ الكامل يقع على القادم من الخلف.",
-    "اصطدام بمركبة شبه متوقفة، لا مبرر للمركبة الخلفية سوى الانشغال عن الطريق."
-  ]),
-  rearSpeedHigh: (speed: number) => getRandomPhrase([
-    `الاصطدام حدث أثناء السير بسرعة ${speed.toFixed(0)} كم/س، والطرف الخلفي فشل في مجاراة التوقف.`,
-    `المركبة كانت تسير بسرعة ${speed.toFixed(0)} كم/س، والطرف الخلفي لم يترك مسافة تكفي لسرعة الطريق.`,
-    `سرعة القيادة (${speed.toFixed(0)} كم/س) تتطلب ترك مساحة أمان كبيرة، وهو ما أهمله الطرف الخلفي.`
-  ]),
-  rearGForceHigh: () => getRandomPhrase([
-    "قوة الاصطدام الشديدة تؤكد السرعة الزائدة أو الانشغال التام عن الطريق من الطرف الخلفي.",
-    "الارتطام العنيف يدل على عدم محاولة الطرف الخلفي التخفيف من سرعته إطلاقاً.",
-    "شدة الضربة من الخلف تُرجح عدم تركيز الطرف الآخر أو سرعته المفرطة."
-  ]),
+  // ─── Rear Impacts ───
+  rearBase: () => getRandomPhrase(i18n.t("dynamic.rearBase", { returnObjects: true }) as string[]),
+  rearBraking: () => getRandomPhrase(i18n.t("dynamic.rearBraking", { returnObjects: true }) as string[]),
+  rearSpeedLow: () => getRandomPhrase(i18n.t("dynamic.rearSpeedLow", { returnObjects: true }) as string[]),
+  rearSpeedHigh: (speed: number) => getRandomPhrase(i18n.t("dynamic.rearSpeedHigh", { speed: speed.toFixed(0), returnObjects: true }) as string[]),
+  rearGForceHigh: () => getRandomPhrase(i18n.t("dynamic.rearGForceHigh", { returnObjects: true }) as string[]),
 
-  // ─── الحوادث الأمامية المباشرة ───
-  frontBase: () => getRandomPhrase([
-    "اصطدام أمامي مباشر — في الغالب يُشير إلى عدم ترك مسافة أمان كافية.",
-    "الارتطام بالواجهة الأمامية يُحمل السائق مسؤولية مبدئية لعدم التمكن من إيقاف المركبة.",
-    "حادث أمامي يشير إلى اصطدام السائق بالجسم أمامه نتيجة ضعف التقدير لمسافة التوقف."
-  ]),
-  frontNote: () => getRandomPhrase([
-    "ملاحظة: قد تتغير النسبة إذا أثبت التحليل المتقدم ظروفاً مخففة (مثل وقوف مفاجئ أو انحراف للطرف الآخر).",
-    "سيتم تأكيد نسبة الخطأ النهائية بعد المقاطعة مع بيانات الطرف الآخر إن وُجدت.",
-    "نسبة الخطأ قابلة للتعديل بناءً على الظروف البيئية وحركة المركبة الأخرى المعنية."
-  ]),
-  frontBraking: () => getRandomPhrase([
-    "رُصدت محاولة فرملة قبل الاصطدام — لكنها لا تُعفي من مسؤولية ترك مسافة أمان لتجنب الاصطدام.",
-    "استخدام المكابح كان متأخراً ولم يكن كافياً لتلافي الصدمة الأمامية.",
-    "السائق حاول التوقف قبل الحادث، مما يخفف من احتمالية التعمد ولكن يُبقي خطأ المسافة."
-  ]),
-  frontSpeedLow: () => getRandomPhrase([
-    "الاصطدام حدث على سرعة منخفضة (أثناء ركن السيارة، في زحام، أو عند تقاطع).",
-    "تصادم أمامي خفيف يشير إلى خطأ في التقدير أثناء مناورات بطيئة.",
-    "وقعت الصدمة والسيارة تتحرك ببطء، مما يُرجح انزلاقاً بسيطاً أو زحاماً مكدساً."
-  ]),
-  frontSpeedHigh: (speed: number) => getRandomPhrase([
-    `القيادة بسرعة ${speed.toFixed(0)} كم/س تتطلب مسافة توقف كافية لم يتم توفيرها.`,
-    `بسبب السرعة (${speed.toFixed(0)} كم/س)، لم يكن لدى السائق وقت كافٍ لتفادي الارتطام الأمامي.`,
-    `السرعة المسجلة ${speed.toFixed(0)} كم/س تلزم السائق بترك مساحة فارغة أكبر أمامه.`
-  ]),
-  frontGForceHigh: () => getRandomPhrase([
-    "قوة الاصطدام الشديدة تؤكد فرق سرعة كبير بين المركبتين لحظة التصادم.",
-    "الشدة المرتفعة للضربة تعكس عدم تباطؤ السائق بشكل ملحوظ قبل الاصطدام.",
-    "صدمة قوية بالواجهة تدل على فقدان كامل للسيطرة أو انشغال عن الرؤية الأمامية."
-  ]),
+  // ─── Front Impacts ───
+  frontBase: () => getRandomPhrase(i18n.t("dynamic.frontBase", { returnObjects: true }) as string[]),
+  frontNote: () => getRandomPhrase(i18n.t("dynamic.frontNote", { returnObjects: true }) as string[]),
+  frontBraking: () => getRandomPhrase(i18n.t("dynamic.frontBraking", { returnObjects: true }) as string[]),
+  frontSpeedLow: () => getRandomPhrase(i18n.t("dynamic.frontSpeedLow", { returnObjects: true }) as string[]),
+  frontSpeedHigh: (speed: number) => getRandomPhrase(i18n.t("dynamic.frontSpeedHigh", { speed: speed.toFixed(0), returnObjects: true }) as string[]),
+  frontGForceHigh: () => getRandomPhrase(i18n.t("dynamic.frontGForceHigh", { returnObjects: true }) as string[]),
 
-  // ─── حوادث الزوايا (التقاطعات وتغيير المسار) ───
-  cornerBase: (sideAr: string) => getRandomPhrase([
-    `الاصطدام بالزاوية الأمامية ${sideAr} — يُرجّح حادث تقاطع أو تداخل مسارات.`,
-    `ضربة زاوية ${sideAr} تدل في العادة على التفاف خاطئ أو اندماج غير آمن.`,
-    `تأثير بالواجهة الجانبية ${sideAr} يُشير إلى خلاف حول أحقية المرور أو تغيير المسار.`
-  ]),
-  cornerYawHigh: (yawRate: number) => getRandomPhrase([
-    `رُصد تغيير مسار من السائق قبل الاصطدام بمعدل دوران ${yawRate.toFixed(0)}°/ث — يُرجّح أنه انحرف نحو المركبة الأخرى.`,
-    `الجيروسكوب يُسجل التفافاً واضحاً للمقود (${yawRate.toFixed(0)}°/ث)، مما يزيد احتمالية خطأ السائق بالانحراف.`,
-    `السائق غيّر مساره في لحظات الحادث الأخيرة، مما رفع من نسبة مسؤوليته عن الارتطام.`
-  ]),
-  cornerYawLow: () => getRandomPhrase([
-    "المركبة كانت تسير باستقامة — يُرجّح أن الطرف الآخر هو من دخل المسار أو قاطع الطريق.",
-    "البيانات لم تُظهر أي انحراف من السائق، مما يعني أن المركبة الأخرى اعترضت طريقه.",
-    "بما أن السائق كان محافظاً على مساره، فإن التعدي المرجح جاء من طرف آخر."
-  ]),
-  cornerJerkHigh: () => getRandomPhrase([
-    "الصدمة كانت مفاجئة وحادة — تُرجّح دخول الطرف الآخر بشكل مباغت للتقاطع.",
-    "الارتفاع المفاجئ في التسارع (Jerk) يُشير إلى اعتراض المركبة الأخرى للطريق فجأة.",
-    "لم يكن هناك مجال لتوقع الحادث نظراً لقوة ومفاجأة الضربة."
-  ]),
-  cornerSpeedLow: () => getRandomPhrase([
-    "السرعة المنخفضة تُرجّح حادث تقاطع مزدحم أو مناورة ركن خاطئة.",
-    "حدوث الصدمة ببطء يشير إلى سوء تقدير للأبعاد من أحد الطرفين أو كليهما.",
-    "في مثل هذه السرعات المنخفضة، غالباً ما ينتج الحادث عن زحام مروري وتلاصق المركبات."
-  ]),
+  // ─── Corner Impacts ───
+  cornerBase: (sideAr: string) => getRandomPhrase(i18n.t("dynamic.cornerBase", { side: sideAr, returnObjects: true }) as string[]),
+  cornerYawHigh: (yawRate: number) => getRandomPhrase(i18n.t("dynamic.cornerYawHigh", { yawRate: yawRate.toFixed(0), returnObjects: true }) as string[]),
+  cornerYawLow: () => getRandomPhrase(i18n.t("dynamic.cornerYawLow", { returnObjects: true }) as string[]),
+  cornerJerkHigh: () => getRandomPhrase(i18n.t("dynamic.cornerJerkHigh", { returnObjects: true }) as string[]),
+  cornerSpeedLow: () => getRandomPhrase(i18n.t("dynamic.cornerSpeedLow", { returnObjects: true }) as string[]),
 
-  // ─── الحوادث الجانبية ───
-  sideRoll: () => getRandomPhrase([
-    "الاصطدام تسبب في ميلان جانبي لهيكل المركبة — مما يؤكد قوة الصدمة الجانبية.",
-    "رصد اختلال توازن المركبة (Roll) يدل على اصطدام قوي دفعها من الجانب.",
-    "التأثير الجانبي كان قوياً لدرجة إحداث تمايل مرصود عبر الجيروسكوب."
-  ]),
-  sideLaneChangeConfirmed: (yawRate: number) => getRandomPhrase([
-    `رُصد انحراف فعلي بعجلة القيادة (${yawRate.toFixed(0)}°/ث) — مما يؤكد قيام السائق بتغيير مساره.`,
-    `الجيروسكوب يثبت انتقال المركبة لمسار آخر (${yawRate.toFixed(0)}°/ث)، مما يحمل السائق نسبة مسؤولية عالية.`,
-    `السائق التف يميناً أو يساراً لحظة الحادث، مما يؤكد تسببه بتداخل المسارات.`
-  ]),
-  sideLaneChangeFault: () => getRandomPhrase([
-    "السائق يتحمل المسؤولية الأكبر لتغييره المسار دون التأكد من خلوه.",
-    "القانون يُحمل المغير لمساره خطأ الانحراف تجاه المركبات المتواجدة مسبقاً في المسار.",
-    "تغيير المسار نحو المركبة الأخرى يُعتبر التسبب المباشر لوقوع الحادث الجانبي."
-  ]),
-  sideLowSpeed: (sideAr: string) => getRandomPhrase([
-    `اصطدام جانبي ${sideAr} على سرعة منخفضة — يُحتمل حادث تقاطع أو دوار أو موقف.`,
-    `تلامس من جهة ${sideAr} ببطء، يشير لاحتكاك في زحام مروري أو أثناء الدوران.`,
-    `ضربة جانبية (${sideAr}) بسرعات منخفضة، تتطلب التحليل المتقدم لتحديد الأولويات.`
-  ]),
-  sideLowSpeedNote: () => getRandomPhrase([
-    "تحديد الأولوية يعتمد على نوع الطريق والسياق المروري — سيتم تحليله عبر المبادئ المتقدمة.",
-    "لمعرفة نسبة الخطأ الدقيقة، يقيس النظام البصمة الحركية الدقيقة (Micro-Kinematic).",
-    "الأحقية بالمرور تُحدد بشكل نهائي بناءً على معطيات المقاطعة بين طرفي الحادث."
-  ]),
-  sideJerkHigh: () => getRandomPhrase([
-    "قوة الصدمة المفاجئة تشير إلى دخول الطرف الآخر باندفاع ودون التخفيف من السرعة.",
-    "التسارع العرضي الحاد (Lateral Jerk) يعني أن الطرف الآخر صدم المركبة بقوة مباغتة.",
-    "صدمة جانبية لا تصاحبها فرملة من الطرف الآخر، تدل على تهور أو عدم انتباه كامل."
-  ])
+  // ─── Side Impacts ───
+  sideRoll: () => getRandomPhrase(i18n.t("dynamic.sideRoll", { returnObjects: true }) as string[]),
+  sideLaneChangeConfirmed: (yawRate: number) => getRandomPhrase(i18n.t("dynamic.sideLaneChangeConfirmed", { yawRate: yawRate.toFixed(0), returnObjects: true }) as string[]),
+  sideLaneChangeFault: () => getRandomPhrase(i18n.t("dynamic.sideLaneChangeFault", { returnObjects: true }) as string[]),
+  sideLowSpeed: (sideAr: string) => getRandomPhrase(i18n.t("dynamic.sideLowSpeed", { side: sideAr, returnObjects: true }) as string[]),
+  sideLowSpeedNote: () => getRandomPhrase(i18n.t("dynamic.sideLowSpeedNote", { returnObjects: true }) as string[]),
+  sideJerkHigh: () => getRandomPhrase(i18n.t("dynamic.sideJerkHigh", { returnObjects: true }) as string[]),
+  sideSuddenIntrusion: (sideAr: string) => getRandomPhrase(
+    i18n.t("dynamic.sideSuddenIntrusion", { side: sideAr, returnObjects: true }) as string[]
+  ),
+  sideSuddenIntrusionFault: (lane: string) => getRandomPhrase(
+    i18n.t("dynamic.sideSuddenIntrusionFault", { lane, returnObjects: true }) as string[]
+  ),
+  sideLaneChangeSelf1: () => getRandomPhrase(
+    i18n.t("dynamic.sideLaneChangeSelf1", { returnObjects: true }) as string[]
+  ),
+  sideLaneChangeSelf2: () => getRandomPhrase(
+    i18n.t("dynamic.sideLaneChangeSelf2", { returnObjects: true }) as string[]
+  ),
+  sideAmbiguous: (sideAr: string) => getRandomPhrase(
+    i18n.t("dynamic.sideAmbiguous", { side: sideAr, returnObjects: true }) as string[]
+  ),
+  sideAmbiguousNote: () => getRandomPhrase(
+    i18n.t("dynamic.sideAmbiguousNote", { returnObjects: true }) as string[]
+  ),
+  sideAmbiguousGHigh: () => getRandomPhrase(
+    i18n.t("dynamic.sideAmbiguousGHigh", { returnObjects: true }) as string[]
+  ),
+
+  // ─── Corner Rear ───
+  cornerRearBase: (sideAr: string) => getRandomPhrase(
+    i18n.t("dynamic.cornerRearBase", { side: sideAr, returnObjects: true }) as string[]
+  ),
+  cornerRearStationary: () => getRandomPhrase(
+    i18n.t("dynamic.cornerRearStationary", { returnObjects: true }) as string[]
+  ),
+  cornerRearLaneChange: () => getRandomPhrase(
+    i18n.t("dynamic.cornerRearLaneChange", { returnObjects: true }) as string[]
+  ),
+  cornerRearBraking: () => getRandomPhrase(
+    i18n.t("dynamic.cornerRearBraking", { returnObjects: true }) as string[]
+  ),
 };

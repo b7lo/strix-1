@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useReports } from "@/context/ReportsContext";
@@ -18,12 +19,16 @@ import { useReports } from "@/context/ReportsContext";
 const LIABILITY_OPTIONS = [100, 75, 50, 25, 0];
 
 export default function AssessmentScreen() {
+  const { t, i18n } = useTranslation();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const { reports, updateReport } = useReports();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const isRTL = i18n.language === "ar";
+  const textAlign = isRTL ? "right" : "left";
+  const rowDirection = isRTL ? "row-reverse" : "row";
 
   const report = reports.find((r) => r.id === id) ?? null;
 
@@ -39,12 +44,16 @@ export default function AssessmentScreen() {
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: topPad + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-            <Feather name="arrow-right" size={22} color={colors.foreground} />
+            <Feather
+              name={isRTL ? "arrow-right" : "arrow-left"}
+              size={22}
+              color={colors.foreground}
+            />
           </TouchableOpacity>
         </View>
         <View style={styles.centered}>
           <Text style={{ color: colors.mutedForeground, fontSize: 16 }}>
-            التقرير غير موجود
+            {t("report.notFound")}
           </Text>
         </View>
       </View>
@@ -71,7 +80,7 @@ export default function AssessmentScreen() {
 
   const handleSave = async () => {
     if (najmLiability === null) {
-      Alert.alert("تنبيه", "الرجاء اختيار نسبة خطأ نجم");
+      Alert.alert(t("assessment.alertMissingTitle"), t("assessment.alertMissing"));
       return;
     }
     
@@ -89,11 +98,11 @@ export default function AssessmentScreen() {
       };
       
       await updateReport(updatedReport);
-      Alert.alert("نجاح", "تم حفظ التقييم بنجاح", [
-        { text: "حسناً", onPress: () => router.back() },
+      Alert.alert(t("assessment.alertSuccessTitle"), t("assessment.alertSuccess"), [
+        { text: t("report.ok"), onPress: () => router.back() },
       ]);
     } catch (e) {
-      Alert.alert("خطأ", "حدث خطأ أثناء حفظ التقييم");
+      Alert.alert(t("assessment.alertErrorTitle"), t("assessment.alertError"));
     } finally {
       setIsSaving(false);
     }
@@ -103,10 +112,14 @@ export default function AssessmentScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-          <Feather name="arrow-right" size={22} color={colors.foreground} />
+          <Feather
+            name={isRTL ? "arrow-right" : "arrow-left"}
+            size={22}
+            color={colors.foreground}
+          />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          مقارنة تقدير نجم
+          {t("assessment.title")}
         </Text>
         <View style={{ width: 36 }} />
       </View>
@@ -117,24 +130,31 @@ export default function AssessmentScreen() {
       >
         {/* App Liability (US1) */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            تقدير التطبيق
+          <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
+            {t("assessment.appEstimate")}
           </Text>
-          <View style={styles.liabilityRow}>
+          <View style={[styles.liabilityRow, { flexDirection: rowDirection }]}>
             <View style={styles.liabilityBox}>
               <Text style={[styles.liabilityVal, { color: colors.primary }]}>
                 {mappedAppLiability}%
               </Text>
               <Text style={[styles.liabilityLbl, { color: colors.mutedForeground }]}>
-                نسبة الخطأ عليك
+                {t("assessment.faultUser")}
               </Text>
             </View>
-            <View style={[styles.liabilityBox, { borderRightWidth: 1, borderRightColor: colors.border }]}>
+            <View
+              style={[
+                styles.liabilityBox,
+                isRTL
+                  ? { borderRightWidth: 1, borderRightColor: colors.border }
+                  : { borderLeftWidth: 1, borderLeftColor: colors.border },
+              ]}
+            >
               <Text style={[styles.liabilityVal, { color: colors.secondaryForeground }]}>
                 {100 - mappedAppLiability}%
               </Text>
               <Text style={[styles.liabilityLbl, { color: colors.mutedForeground }]}>
-                على الطرف الآخر
+                {t("assessment.faultOther")}
               </Text>
             </View>
           </View>
@@ -142,13 +162,15 @@ export default function AssessmentScreen() {
 
         {/* Najm Liability Input (US2) */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            تقدير نجم الفعلي
+          <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
+            {t("assessment.najmEstimate")}
           </Text>
-          <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-            اختر نسبة الخطأ عليك حسب تقرير نجم
+          <Text style={[styles.sectionSub, { color: colors.mutedForeground, textAlign }]}>
+            {i18n.language === "ar"
+              ? `اختر ${t("assessment.faultUser")} حسب تقرير نجم`
+              : `Choose ${t("assessment.faultUser")} from the Najm report`}
           </Text>
-          <View style={styles.optionsRow}>
+          <View style={[styles.optionsRow, { flexDirection: rowDirection }]}>
             {LIABILITY_OPTIONS.map((opt) => {
               const isSelected = najmLiability === opt;
               return (
@@ -194,8 +216,8 @@ export default function AssessmentScreen() {
                 ]}
               >
                 {signedDifference === 0
-                  ? "تقدير التطبيق مطابق لتقدير نجم ✓"
-                  : `الفرق بين التطبيق ونجم: ${Math.abs(signedDifference)}%`}
+                  ? t("assessment.differenceMatch")
+                  : t("assessment.differenceValue", { diff: Math.abs(signedDifference) })}
               </Text>
             </View>
           )}
@@ -203,8 +225,8 @@ export default function AssessmentScreen() {
 
         {/* User Description (US3) */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            ملاحظات إضافية (اختياري)
+          <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
+            {t("assessment.notesLabel")}
           </Text>
           <TextInput
             style={[
@@ -215,13 +237,13 @@ export default function AssessmentScreen() {
                 borderColor: colors.border,
               },
             ]}
-            placeholder="اكتب تفاصيل إضافية حول الحادث أو سبب الاختلاف..."
+            placeholder={t("assessment.notesPlaceholder")}
             placeholderTextColor={colors.mutedForeground}
             multiline
             numberOfLines={4}
             value={description}
             onChangeText={setDescription}
-            textAlign="right"
+            textAlign={textAlign}
           />
         </View>
 
@@ -234,7 +256,7 @@ export default function AssessmentScreen() {
             { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 },
           ]}
         >
-          <Text style={styles.saveBtnText}>حفظ التقييم</Text>
+          <Text style={styles.saveBtnText}>{t("assessment.save")}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -280,15 +302,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    textAlign: "right",
   },
   sectionSub: {
     fontSize: 13,
-    textAlign: "right",
     marginTop: -6,
   },
   liabilityRow: {
-    flexDirection: "row-reverse",
     alignItems: "center",
     marginTop: 8,
   },
@@ -305,7 +324,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   optionsRow: {
-    flexDirection: "row-reverse",
     justifyContent: "space-between",
     gap: 8,
     marginTop: 8,

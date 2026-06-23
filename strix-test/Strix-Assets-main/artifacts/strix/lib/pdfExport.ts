@@ -2,6 +2,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import type { AccidentReport } from "./types";
 import { ZONE_LABELS_AR } from "./types";
+import i18n from "./i18n";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(/[&<>"']/g, (char) => {
@@ -210,7 +211,7 @@ export async function exportReportToPDF(report: AccidentReport) {
       <div class="grid">
         <div class="card">
           <div class="card-title">معلومات أساسية</div>
-          <p><strong>منطقة الصدمة:</strong> ${escapeHtml(report.impactZone ? ZONE_LABELS_AR[report.impactZone] : "غير محدد")}</p>
+          <p><strong>منطقة الصدمة:</strong> ${escapeHtml(report.impactZone ? i18n.t(`zone.${report.impactZone}`, { defaultValue: ZONE_LABELS_AR[report.impactZone] }) : i18n.t("zone.unknown", { defaultValue: "غير محدد" }))}</p>
           <p><strong>سرعة المركبة:</strong> ${report.speedKmh} كم/س</p>
           <p><strong>قوة التأثير:</strong> ${report.peakGForce.toFixed(2)} g</p>
           <p><strong>شدة الحادث:</strong> <span class="severity">${sevAr[report.severity]}</span></p>

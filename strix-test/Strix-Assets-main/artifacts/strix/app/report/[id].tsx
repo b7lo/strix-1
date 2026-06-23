@@ -1,39 +1,28 @@
 import React, { useMemo, useCallback, useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Platform,
-  Alert,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Modal, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from "react-native";
+import { Text } from "@/components/Text";;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { useLanguage } from "@/context/LanguageContext";
 import { useReports } from "@/context/ReportsContext";
 import { AccidentDiagram } from "@/components/AccidentDiagram";
 import { LiabilityMeter } from "@/components/LiabilityMeter";
 import { SpeedGraph } from "@/components/SpeedGraph";
 import { exportReportToPDF } from "@/lib/pdfExport";
 import { fetchUpdatedReportFromSupabase, markAccidentAsFalseAlarm } from "@/lib/accidentSync";
-import type { AccidentReport, Severity, ImpactZone, ImpactDirection } from "@/lib/types";
-import { ZONE_LABELS_AR } from "@/lib/types";
+import { flipIconName } from "@/lib/rtl";
+import type { AccidentReport, Severity, ImpactDirection } from "@/lib/types";
 
-const DIRECTION_AR: Record<ImpactDirection, string> = {
-  front: "اصطدام أمامي",
-  rear: "اصطدام خلفي",
-  "side-left": "اصطدام جانبي أيسر",
-  "side-right": "اصطدام جانبي أيمن",
-  unknown: "اتجاه غير محدد",
-};
+const getDirectionAr = (t: any): Record<ImpactDirection, string> => ({
+  front: t('liability.dirFront'),
+  rear: t('liability.dirRear'),
+  "side-left": t('liability.dirSideLeft'),
+  "side-right": t('liability.dirSideRight'),
+  unknown: t('liability.dirUnknown'),
+});
 
 const SEVERITY_COLOR: Record<Severity, string> = {
   critical: "#FF4444",
@@ -42,29 +31,18 @@ const SEVERITY_COLOR: Record<Severity, string> = {
   minor: "#3FB950",
 };
 
-const SEVERITY_AR: Record<Severity, string> = {
-  critical: "حرج",
-  severe: "شديد",
-  moderate: "متوسط",
-  minor: "خفيف",
-};
+const getSeverityAr = (t: any): Record<Severity, string> => ({
+  critical: t('report.severityCritical'),
+  severe: t('report.severitySevere'),
+  moderate: t('report.severityModerate'),
+  minor: t('report.severityMinor'),
+});
 
-function formatDateTimeAr(ts: number): string {
-  return new Date(ts).toLocaleString("ar-SA", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-const FALSE_ALARM_REASONS = [
-  { key: "phone_drop", label: "سقط الهاتف" },
-  { key: "speed_bump", label: "مطب أو حفرة قوية" },
-  { key: "hard_brake", label: "فرملة قوية مفاجئة" },
-  { key: "other", label: "أخرى" },
+const getFalseAlarmReasons = (t: any) => [
+  { key: "phone_drop", label: t('falseAlarm.phoneDrop') },
+  { key: "speed_bump", label: t('falseAlarm.speedBump') },
+  { key: "hard_brake", label: t('falseAlarm.hardBrake') },
+  { key: "other", label: t('falseAlarm.other') },
 ];
 
 export default function ReportScreen() {
@@ -72,8 +50,8 @@ export default function ReportScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const { reports, submitFeedback, removeReport, updateReport } = useReports();
+  const { t, isRTL, rtl, formatDate: fmtDate, formatGForce: fmtG, formatSpeed: fmtS } = useLanguage();
 
-  // ─── v10: حالة نافذة البلاغ عن حادث غير صحيح ───
   const [falseAlarmModalVisible, setFalseAlarmModalVisible] = useState(false);
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [falseAlarmDetails, setFalseAlarmDetails] = useState("");
@@ -129,10 +107,10 @@ export default function ReportScreen() {
 
   const handleDelete = useCallback(() => {
     if (!report) return;
-    Alert.alert("حذف التقرير", "سيتم حذف هذا السجل نهائياً.", [
-      { text: "إلغاء", style: "cancel" },
+    Alert.alert(t("report.deleteReportTitle"), t("report.deleteReportMessage"), [
+      { text: t("report.cancel"), style: "cancel" },
       {
-        text: "حذف",
+        text: t("report.delete"),
         style: "destructive",
         onPress: async () => {
           await removeReport(report.id);
@@ -145,20 +123,20 @@ export default function ReportScreen() {
   // ─── v10: إرسال بلاغ حادث غير صحيح ───
   const handleFalseAlarmSubmit = useCallback(async () => {
     if (!report || !selectedReason) {
-      Alert.alert("تنبيه", "الرجاء اختيار سبب البلاغ");
+      Alert.alert(t("report.alert"), t("falseAlarm.selectReasonPrompt"));
       return;
     }
     setIsSendingFalseAlarm(true);
     try {
-      const reasonLabel = FALSE_ALARM_REASONS.find((r) => r.key === selectedReason)?.label ?? selectedReason;
+      const reasonLabel = getFalseAlarmReasons(t).find((r) => r.key === selectedReason)?.label ?? selectedReason;
       await markAccidentAsFalseAlarm(report.id, reasonLabel, falseAlarmDetails);
       await removeReport(report.id);
       setFalseAlarmModalVisible(false);
-      Alert.alert("تم الإرسال", "شكراً لتبليغك، سيساعدنا ذلك في تحسين دقة النظام.", [
-        { text: "حسناً", onPress: () => router.back() },
+      Alert.alert(t("report.success"), t("falseAlarm.thankYouMessage"), [
+        { text: t("report.ok"), onPress: () => router.back() },
       ]);
     } catch {
-      Alert.alert("خطأ", "حدث خطأ أثناء إرسال البلاغ، حاول مرة أخرى.");
+      Alert.alert(t("report.error"), t("falseAlarm.errorMessage"));
     } finally {
       setIsSendingFalseAlarm(false);
     }
@@ -167,14 +145,18 @@ export default function ReportScreen() {
   if (!report) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+        <View style={[styles.header, { paddingTop: topPad + 8, flexDirection: rtl.flexDirection }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-            <Feather name="arrow-right" size={22} color={colors.foreground} />
+            <Feather
+              name={flipIconName("arrow-left", isRTL) as any}
+              size={22}
+              color={colors.foreground}
+            />
           </TouchableOpacity>
         </View>
         <View style={styles.centered}>
           <Text style={{ color: colors.mutedForeground, fontSize: 16 }}>
-            التقرير غير موجود
+            {t("report.notFound")}
           </Text>
         </View>
       </View>
@@ -190,14 +172,18 @@ export default function ReportScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-          <Feather name="arrow-right" size={22} color={colors.foreground} />
+        <View style={[styles.header, { paddingTop: topPad, flexDirection: rtl.flexDirection }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
+            <Feather
+            name={flipIconName("arrow-left", isRTL) as any}
+            size={22}
+            color={colors.foreground}
+          />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          تقرير الحادث
+          {t("report.title")}
         </Text>
-        <View style={{ flexDirection: "row", gap: 12 }}>
+        <View style={{ flexDirection: rtl.flexDirection, gap: 12 }}>
           <TouchableOpacity onPress={() => router.push({ pathname: '/report/assessment', params: { id: displayReport.id } })} style={styles.navBtn}>
             <Feather name="file-text" size={18} color={colors.foreground} />
           </TouchableOpacity>
@@ -229,17 +215,17 @@ export default function ReportScreen() {
             },
           ]}
         >
-          <View style={styles.summaryTop}>
+          <View style={[styles.summaryTop, { flexDirection: rtl.flexDirection }]}>
             <View style={styles.gforceBadge}>
               <Text style={[styles.gforceVal, { color: sevColor }]}>
                 {displayReport.peakGForce.toFixed(1)}g
               </Text>
               <Text style={[styles.gforceLabel, { color: colors.mutedForeground }]}>
-                قوة الاصطدام
+                {t("report.impactForce")}
               </Text>
             </View>
-            <View style={styles.summaryRight}>
-              <View style={styles.summaryTitleRow}>
+            <View style={[styles.summaryRight, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+              <View style={[styles.summaryTitleRow, { flexDirection: rtl.flexDirection }]}>
                 <View
                   style={[
                     styles.sevPill,
@@ -247,7 +233,7 @@ export default function ReportScreen() {
                   ]}
                 >
                   <Text style={[styles.sevPillText, { color: sevColor }]}>
-                    {SEVERITY_AR[sev]}
+                    {getSeverityAr(t)[sev]}
                   </Text>
                 </View>
                 {displayReport.crossVerifiedAnalysis && (
@@ -278,41 +264,41 @@ export default function ReportScreen() {
                       ]}
                     >
                       {displayReport.crossVerifiedAnalysis.consistency_status === "VERIFIED"
-                        ? "مطابق ✓"
+                        ? t("report.verifiedMatch")
                         : displayReport.crossVerifiedAnalysis.consistency_status === "PARTIAL"
-                        ? "جزئي"
-                        : "تعارض ⚠"}
+                        ? t("report.partialMatch")
+                        : t("report.conflictMatch")}
                     </Text>
                   </View>
                 )}
-                <Text style={[styles.impactLabel, { color: colors.primary }]}>
-                  {ZONE_LABELS_AR[displayReport.impactZone] || DIRECTION_AR[displayReport.impactDirection]}
+                <Text style={[styles.impactLabel, { color: colors.primary, textAlign: rtl.textAlign }]}>
+                  {`${t(`zone.${displayReport.impactZone}`, { defaultValue: getDirectionAr(t)[displayReport.impactDirection] })}`}
                 </Text>
               </View>
-              <Text style={[styles.dateText, { color: colors.mutedForeground }]}>
-                {formatDateTimeAr(displayReport.timestamp)}
+              <Text style={[styles.dateText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+                {fmtDate(displayReport.timestamp)}
               </Text>
             </View>
           </View>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { flexDirection: rtl.flexDirection }]}>
             <View style={styles.stat}>
               <Text style={[styles.statVal, { color: colors.foreground }]}>
-                {displayReport.speedKmh} كم/س
+                {displayReport.speedKmh} {t("report.kmh")}
               </Text>
               <Text style={[styles.statLbl, { color: colors.mutedForeground }]}>
-                السرعة عند الاصطدام
+                {t("report.speedAtImpact")}
               </Text>
             </View>
             <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
             <View style={styles.stat}>
               <Text style={[styles.statVal, { color: colors.foreground }]}>
-                {displayReport.preCrashSpeedKmh} كم/س
+                {displayReport.preCrashSpeedKmh} {t("report.kmh")}
               </Text>
               <Text style={[styles.statLbl, { color: colors.mutedForeground }]}>
-                قبل الاصطدام
+                {t("report.speedBeforeImpact")}
               </Text>
             </View>
             <View style={[styles.statDiv, { backgroundColor: colors.border }]} />
@@ -333,23 +319,32 @@ export default function ReportScreen() {
                 {displayReport.jerkPeak.toFixed(0)} g/s
               </Text>
               <Text style={[styles.statLbl, { color: colors.mutedForeground }]}>
-                تسارع مفاجئ
+                {t("report.suddenAcceleration")}
               </Text>
             </View>
           </View>
 
           {(wasBraking || displayReport.latitude !== null || displayReport.gyroscope?.rolloverDetected) && (
-            <View style={styles.extraRow}>
+            <View
+              style={[
+                styles.extraRow,
+                {
+                  flexDirection: rtl.flexDirection,
+                  justifyContent: isRTL ? "flex-end" : "flex-start",
+                },
+              ]}
+            >
               {displayReport.gyroscope?.rolloverDetected && (
                 <View
                   style={[
                     styles.chip,
+                    { flexDirection: rtl.flexDirection },
                     { backgroundColor: "#FF4444" + "20", borderColor: "#FF4444", borderWidth: 1 },
                   ]}
                 >
                   <Feather name="refresh-cw" size={12} color="#FF4444" />
                   <Text style={[styles.chipText, { color: "#FF4444", fontWeight: "bold" }]}>
-                    تم رصد انقلاب
+                    {t("report.rolloverDetected")}
                   </Text>
                 </View>
               )}
@@ -357,12 +352,13 @@ export default function ReportScreen() {
                 <View
                   style={[
                     styles.chip,
+                    { flexDirection: rtl.flexDirection },
                     { backgroundColor: "#3FB950" + "20" },
                   ]}
                 >
                   <Feather name="trending-down" size={12} color="#3FB950" />
                   <Text style={[styles.chipText, { color: "#3FB950" }]}>
-                    كانت السيارة تُكبّح
+                    {t("report.brakingDetected")}
                   </Text>
                 </View>
               )}
@@ -370,6 +366,7 @@ export default function ReportScreen() {
                 <View
                   style={[
                     styles.chip,
+                    { flexDirection: rtl.flexDirection },
                     { backgroundColor: colors.secondary },
                   ]}
                 >
@@ -390,8 +387,8 @@ export default function ReportScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-            مخطط الاصطدام
+           <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+            {t("report.impactDiagram")}
           </Text>
           <View style={styles.diagramWrap}>
             <AccidentDiagram
@@ -412,8 +409,8 @@ export default function ReportScreen() {
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              تغير السرعة (آخر 10 ثوانٍ)
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+              {t("report.speedChangeLast10s")}
             </Text>
             <View style={styles.diagramWrap}>
               <SpeedGraph data={displayReport.speedHistory} width={300} height={160} />
@@ -444,16 +441,16 @@ export default function ReportScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-            السيناريو المُقدَّر
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+            {t("report.estimatedScenario")}
           </Text>
-          <Text style={[styles.scenarioTitle, { color: colors.foreground }]}>
+          <Text style={[styles.scenarioTitle, { color: colors.foreground, textAlign: rtl.textAlign }]}>
             {displayReport.scenarioAr}
           </Text>
           <Text
             style={[
               styles.scenarioDesc,
-              { color: colors.mutedForeground },
+              { color: colors.mutedForeground, textAlign: rtl.textAlign },
             ]}
           >
             {displayReport.descriptionAr}
@@ -461,15 +458,15 @@ export default function ReportScreen() {
 
           {displayReport.factorsAr && displayReport.factorsAr.length > 0 && (
             <View style={[styles.factorsBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-              <Text style={[styles.factorsTitle, { color: colors.foreground }]}>
-                عوامل التحليل
+              <Text style={[styles.factorsTitle, { color: colors.foreground, textAlign: rtl.textAlign }]}>
+                {t("report.analysisFactors")}
               </Text>
               {displayReport.factorsAr.map((f, i) => (
-                <View key={i} style={styles.factorRow}>
+                <View key={i} style={[styles.factorRow, { flexDirection: rtl.flexDirection }]}>
                   <View
                     style={[styles.factorDot, { backgroundColor: sevColor }]}
                   />
-                  <Text style={[styles.factorText, { color: colors.mutedForeground }]}>
+                  <Text style={[styles.factorText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
                     {f}
                   </Text>
                 </View>
@@ -485,19 +482,23 @@ export default function ReportScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-            قيّم دقة التحليل
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+            {t("report.rateAccuracy")}
           </Text>
           <Text
-            style={[styles.feedbackSub, { color: colors.mutedForeground }]}
+            style={[styles.feedbackSub, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}
           >
-            هل كان تقدير المسؤولية عادلاً ودقيقاً؟
+            {t("report.wasAssessmentFair")}
           </Text>
 
           {currentFeedback ? (
             <View
               style={[
                 styles.feedbackGiven,
+                {
+                  flexDirection: rtl.flexDirection,
+                  justifyContent: isRTL ? "flex-end" : "flex-start",
+                },
                 {
                   backgroundColor:
                     currentFeedback === "correct"
@@ -519,21 +520,23 @@ export default function ReportScreen() {
                   {
                     color:
                       currentFeedback === "correct" ? "#3FB950" : "#FF4444",
+                    textAlign: rtl.textAlign,
                   },
                 ]}
               >
                 {currentFeedback === "correct"
-                  ? "دقيق — شكراً لتقييمك"
-                  : "غير دقيق — سيُستخدم لتحسين المحرك"}
+                  ? t("report.accurateFeedback")
+                  : t("report.inaccurateFeedback")}
               </Text>
             </View>
           ) : (
-            <View style={styles.feedbackButtons}>
+            <View style={[styles.feedbackButtons, { flexDirection: rtl.flexDirection }]}>
               <TouchableOpacity
                 onPress={() => handleFeedback("incorrect")}
                 activeOpacity={0.8}
                 style={[
                   styles.feedbackBtn,
+                  { flexDirection: rtl.flexDirection },
                   {
                     backgroundColor: "#FF4444" + "22",
                     borderColor: "#FF4444" + "44",
@@ -541,7 +544,7 @@ export default function ReportScreen() {
                 ]}
               >
                 <Text style={[styles.feedbackBtnText, { color: "#FF4444" }]}>
-                  غير دقيق
+                  {t("report.inaccurate")}
                 </Text>
                 <Feather name="x" size={18} color="#FF4444" />
               </TouchableOpacity>
@@ -550,6 +553,7 @@ export default function ReportScreen() {
                 activeOpacity={0.8}
                 style={[
                   styles.feedbackBtn,
+                  { flexDirection: rtl.flexDirection },
                   {
                     backgroundColor: "#3FB950" + "22",
                     borderColor: "#3FB950" + "44",
@@ -559,7 +563,7 @@ export default function ReportScreen() {
                 <Text
                   style={[styles.feedbackBtnText, { color: "#3FB950" }]}
                 >
-                  دقيق
+                  {t("report.accurate")}
                 </Text>
                 <Feather name="check" size={18} color="#3FB950" />
               </TouchableOpacity>
@@ -577,20 +581,20 @@ export default function ReportScreen() {
           activeOpacity={0.8}
           style={[
             styles.falseAlarmBtn,
+            { flexDirection: rtl.flexDirection },
             { borderColor: colors.border },
           ]}
         >
           <Feather name="alert-circle" size={18} color={colors.mutedForeground} />
           <Text style={[styles.falseAlarmBtnText, { color: colors.mutedForeground }]}>
-            هذا ليس حادثاً
+            {t("report.notAnAccident")}
           </Text>
         </TouchableOpacity>
 
         <Text
           style={[styles.legalNote, { color: colors.mutedForeground }]}
         >
-          هذا التحليل للأغراض الاستعلامية فقط ولا يُعدّ حكماً قانونياً. قياسات
-          قوة G مُقدَّرة بناءً على حساسات الهاتف وقد لا تكون دقيقة 100٪.
+          {t("report.legalNote")}
         </Text>
       </ScrollView>
 
@@ -612,15 +616,15 @@ export default function ReportScreen() {
                 Keyboard.dismiss();
               }}>
                 <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-                    تبليغ عن حادث غير صحيح
+                  <Text style={[styles.modalTitle, { color: colors.foreground, textAlign: rtl.textAlign }]}>
+                    {t("falseAlarm.modalTitle")}
                   </Text>
-                  <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
-                    اختر السبب الذي جعل التطبيق يسجل هذا الحادث بالخطأ
+                  <Text style={[styles.modalSub, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+                    {t("falseAlarm.modalSubtitle")}
                   </Text>
 
                   <View style={styles.reasonsContainer}>
-                    {FALSE_ALARM_REASONS.map((reason) => {
+                    {getFalseAlarmReasons(t).map((reason) => {
                       const isSelected = selectedReason === reason.key;
                       return (
                         <TouchableOpacity
@@ -632,6 +636,7 @@ export default function ReportScreen() {
                           activeOpacity={0.7}
                           style={[
                             styles.reasonOption,
+                            { flexDirection: rtl.flexDirection },
                             {
                               backgroundColor: isSelected ? colors.primary + "18" : colors.background,
                               borderColor: isSelected ? colors.primary : colors.border,
@@ -652,7 +657,10 @@ export default function ReportScreen() {
                           <Text
                             style={[
                               styles.reasonText,
-                              { color: isSelected ? colors.primary : colors.foreground },
+                              {
+                                color: isSelected ? colors.primary : colors.foreground,
+                                textAlign: rtl.textAlign,
+                              },
                             ]}
                           >
                             {reason.label}
@@ -663,19 +671,19 @@ export default function ReportScreen() {
                   </View>
 
                   {/* شريط المساعدة لإخفاء الكيبورد وكتابة الملاحظات */}
-                  <View style={styles.inputHeaderRow}>
+                  <View style={[styles.inputHeaderRow, { flexDirection: rtl.flexDirection }]}>
                     <TouchableOpacity
                       onPress={Keyboard.dismiss}
                       activeOpacity={0.7}
-                      style={styles.hideKeyboardBtn}
+                      style={[styles.hideKeyboardBtn, { flexDirection: rtl.flexDirection }]}
                     >
                       <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
                       <Text style={[styles.hideKeyboardText, { color: colors.mutedForeground }]}>
-                        إغلاق الكيبورد
+                        {t("falseAlarm.closeKeyboard")}
                       </Text>
                     </TouchableOpacity>
-                    <Text style={[styles.inputHeaderLabel, { color: colors.foreground }]}>
-                      تفاصيل إضافية (اختياري)
+                    <Text style={[styles.inputHeaderLabel, { color: colors.foreground, textAlign: rtl.textAlign }]}>
+                      {t("falseAlarm.extraDetailsOptional")}
                     </Text>
                   </View>
 
@@ -688,19 +696,19 @@ export default function ReportScreen() {
                         borderColor: colors.border,
                       },
                     ]}
-                    placeholder="اكتب هنا أي تفاصيل إضافية..."
+                    placeholder={t("falseAlarm.detailsPlaceholder")}
                     placeholderTextColor={colors.mutedForeground}
                     multiline
                     numberOfLines={3}
                     value={falseAlarmDetails}
                     onChangeText={setFalseAlarmDetails}
-                    textAlign="right"
+                    textAlign={rtl.textAlign}
                     returnKeyType="done"
                     blurOnSubmit={true}
                     onSubmitEditing={Keyboard.dismiss}
                   />
 
-                  <View style={styles.modalButtons}>
+                  <View style={[styles.modalButtons, { flexDirection: rtl.flexDirection }]}>
                     <TouchableOpacity
                       onPress={() => setFalseAlarmModalVisible(false)}
                       style={[
@@ -708,7 +716,9 @@ export default function ReportScreen() {
                         { borderColor: colors.border },
                       ]}
                     >
-                      <Text style={[styles.modalCancelText, { color: colors.foreground }]}>إلغاء</Text>
+                      <Text style={[styles.modalCancelText, { color: colors.foreground }]}>
+                        {t("falseAlarm.cancel")}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleFalseAlarmSubmit}
@@ -722,7 +732,7 @@ export default function ReportScreen() {
                       ]}
                     >
                       <Text style={styles.modalConfirmText}>
-                        {isSendingFalseAlarm ? "جاري الإرسال..." : "تأكيد البلاغ"}
+                        {isSendingFalseAlarm ? t("falseAlarm.sending") : t("falseAlarm.confirmReport")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -739,7 +749,6 @@ export default function ReportScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 12,
@@ -759,7 +768,7 @@ const styles = StyleSheet.create({
   },
   scroll: { paddingHorizontal: 20, gap: 12 },
   section: {
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     padding: 18,
     gap: 12,
@@ -768,15 +777,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
-    textAlign: "right",
   },
   summaryTop: {
-    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
+    gap: 14,
   },
-  summaryRight: { flex: 1, alignItems: "flex-end", gap: 6 },
-  summaryTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  summaryRight: { flex: 1, gap: 6 },
+  summaryTitleRow: { alignItems: "center", gap: 8, flexWrap: "wrap" },
   impactLabel: { fontSize: 18, fontWeight: "700" },
   sevPill: {
     paddingHorizontal: 8,
@@ -784,22 +792,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sevPillText: { fontSize: 11, fontWeight: "700" },
-  dateText: { fontSize: 12, textAlign: "right" },
+  dateText: { fontSize: 12 },
   gforceBadge: { alignItems: "center" },
-  gforceVal: { fontSize: 30, fontWeight: "800" },
-  gforceLabel: { fontSize: 11, marginTop: -2 },
+  gforceVal: { fontSize: 34, fontWeight: "800", letterSpacing: -1 },
+  gforceLabel: { fontSize: 11, marginTop: -2, letterSpacing: 0.3 },
   divider: { height: 1 },
   statsRow: {
-    flexDirection: "row",
     alignItems: "center",
   },
   stat: { flex: 1, alignItems: "center", gap: 3 },
-  statVal: { fontSize: 14, fontWeight: "700", textAlign: "center" },
-  statLbl: { fontSize: 10, textAlign: "center" },
+  statVal: { fontSize: 15, fontWeight: "800", textAlign: "center" },
+  statLbl: { fontSize: 10, textAlign: "center", letterSpacing: 0.2 },
   statDiv: { width: 1, height: 36 },
-  extraRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" },
+  extraRow: { flexWrap: "wrap", gap: 8 },
   chip: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 5,
     paddingHorizontal: 10,
@@ -811,19 +817,17 @@ const styles = StyleSheet.create({
   scenarioTitle: {
     fontSize: 15,
     fontWeight: "700",
-    textAlign: "right",
     lineHeight: 24,
   },
-  scenarioDesc: { fontSize: 14, lineHeight: 24, textAlign: "right" },
+  scenarioDesc: { fontSize: 14, lineHeight: 24 },
   factorsBox: {
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 14,
+    padding: 16,
     gap: 10,
   },
-  factorsTitle: { fontSize: 13, fontWeight: "700", textAlign: "right" },
+  factorsTitle: { fontSize: 13, fontWeight: "800" },
   factorRow: {
-    flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
   },
@@ -834,12 +838,11 @@ const styles = StyleSheet.create({
     marginTop: 7,
     flexShrink: 0,
   },
-  factorText: { fontSize: 13, lineHeight: 22, textAlign: "right", flex: 1 },
-  feedbackSub: { fontSize: 14, textAlign: "right" },
-  feedbackButtons: { flexDirection: "row", gap: 12 },
+  factorText: { fontSize: 13, lineHeight: 22, flex: 1 },
+  feedbackSub: { fontSize: 14 },
+  feedbackButtons: { gap: 12 },
   feedbackBtn: {
     flex: 1,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -847,17 +850,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  feedbackBtnText: { fontSize: 15, fontWeight: "600" },
+  feedbackBtnText: { fontSize: 15, fontWeight: "700" },
   feedbackGiven: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
     gap: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 12,
   },
-  feedbackGivenText: { fontSize: 14, fontWeight: "600", textAlign: "right" },
+  feedbackGivenText: { flex: 1, fontSize: 14, fontWeight: "600" },
   legalNote: {
     fontSize: 11,
     lineHeight: 18,
@@ -872,7 +873,6 @@ const styles = StyleSheet.create({
   },
   // ─── v10: أنماط بلاغ الحادث غير الصحيح ───
   falseAlarmBtn: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -898,19 +898,17 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    textAlign: "right",
+    fontWeight: "800",
+    letterSpacing: 0.1,
   },
   modalSub: {
     fontSize: 13,
-    textAlign: "right",
     marginTop: -8,
   },
   reasonsContainer: {
     gap: 10,
   },
   reasonOption: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 12,
     paddingVertical: 14,
@@ -936,7 +934,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     flex: 1,
-    textAlign: "right",
   },
   falseAlarmInput: {
     borderWidth: 1,
@@ -947,7 +944,6 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   modalButtons: {
-    flexDirection: "row",
     gap: 12,
     marginTop: 4,
   },
@@ -974,13 +970,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   inputHeaderRow: {
-    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 8,
   },
   hideKeyboardBtn: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingVertical: 4,
@@ -993,6 +987,5 @@ const styles = StyleSheet.create({
   inputHeaderLabel: {
     fontSize: 13,
     fontWeight: "700",
-    textAlign: "right",
   },
 });

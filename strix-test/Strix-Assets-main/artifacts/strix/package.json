@@ -61,14 +61,18 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",
     "expo": "~54.0.34",
+    "expo-localization": "^56.0.6",
     "expo-notifications": "~0.32.17",
     "expo-print": "~15.0.8",
     "expo-secure-store": "~15.0.8",
     "expo-sensors": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "expo-task-manager": "~14.0.9",
+    "i18next": "^26.3.1",
     "react": "19.1.0",
+    "react-i18next": "^17.0.8",
     "react-native": "0.81.5",
     "react-native-maps": "^1.20.1"
   }

@@ -12,6 +12,7 @@ import Svg, {
 } from "react-native-svg";
 import type { ImpactZone, CrossVerifiedAnalysis } from "@/lib/types";
 import { ZONE_LABELS_AR } from "@/lib/types";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   zone: ImpactZone;
@@ -114,7 +115,7 @@ function CarTopView({
   w,
   h,
   rotation = 0,
-  label = "سيارتك",
+  label = "",
   color = USER_COLOR,
 }: {
   x: number;
@@ -160,6 +161,7 @@ export function AccidentDiagram({
   crossVerifiedAnalysis,
   currentAccidentId,
 }: Props) {
+  const { t } = useTranslation();
   const carW = 52;
   const carH = 96;
   const carX = (width - carW) / 2;
@@ -184,7 +186,7 @@ export function AccidentDiagram({
 
   const impactPos = getZonePosition(zone, carX, carY, carW, carH);
   const isUnknown = zone === "unknown";
-  const labelText = ZONE_LABELS_AR[zone];
+  const labelText = t(`zone.${zone}`, { defaultValue: ZONE_LABELS_AR[zone] });
   const glowR = isUnknown ? 18 : 22;
 
   return (
@@ -218,7 +220,7 @@ export function AccidentDiagram({
               w={carW}
               h={carH}
               rotation={otherPlacement.rotation}
-              label="الطرف الآخر"
+              label={t("liabilityMeter.otherParty")}
               color={OTHER_COLOR}
             />
             <Rect
@@ -237,13 +239,13 @@ export function AccidentDiagram({
               fontSize={8}
               fontWeight="bold"
             >
-              {otherSpeed} كم/س
+              {otherSpeed} {t("report.kmh")}
             </SvgText>
           </G>
         )}
 
         {/* سيارتك */}
-        <CarTopView x={carX} y={carY} w={carW} h={carH} />
+        <CarTopView x={carX} y={carY} w={carW} h={carH} label={t("report.yourCar")} />
 
         {/* نقطة الاصطدام */}
         {!isUnknown && (
@@ -281,27 +283,27 @@ export function AccidentDiagram({
           fontWeight="600"
         >
           {showOtherCar
-            ? `${labelText} ← → ${ZONE_LABELS_AR[otherZone] || "غير محدد"}`
+            ? `${labelText} ← → ${t(`zone.${otherZone}`, { defaultValue: ZONE_LABELS_AR[otherZone] || t("zone.unknown") })}`
             : labelText}
         </SvgText>
 
         {/* مفتاح الألوان */}
         <G transform="translate(12, 12)">
           <Rect x={0} y={0} width={10} height={10} rx={2} fill={USER_COLOR} />
-          <SvgText x={13} y={9} fill="#8B949E" fontSize={9}>سيارتك</SvgText>
+          <SvgText x={13} y={9} fill="#8B949E" fontSize={9}>{t("report.yourCar")}</SvgText>
           {showOtherCar && (
             <>
               <Rect x={55} y={0} width={10} height={10} rx={2} fill={OTHER_COLOR} />
-              <SvgText x={68} y={9} fill="#8B949E" fontSize={9}>الطرف الآخر</SvgText>
+              <SvgText x={68} y={9} fill="#8B949E" fontSize={9}>{t("liabilityMeter.otherParty")}</SvgText>
             </>
           )}
           <Circle cx={showOtherCar ? 140 : 60} cy={5} r={4} fill={IMPACT_COLOR} />
-          <SvgText x={showOtherCar ? 147 : 67} y={9} fill="#8B949E" fontSize={9}>نقطة الصدم</SvgText>
+          <SvgText x={showOtherCar ? 147 : 67} y={9} fill="#8B949E" fontSize={9}>{t("report.impactPoint")}</SvgText>
         </G>
 
         {/* اتجاه الحركة */}
-        <SvgText x={width / 2} y={carY - 14} textAnchor="middle" fill="#475569" fontSize={9}>▲ أمام</SvgText>
-        <SvgText x={width / 2} y={carY + carH + 22} textAnchor="middle" fill="#475569" fontSize={9}>▼ خلف</SvgText>
+        <SvgText x={width / 2} y={carY - 14} textAnchor="middle" fill="#475569" fontSize={9}>▲ {t("report.front")}</SvgText>
+        <SvgText x={width / 2} y={carY + carH + 22} textAnchor="middle" fill="#475569" fontSize={9}>▼ {t("report.back")}</SvgText>
       </Svg>
     </View>
   );

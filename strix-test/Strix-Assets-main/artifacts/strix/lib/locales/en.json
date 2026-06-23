@@ -1,0 +1,595 @@
+{
+  "appName": "Strix",
+  "tagline": "Turn your car into a lifesaver",
+  "landing": {
+    "welcome": "Welcome to Strix",
+    "description": "The smart accident detection and real-time analysis system to ensure your safety on the road.",
+    "getStarted": "Get Started"
+  },
+  "home": {
+    "startMonitoring": "Start Monitoring",
+    "startMonitoringSub": "Tap to begin accident detection",
+    "monitoringActive": "Monitoring Active",
+    "monitoringPeak": "Peak: {{g}}g — Tap to view session",
+    "crashDetected": "Crash detected — tap to view report",
+    "accidentLog": "Accident Log",
+    "noAccidents": "No accidents recorded",
+    "noAccidentsSub": "Start a monitoring session to detect and log incidents",
+    "deleteAll": "Delete All Records",
+    "deleteAllConfirm": "Are you sure you want to delete all accident reports? This action cannot be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "session": {
+    "title": "Live Monitoring",
+    "crashDetectedTitle": "Crash Detected",
+    "viewFullReport": "View Full Report",
+    "dismissContinue": "Dismiss — Continue Monitoring",
+    "peakG": "Peak G",
+    "speed": "Speed",
+    "zone": "Zone",
+    "gForceLabel": "Impact G-Force",
+    "peak": "Peak",
+    "kmh": "km/h",
+    "sensor": "Sensor",
+    "active": "Active",
+    "stopped": "Stopped",
+    "analyzing": "Analyzing crash...",
+    "detectionThreshold": "Detection threshold: {{g}}g",
+    "webWarning": "Sensors only work on a real iPhone. Scan the QR code with the Expo Go app.",
+    "stopSession": "Stop Session"
+  },
+  "report": {
+    "title": "Accident Report",
+    "reportTitle": "Accident Report",
+    "notFound": "Report not found",
+    "delete": "Delete",
+    "deleteReportTitle": "Delete Report",
+    "deleteReportMessage": "This record will be permanently deleted.",
+    "deleteConfirm": "This record will be permanently deleted.",
+    "cancel": "Cancel",
+    "alert": "Alert",
+    "success": "Submitted",
+    "ok": "OK",
+    "error": "Error",
+    "impactForce": "Impact Force",
+    "speedAtImpact": "Speed at Impact",
+    "speedBeforeImpact": "Before Impact",
+    "preImpactSpeed": "Before Impact",
+    "suddenAcceleration": "Sudden Acceleration",
+    "accidentTime": "Accident Time",
+    "secondsAgo": "{{n}} seconds ago",
+    "rolloverDetected": "Rollover Detected",
+    "brakingDetected": "Vehicle was braking",
+    "impactDiagram": "Collision Diagram",
+    "collisionDiagram": "Collision Diagram",
+    "speedChangeLast10s": "Speed Variation (Last 10s)",
+    "estimatedScenario": "Estimated Scenario",
+    "analysisFactors": "Analysis Factors",
+    "rateAccuracy": "Rate Analysis Accuracy",
+    "wasAssessmentFair": "Was the liability estimate fair and accurate?",
+    "accurate": "Accurate",
+    "inaccurate": "Inaccurate",
+    "accurateFeedback": "Accurate — Thank you",
+    "inaccurateFeedback": "Inaccurate — Will improve the engine",
+    "notAnAccident": "This is not an accident",
+    "legalNote": "This analysis is for informational purposes only and does not constitute a legal judgment. G-force measurements are estimated based on phone sensors and may not be 100% accurate.",
+    "severityCritical": "Critical",
+    "severitySevere": "Severe",
+    "severityModerate": "Moderate",
+    "severityMinor": "Minor",
+    "verifiedMatch": "Verified ✓",
+    "partialMatch": "Partial",
+    "conflictMatch": "Conflict ⚠",
+    "yourCar": "Your Car",
+    "impactPoint": "Impact Point",
+    "front": "Front",
+    "back": "Back",
+    "kmh": "km/h"
+  },
+  "zone": {
+    "front": "Front Bumper",
+    "front-left": "Front Left Corner",
+    "front-right": "Front Right Corner",
+    "rear": "Rear Bumper",
+    "rear-left": "Rear Left Corner",
+    "rear-right": "Rear Right Corner",
+    "side-left": "Left Side",
+    "side-right": "Right Side",
+    "unknown": "Unknown"
+  },
+  "liability": {
+    "rearImpactTitle": "Rear Impact — Full Responsibility on Other Party",
+    "frontImpactTitle": "Frontal Impact — Initial Responsibility on Driver",
+    "cornerFrontTitle": "Front {{side}} Corner Impact — Intersection or Merge Collision",
+    "sideLaneChangeConfirmedTitle": "{{side}} Side Impact — Confirmed Lane Change",
+    "sideLowSpeedTitle": "{{side}} Side Impact — Low Speed",
+    "sideSuddenIntrusionTitle": "{{side}} Side Impact — Sudden Intrusion",
+    "sideSuddenIntrusionFactor1": "The sharp and sudden change in motion proves the impact came abruptly from the {{side}} side.",
+    "sideSuddenIntrusionFactor2": "The vehicle that suddenly intruded into the {{lane}} bears primary responsibility.",
+    "sideLaneChangeSelfTitle": "{{side}} Side Impact — Scrape or Dangerous Proximity",
+    "sideLaneChangeSelfFactor1": "Gradual convergence and weak sudden impact force suggest a scrape while moving.",
+    "sideLaneChangeSelfFactor2": "This pattern implies a superficial scrape or dangerous proximity due to insufficient lateral clearance.",
+    "sideAmbiguousTitle": "{{side}} Side Impact — Undetermined Responsibility",
+    "sideAmbiguousFactor1": "{{side}} side impact while moving — potential shared responsibility.",
+    "sideAmbiguousFactor2": "Unable to pinpoint the swerving or scraping vehicle accurately via sensors alone; referring to dashcams is recommended.",
+    "sideAmbiguousFactor3": "High impact force indicates excessive speed by one of the parties during the side scrape.",
+    "cornerRearTitle": "Rear {{side}} Corner Impact — Other Party Bears Major Fault",
+    "cornerRearFactor1": "Rear {{side}} corner impact — suggests the other party was attempting to overtake or evade.",
+    "cornerRearFactor2": "The vehicle was stationary — responsibility lies with the striking party.",
+    "cornerRearFactor3": "A lane change by the driver was detected — this may have contributed by swerving in front of the other party.",
+    "cornerRearFactor4": "Sudden braking was detected — the rear party failed to maintain a safe distance.",
+    "unknownTitle": "Undetermined Impact Direction",
+    "unknownFactor1": "Impact direction could not be accurately determined by sensors — the phone might not be securely mounted.",
+    "unknownFactor2": "It is recommended to recalibrate the phone's position horizontally within a dedicated car mount.",
+    "impactCount": "{{count}} consecutive impacts detected — indicates a multi-stage crash or rollover.",
+    "impactZoneLabel": "Impact Zone: {{zone}}",
+    "impactZoneFrontCorner": "Impact at the front {{side}} corner suggests a lane merge or intersection collision.",
+    "impactZoneRearCorner": "Impact at the rear {{side}} corner suggests the striking party was trying to evade.",
+    "rolloverTitle": "Vehicle Rollover",
+    "rolloverFactor": "Violent vehicle rotation detected, indicating a rollover.",
+    "advancedAnalysisHeader": "── Advanced Analysis (The Five Principles) ──",
+    "roundaboutPriorityTitle": "Side Impact in Roundabout — Priority to the Circulating Vehicle",
+    "scrapeTitle": "Side Scrape — Superficial Collision",
+    "severityCritical": "Critical",
+    "severitySevere": "Severe",
+    "severityModerate": "Moderate",
+    "severityMinor": "Minor",
+    "dirFront": "Front",
+    "dirRear": "Rear",
+    "dirSideLeft": "Left Side",
+    "dirSideRight": "Right Side",
+    "dirUnknown": "Unknown",
+    "faultVerdict0": "The other party bears full responsibility",
+    "faultVerdict25": "The other party bears the majority of the responsibility",
+    "faultVerdict50": "Responsibility is shared equally between both parties",
+    "faultVerdict75": "The driver bears the majority of the responsibility",
+    "faultVerdict100": "The driver bears full responsibility",
+    "jerkNote": " A sudden acceleration of {{jerk}} g/s indicates an abrupt external force.",
+    "brakingNote": " An attempt to brake ({{duration}}s) was detected before the impact.",
+    "descriptionFormat": "{{dir}} collision at {{g}}g while traveling at {{speed}} km/h. Severity: {{severity}}.{{jerkNote}}{{brakingNote}} {{faultVerdict}} ({{fault}}% on driver). This estimate is informational and not a legal judgment — please refer to official authorities."
+  },
+  "scenario": {
+    "estimated": "Estimated Scenario",
+    "analysisFactors": "Analysis Factors"
+  },
+  "feedback": {
+    "rate": "Rate Analysis Accuracy",
+    "rateSub": "Was the liability estimate fair and accurate?",
+    "accurate": "Accurate",
+    "inaccurate": "Inaccurate",
+    "accurateThanks": "Accurate — Thank you for your feedback",
+    "inaccurateNote": "Inaccurate — Will be used to improve the engine",
+    "legalNote": "This estimate is informational and not a legal judgment — consult official authorities."
+  },
+  "severity": {
+    "critical": "Critical",
+    "severe": "Severe",
+    "moderate": "Moderate",
+    "minor": "Minor"
+  },
+  "direction": {
+    "front": "Front",
+    "rear": "Rear",
+    "sideLeft": "Left Side",
+    "sideRight": "Right Side",
+    "unknown": "Unknown"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageSub": "Choose app language",
+    "arabic": "العربية",
+    "english": "English",
+    "gyroscope": "Gyroscope Verification",
+    "gyroscopeSub": "Reduce false alerts by confirming rotation",
+    "sampleRate": "Sample Rate",
+    "sampleRateSub": "Higher rate means more accuracy and battery usage",
+    "sensitivity": "Detection Sensitivity",
+    "sensitivitySub": "Acceleration threshold required to trigger detection",
+    "hintLow": "Road vibrations may be logged as incidents — use in sports cars",
+    "hintHigh": "Detects only strong impacts — suitable for rough terrain",
+    "hintNormal": "Suitable for everyday use in regular vehicles",
+    "stats": "Statistics",
+    "totalIncidents": "Total Recorded Incidents",
+    "avgGForce": "Average G-Force",
+    "correctRatings": "Correct Ratings",
+    "about": "About Strix",
+    "aboutVersion": "v3.0 — Multi-Sensor Fusion Engine",
+    "aboutDescription": "Strix uses the Accelerometer and Gyroscope together in a Sensor Fusion system with a High-Pass Filter algorithm to isolate collision motion from gravity. The v4 analysis engine calculates peak G-force, jerk, impact direction, speed, braking, and rotation data together to estimate liability with higher accuracy.",
+    "techSampleRate": "Sample Rate",
+    "techFilter": "Signal Filter",
+    "techBuffer": "Ring Buffer",
+    "techCooldown": "Cooldown",
+    "techGyro": "Gyroscope",
+    "techBrake": "Brake Detection",
+    "techEnabled": "Enabled",
+    "techDisabled": "Disabled",
+    "techAuto": "Auto",
+    "techFilterVal": "α=0.8",
+    "techBufferVal": "3 sec",
+    "techCooldownVal": "8 sec",
+    "disclaimer": "Data is stored locally on device only. This app is for informational purposes and is not a substitute for official authorities.",
+    "sampleOptions": {
+      "economic": "Economic",
+      "balanced": "Balanced",
+      "standard": "Standard",
+      "maxPrecision": "Max Precision"
+    },
+    "thresholdOptions": {
+      "veryHigh": "Very High",
+      "standard": "Standard",
+      "medium": "Medium",
+      "low": "Low",
+      "severe": "Severe",
+      "strongOnly": "Strong Only"
+    }
+  },
+  "common": {
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error"
+  },
+  "dynamic": {
+    "directionKnown": [
+      "The impact direction is clear and accurately determined.",
+      "The collision angle was precisely tracked by sensors.",
+      "The trajectory of the impact force is confirmed.",
+      "The exact point of impact has been identified with high precision."
+    ],
+    "directionUnknown": [
+      "The impact direction is unclear — the phone might not be securely mounted.",
+      "Scattered directional readings, the phone may have been dropped during the crash.",
+      "Impact angle cannot be accurately determined (possible free movement of the phone)."
+    ],
+    "highGForce": [
+      "Extremely high impact force ({{g}}g) confirms a severe accident.",
+      "A violent shock of {{g}}g was recorded, indicating a heavy collision.",
+      "The collision produced {{g}}g of force, signaling a high-severity crash."
+    ],
+    "mediumGForce": [
+      "Moderate impact force ({{g}}g) indicates a collision occurred.",
+      "A {{g}}g shock was detected, confirming a strong contact or scrape.",
+      "G-force indicators ({{g}}g) point to a moderate severity incident."
+    ],
+    "lowGForce": [
+      "Low impact force ({{g}}g) — could be a speed bump or phone drop.",
+      "A minor vibration ({{g}}g) was recorded, which may not necessarily be a traffic accident.",
+      "Very light shock, likely due to minor contact or sudden movement."
+    ],
+    "speedHigh": [
+      "Vehicle motion confirmed (speed at impact: {{speed}} km/h).",
+      "The vehicle was traveling at {{speed}} km/h at the moment of the crash.",
+      "The impact occurred while moving at an estimated {{speed}} km/h."
+    ],
+    "speedLow": [
+      "The vehicle was moving very slowly or almost stationary ({{speed}} km/h).",
+      "Speed was negligible ({{speed}} km/h); vehicle was parked or creeping.",
+      "A very low speed ({{speed}} km/h) was recorded at impact."
+    ],
+    "jerkHigh": [
+      "Sudden and sharp change in motion ({{jerk}} g/s) confirms an abrupt crash.",
+      "Extreme instantaneous acceleration ({{jerk}} g/s), solid proof of sudden stop or external impact.",
+      "High jerk force ({{jerk}} g/s) points to a collision without prior warning."
+    ],
+    "spinDetected": [
+      "Vehicle spin or deflection detected immediately upon impact — conclusive evidence of a crash.",
+      "The rotation sensor confirms the vehicle body twisted due to the impact force.",
+      "The vehicle lost its straight trajectory and veered upon collision."
+    ],
+    "shakeDetected": [
+      "Sharp structural vibration recorded simultaneously with the impact.",
+      "Noticeable fluctuation in gyroscope readings indicates vehicle shaking.",
+      "Strong structural vibrations were documented at the moment of collision."
+    ],
+    "brakingDetected": [
+      "Braking attempt detected before the crash — indicates awareness and evasion effort.",
+      "Data shows brake application right before the impact.",
+      "The driver attempted an abrupt stop mere seconds before the collision."
+    ],
+    "rearBase": [
+      "Standard traffic rule: A rear-end collision places full responsibility on the striking vehicle for failing to maintain a safe distance.",
+      "According to traffic laws, the rear vehicle bears 100% fault for failing to stop in time.",
+      "The impact occurred from the rear, placing full legal liability on the trailing vehicle."
+    ],
+    "rearBraking": [
+      "Despite an attempted stop by the driver, maintaining a safe distance remains the rear vehicle's responsibility.",
+      "The front vehicle's sudden stop does not exempt the rear vehicle from the fault of insufficient following distance.",
+      "The driver braked suddenly, but regulations require the rear party to leave enough space for a full stop."
+    ],
+    "rearSpeedLow": [
+      "The vehicle was stationary or nearly stopped at impact, entirely confirming the rear party's fault.",
+      "The crash happened while parked or creeping, leaving 100% fault on the rear approaching vehicle.",
+      "Rear-ended while nearly stationary; there is no excuse for the rear vehicle other than distraction."
+    ],
+    "rearSpeedHigh": [
+      "The crash occurred while driving at {{speed}} km/h, and the rear party failed to match the deceleration.",
+      "The vehicle was traveling at {{speed}} km/h, and the rear party did not maintain a distance suitable for this speed.",
+      "Driving speed ({{speed}} km/h) requires a large safety margin, which was neglected by the rear party."
+    ],
+    "rearGForceHigh": [
+      "The severe impact force confirms excessive speed or total distraction by the rear party.",
+      "The violent shock indicates no attempt by the rear party to decelerate at all.",
+      "The intensity of the rear strike suggests the other driver was not paying attention or was speeding excessively."
+    ],
+    "frontBase": [
+      "Direct frontal collision — typically indicates a failure to maintain a safe following distance.",
+      "Frontal impact holds the driver initially responsible for failing to stop the vehicle.",
+      "A front-end crash suggests the driver hit the object ahead due to poor braking distance estimation."
+    ],
+    "frontNote": [
+      "Note: The fault percentage may change if advanced analysis proves extenuating circumstances (e.g., the other party's sudden stop or swerve).",
+      "The final fault ratio will be confirmed upon cross-referencing with the other party's data, if available.",
+      "Fault percentage is adjustable based on environmental conditions and the involved vehicle's kinematics."
+    ],
+    "frontBraking": [
+      "A braking attempt was recorded before impact — but it does not absolve the responsibility to maintain safe distance.",
+      "Brake application was too late and insufficient to avoid the frontal crash.",
+      "The driver tried to stop before the crash, reducing the likelihood of intent but maintaining the distance fault."
+    ],
+    "frontSpeedLow": [
+      "The collision occurred at low speed (during parking, in traffic, or at an intersection).",
+      "A light frontal crash indicates a misjudgment during slow maneuvers.",
+      "The impact happened while moving slowly, suggesting a minor slip or congested traffic."
+    ],
+    "frontSpeedHigh": [
+      "Driving at {{speed}} km/h requires an adequate stopping distance which was not provided.",
+      "Due to the speed ({{speed}} km/h), the driver lacked sufficient time to evade the frontal impact.",
+      "The recorded speed of {{speed}} km/h obligates the driver to leave a larger gap ahead."
+    ],
+    "frontGForceHigh": [
+      "The severe impact force confirms a massive speed difference between the two vehicles at collision.",
+      "High impact intensity reflects a lack of significant deceleration by the driver prior to the crash.",
+      "A strong frontal shock points to a total loss of control or distraction from the road ahead."
+    ],
+    "cornerBase": [
+      "Collision at the {{side}} front corner — likely an intersection crash or lane merge issue.",
+      "A {{side}} corner strike usually indicates an improper turn or unsafe merge.",
+      "An impact on the {{side}} frontal area suggests a dispute over right-of-way or a lane change."
+    ],
+    "cornerYawHigh": [
+      "A lane change by the driver was detected before the crash with a rotation rate of {{yawRate}}°/s — suggesting they swerved into the other vehicle.",
+      "The gyroscope recorded a clear steering turn ({{yawRate}}°/s), increasing the probability of the driver's fault due to swerving.",
+      "The driver changed lanes in the final moments before the crash, raising their liability for the collision."
+    ],
+    "cornerYawLow": [
+      "The vehicle was traveling straight — it is likely the other party entered the lane or cut across the road.",
+      "Data shows no swerve from the driver, implying the other vehicle obstructed their path.",
+      "Since the driver maintained their lane, the likely intrusion came from the other party."
+    ],
+    "cornerJerkHigh": [
+      "The crash was sudden and sharp — suggesting the other party abruptly entered the intersection.",
+      "The sudden spike in jerk indicates the other vehicle unexpectedly blocked the road.",
+      "There was no room to anticipate the crash given the suddenness and force of the impact."
+    ],
+    "cornerSpeedLow": [
+      "The low speed suggests a congested intersection or a parking maneuver error.",
+      "A slow impact points to spatial misjudgment by one or both parties.",
+      "At such low speeds, the crash is often the result of traffic jams and vehicles tailgating."
+    ],
+    "sideRoll": [
+      "The collision caused a lateral tilt of the vehicle body — confirming the strength of the side impact.",
+      "Vehicle imbalance (roll) detection indicates a strong crash that pushed it sideways.",
+      "The side impact was forceful enough to cause a roll sway detected by the gyroscope."
+    ],
+    "sideLaneChangeConfirmed": [
+      "Actual steering wheel swerve detected ({{yawRate}}°/s) — confirming the driver changed lanes.",
+      "The gyroscope proves the vehicle moved to another lane ({{yawRate}}°/s), placing high liability on the driver.",
+      "The driver turned right or left at the moment of impact, confirming they caused the lane intrusion."
+    ],
+    "sideLaneChangeFault": [
+      "The driver bears primary responsibility for changing lanes without ensuring it was clear.",
+      "The law holds the lane-changer at fault for swerving into vehicles already established in the lane.",
+      "Changing lanes into the other vehicle is considered the direct cause of the side collision."
+    ],
+    "sideLowSpeed": [
+      "A {{side}} side collision at low speed — possibly an intersection, roundabout, or parking lot incident.",
+      "A slow {{side}} contact suggests a scrape in heavy traffic or during a turn.",
+      "A {{side}} side strike at low speeds requires advanced analysis to determine right-of-way."
+    ],
+    "sideLowSpeedNote": [
+      "Right-of-way determination depends on road type and traffic context — this will be analyzed via advanced principles.",
+      "To ascertain exact fault percentages, the system measures the Micro-Kinematic signature.",
+      "Right-of-way is definitively determined based on cross-referencing data between the involved parties."
+    ],
+    "sideJerkHigh": [
+      "The sudden impact force indicates the other party entered aggressively without slowing down.",
+      "A sharp lateral jerk means the other party struck the vehicle abruptly and forcefully.",
+      "A side collision with no braking by the other party points to recklessness or total inattention."
+    ],
+    "sideSuddenIntrusion": [
+      "The sharp and sudden change in motion proves the impact came abruptly from the {{side}} side.",
+      "A sudden lateral movement was detected, indicating an abrupt collision from the {{side}} direction.",
+      "The high lateral acceleration confirms that the impact occurred suddenly and directly on the {{side}} side."
+    ],
+    "sideSuddenIntrusionFault": [
+      "The vehicle that suddenly intruded into the {{lane}} bears primary responsibility.",
+      "Sudden swerving into the {{lane}} is considered the main cause of this collision.",
+      "Abruptly entering the {{lane}} places the primary fault on the swerving vehicle."
+    ],
+    "sideLaneChangeSelf1": [
+      "Gradual convergence and weak sudden impact force suggest a scrape while moving.",
+      "A moderate vibration profile suggests a gradual side-to-side scrape rather than a direct hit.",
+      "Sensor logs point to a superficial scrape along the vehicle side rather than a high-energy impact."
+    ],
+    "sideLaneChangeSelf2": [
+      "This pattern implies a superficial scrape or dangerous proximity due to insufficient lateral clearance.",
+      "The absence of sharp shock vectors suggests a side scrape due to narrow lateral spacing.",
+      "The incident is likely caused by failure to maintain safe lateral distance, resulting in a scrape."
+    ],
+    "sideAmbiguous": [
+      "{{side}} side impact while moving — potential shared responsibility.",
+      "A mutual swipe was registered on the {{side}} side, suggesting shared fault while both vehicles were in motion.",
+      "Side contact occurred while both vehicles were moving, indicating a high likelihood of mutual fault."
+    ],
+    "sideAmbiguousNote": [
+      "Unable to pinpoint the swerving or scraping vehicle accurately via sensors alone; referring to dashcams is recommended.",
+      "Lacking clear swerve orientation, reviewing dashcam footage is advised to establish initial swerve.",
+      "Identifying the primary swerving vehicle requires additional visual proof or on-site testimonies."
+    ],
+    "sideAmbiguousGHigh": [
+      "High impact force indicates excessive speed by one of the parties during the side scrape.",
+      "High lateral energy points to excessive speed relative to the lateral distance between vehicles.",
+      "A high force recording indicates that one of the parties was driving too fast during the swipe."
+    ],
+    "cornerRearBase": [
+      "Rear {{side}} corner impact — suggests the other party was attempting to overtake or evade.",
+      "An impact on the rear {{side}} corner suggests an unsafe overtaking maneuver by the striking vehicle.",
+      "Impact at the rear {{side}} corner points to the other vehicle failing to clear your car while swerving."
+    ],
+    "cornerRearStationary": [
+      "The vehicle was stationary — responsibility lies with the striking party.",
+      "Since your vehicle was completely stopped, 100% of the fault lies with the striking vehicle.",
+      "A stationary state indicates the other party is fully liable for failing to avoid your stopped vehicle."
+    ],
+    "cornerRearLaneChange": [
+      "A lane change by the driver was detected — this may have contributed by swerving in front of the other party.",
+      "Gyroscope logs register a turn by the driver, suggesting they might have swerved into the other vehicle's path.",
+      "A swerve was detected on your vehicle, indicating potential contribution to the collision via lane change."
+    ],
+    "cornerRearBraking": [
+      "Sudden braking was detected — the rear party failed to maintain a safe distance.",
+      "Although sudden braking was detected, the rear vehicle is responsible for maintaining a safe stopping distance.",
+      "Braking was registered just before impact, confirming the driver tried to avoid a tailgating vehicle."
+    ]
+  },
+  "advancedAnalysis": {
+    "principle1": "Principle 1: Angular Stability (Driver's lane discipline)",
+    "angularInstability": "Angular instability: Sharp swerve of {{yawRate}}°/s at the moment of impact.",
+    "straightPath": "The vehicle was moving in a steady straight line.",
+    "principle2": "Principle 2: Force Vectors (Direction and motion confirmation)",
+    "brakingVector": "Strong braking vector: Sharp deceleration of {{accelX}}g.",
+    "lateralForce": "Lateral force: Sideways thrust of {{accelY}}g.",
+    "rearPush": "Push effect: Rear force accounting for {{ratio}} of the total force.",
+    "principle3": "Principle 3: Traffic Context (Intersections and roundabouts)",
+    "stopBeforeCrash": "The vehicle came to a complete stop right before the crash.",
+    "roundabout": "Kinematic pattern indicates driving in a roundabout.",
+    "intersection": "Kinematic pattern indicates crossing an intersection.",
+    "highway": "High speed and straight path indicate highway driving.",
+    "urban": "Urban driving with frequent stop-and-go.",
+    "priorityRoundabout": "Roundabout Priority: The vehicle was inside the roundabout (fault lies with the entering vehicle).",
+    "priorityIntersection": "Intersection with unclear priority.",
+    "principle4": "Principle 4: Micro-Kinematic Signature",
+    "scrapeDetected": "Side Scrape: Prolonged friction lasting {{duration}}ms instead of an instantaneous shock.",
+    "yawJerkSync": "Synchronization between sudden jerk and angular deflection: Confirms the impact force and source.",
+    "varianceHigh": "High variance: Indicates collision with an uneven object or repeated scraping.",
+    "principle5": "Principle 5: Event Buffering (Pre-crash sequence)",
+    "hardBrakingPreCrash": "Hard braking before crash: Indicates delayed awareness.",
+    "suddenAccelPreCrash": "Sudden acceleration before crash: May indicate an improper overtake or evasion attempt.",
+    "steadyPreCrash": "Driving was stable and steady in the seconds preceding the accident.",
+    "evasionAttempt": "Evasion attempt: Braking coupled with angular deflection.",
+    "principle6": "Principle 6: Post-Impact Analysis",
+    "postImpactSpin": "Vehicle spin post-impact ({{rate}}°/s).",
+    "postImpactStop": "Immediate vehicle stop post-impact.",
+    "postImpactDeflection": "Path deflection post-impact by an angle of {{angle}}°.",
+    "multiImpact": "{{count}} secondary impacts detected (rebound or multiple collisions).",
+    "directionConfirmed": "The vehicle's deflection direction matches the estimated impact direction.",
+    "otherParty": {
+      "analysis": "Other Party Analysis — Inferred from sensor data",
+      "speedHigh": "high speed",
+      "speedLow": "low speed",
+      "heavyVehicle": "heavy vehicle or high acceleration",
+      "lightVehicle": "light vehicle",
+      "wasSpeeding": "speeding",
+      "wasBraking": "braking",
+      "approachingFrom": "Approached from an angle of {{angle}}° at an estimated speed of {{speed}} km/h. Impact force: {{impact}}g. Was {{state1}} and {{state2}}."
+    }
+  },
+  "falseAlarm": {
+    "button": "This is not an accident",
+    "modalTitle": "Report a False Alarm",
+    "modalSubtitle": "Select the reason why the app recorded this accident by mistake",
+    "modalSub": "Select the reason why the app recorded this accident by mistake",
+    "phoneDrop": "Phone dropped",
+    "speedBump": "Speed bump or pothole",
+    "hardBrake": "Hard braking",
+    "other": "Other",
+    "reasonPothole": "Speed bump or large pothole",
+    "reasonPhoneDrop": "Phone dropped inside the car",
+    "reasonHardBrake": "Very hard braking without collision",
+    "reasonOffroad": "Off-road driving",
+    "reasonOther": "Other",
+    "selectReasonPrompt": "Please select a reason for the report",
+    "thankYouMessage": "Thank you for your report, this will help us improve system accuracy.",
+    "errorMessage": "An error occurred while submitting the report, please try again.",
+    "closeKeyboard": "Dismiss Keyboard",
+    "extraDetailsOptional": "Additional Details (Optional)",
+    "detailsPlaceholder": "Write any additional details here...",
+    "confirmReport": "Submit Report",
+    "sending": "Submitting...",
+    "notesLabel": "Additional Details (Optional)",
+    "notesPlaceholder": "Write any additional details here...",
+    "dismissKeyboard": "Dismiss Keyboard",
+    "cancel": "Cancel",
+    "confirm": "Submit Report",
+    "alertMissingReasonTitle": "Alert",
+    "alertMissingReason": "Please select a reason for the report",
+    "alertSuccessTitle": "Submitted",
+    "alertSuccess": "Thank you for your report, this will help us improve system accuracy.",
+    "alertErrorTitle": "Error",
+    "alertError": "An error occurred while submitting the report, please try again.",
+    "ok": "OK"
+  },
+  "assessment": {
+    "title": "Najm Estimate Comparison",
+    "appEstimate": "App Estimate",
+    "faultUser": "Your Fault",
+    "faultOther": "Other Party's",
+    "najmEstimate": "Actual Najm Estimate",
+    "najmSub": "Select your fault percentage according to the Najm report",
+    "differenceTitle": "Difference in Estimate",
+    "differenceMatch": "App estimate matches Najm estimate ✓",
+    "differenceValue": "Difference between App and Najm: {{diff}}%",
+    "notesLabel": "Additional Notes (Optional)",
+    "notesPlaceholder": "Write additional details about the accident or reason for the difference...",
+    "save": "Save Assessment",
+    "alertMissingTitle": "Alert",
+    "alertMissing": "Please select the Najm fault percentage",
+    "alertSuccessTitle": "Success",
+    "alertSuccess": "Assessment saved successfully",
+    "alertErrorTitle": "Error",
+    "alertError": "An error occurred while saving the assessment"
+  },
+  "reportView": {
+    "speedChartTitle": "Speed Variation (Last 10 seconds)"
+  },
+  "advancedAnalysisFactors": {
+    "evasive": "Evasive maneuver detected: Sudden swerve ({{yawRate}}°/s) accompanied by braking before impact — evidence of evasion attempt.",
+    "suddenYaw": "Sudden lane change detected ({{yawRate}}°/s) before impact without braking — suggests the driver swerved.",
+    "straight": "The vehicle was traveling in a straight line before impact — no lane change detected.",
+    "rearPush": "Force vector analysis shows a longitudinal component of {{ratio}}% — the other party struck at an angle, not perpendicularly.",
+    "roundabout": "Curved motion analysis indicates the accident occurred in a roundabout — priority belongs to the circulating vehicle.",
+    "stationary": "The vehicle was completely stationary at impact — full responsibility on the moving party.",
+    "scrapeSync": "Side scrape/friction detected (duration: {{duration}}ms) (Confirmed by Jerk-Gyro sync) — superficial collision from the other party.",
+    "scrapeNoSync": "Side scrape/friction detected (duration: {{duration}}ms) — superficial collision from the other party.",
+    "preCrashEvasive": "Full evasive maneuver (hard braking + swerve) detected before impact — conclusive evidence of good intent to avoid the crash.",
+    "preCrashBraking": "Hard braking detected before impact — evidence of driver's awareness and attempt to stop.",
+    "preCrashAccel": "Sudden acceleration detected before impact — may indicate inattention or attempting to beat a traffic light.",
+    "preCrashSteady": "The vehicle was driving completely steady before impact — no abnormal behavior.",
+    "postStopped": "The vehicle remained in place post-impact and did not move (evidence of complete stop).",
+    "postDrift": "Vehicle drifted {{dir}} post-impact with a force of {{g}}g.",
+    "postRotation": "Vehicle rotated post-impact by {{rate}}°/s (loss of control due to collision).",
+    "postSecondary": "{{count}} secondary impacts detected after the crash (rebound or hitting other obstacles)."
+  },
+  "liabilityMeter": {
+    "title": "Liability Estimate",
+    "confidenceHigh": "High Confidence",
+    "confidenceMedium": "Medium Confidence",
+    "confidenceLow": "Low Confidence",
+    "otherParty": "Other Party",
+    "yourFault": "Your Fault",
+    "verdictOtherParty": "The other party bears primary responsibility",
+    "verdictDriver": "The driver bears primary responsibility",
+    "topFactors": "Key Analysis Factors",
+    "disclaimer": "For informational purposes only — not a legal judgment"
+  },
+  "speedGraph": {
+    "noData": "No speed data available",
+    "tenSecondsAgo": "10s ago",
+    "crashTime": "Crash time"
+  }
+}

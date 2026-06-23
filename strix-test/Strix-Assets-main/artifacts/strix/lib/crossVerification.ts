@@ -1,6 +1,41 @@
 import { AccidentReport, CrossVerifiedAnalysis, ImpactZone } from "./types";
+import { THRESHOLDS } from "./thresholds";
+import { haversineDistance } from "./geoUtils";
 
 function generateUUID(): string {
+  try {
+    // 1. Check if global crypto has randomUUID
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    // 2. Check if global crypto has getRandomValues (React Native / modern JS environment)
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      // Set version 4 (0100) and variant (10xx)
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      
+      let hex = "";
+      for (let i = 0; i < 16; i++) {
+        if (i === 4 || i === 6 || i === 8 || i === 10) hex += "-";
+        hex += bytes[i].toString(16).padStart(2, "0");
+      }
+      return hex;
+    }
+    
+    // 3. Fallback for Node.js if global crypto isn't direct
+    if (typeof require !== "undefined") {
+      try {
+        const nodeCrypto = require("crypto");
+        if (nodeCrypto && typeof nodeCrypto.randomUUID === "function") {
+          return nodeCrypto.randomUUID();
+        }
+      } catch {}
+    }
+  } catch {}
+
+  // 4. Fallback to math-based generation if no secure crypto is available
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
     const r = (Math.random() * 16) | 0,
       v = c === "x" ? r : (r & 0x3) | 0x8;
@@ -12,29 +47,7 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
-/**
- * Calculates the distance between two GPS coordinates in meters.
- * Using Haversine formula.
- */
-function getDistanceMeters(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371e3;
-  const toRad = (val: number) => (val * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
+
 
 /**
  * Checks if two impact zones are physically consistent.
@@ -79,23 +92,23 @@ function checkTimeAndDistance(
     reportB.latitude &&
     reportB.longitude
   ) {
-    const dist = getDistanceMeters(
+    const dist = haversineDistance(
       reportA.latitude,
       reportA.longitude,
       reportB.latitude,
       reportB.longitude
     );
-    if (dist > 200) {
+    if (dist > THRESHOLDS.GPS_MAX_DISTANCE_M) {
       flags.push(
-        `GPS_TOO_FAR: GPS distance > 200m (${Math.round(dist)}m apart)`
+        `GPS_TOO_FAR: GPS distance > ${THRESHOLDS.GPS_MAX_DISTANCE_M}m (${Math.round(dist)}m apart)`
       );
     }
   }
 
   const timeDiff = Math.abs(reportA.timestamp - reportB.timestamp);
-  if (timeDiff > 10000) {
+  if (timeDiff > THRESHOLDS.TIME_TOLERANCE_MS) {
     flags.push(
-      `TIME_GAP: Time difference > 10s (${Math.round(timeDiff / 1000)}s apart)`
+      `TIME_GAP: Time difference > ${THRESHOLDS.TIME_TOLERANCE_MS / 1000}s (${Math.round(timeDiff / 1000)}s apart)`
     );
   }
 
@@ -176,6 +189,12 @@ function calculateCrossLiability(
   reportA: AccidentReport,
   reportB: AccidentReport
 ): { liabilityA: number; liabilityB: number } {
+  // Guard for physically impossible scenarios
+  if (reportA.impactZone.includes("rear") && reportB.impactZone.includes("rear")) {
+    // Impossible to determine liability from impact zones alone, default to 50/50
+    return { liabilityA: 50, liabilityB: 50 };
+  }
+
   const roleA = determineRoleOfA(reportA.impactZone, reportB.impactZone);
 
   let rawFaultA: number;

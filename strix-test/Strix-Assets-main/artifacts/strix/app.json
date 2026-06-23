@@ -17,6 +17,8 @@
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDisplayName": "ستركس",
+        "CFBundleDevelopmentRegion": "ar",
+        "CFBundleLocalizations": ["ar", "en"],
         "NSMotionUsageDescription": "يستخدم ستركس مستشعرات الحركة للتعرف الفوري على قوة الاصطدام وحماية الركاب. / Strix uses motion sensors for instant collision detection and passenger safety.",
         "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لتحديد إحداثيات الحادث بدقة وحساب سرعة المركبة عند وقوع الاصطدام. / Location is used to pin accident coordinates and estimate vehicle speed during impact.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "نستخدم موقعك في الخلفية لتتبع الحوادث فور وقوعها. / Background location is used to detect crashes immediately when they happen.",

@@ -1,27 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import './index.css';
+import strixIcon from './assets/icon.png';
 import Hero from './components/Hero.tsx';
 import Features from './components/Features.tsx';
+import HowItWorks from './components/HowItWorks.tsx';
 import LeadForm from './components/LeadForm.tsx';
+import { Moon, Sun } from 'lucide-react';
 
-function Header() {
+function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Check initial preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDark(prefersDark);
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme ? 'dark' : 'light');
+  };
+
   return (
-    <header className="py-6 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="container flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-white font-bold">
-            S
+    <header className="navbar" style={{ boxShadow: scrolled ? '0 4px 30px rgba(0,0,0,0.1)' : 'none' }}>
+      <div className="navbar-inner">
+        <div className="navbar-brand">
+          <div className="navbar-logo">
+            <img src={strixIcon} alt="Strix Logo" />
           </div>
-          <span className="text-xl font-bold tracking-tight">ستريكس</span>
+          <span className="navbar-name">Strix</span>
         </div>
-        
-        <nav className="hidden md:flex gap-8">
-          <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">المميزات</a>
-          <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">كيف يعمل</a>
-          <a href="#faq" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">الأسئلة الشائعة</a>
+
+        <nav className="navbar-nav">
+          <a href="#features">الميزات</a>
+          <a href="#how-it-works">كيف يعمل</a>
+          <a href="#join">سجل الآن</a>
         </nav>
-        
-        <div>
-          <a href="#join" className="btn btn-primary py-2 px-4 text-sm">التسجيل المبكر</a>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button 
+            onClick={toggleTheme} 
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: 'var(--foreground)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            aria-label="تبديل المظهر"
+          >
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <a href="#join" className="btn-cta-sm">التسجيل المبكر</a>
         </div>
       </div>
     </header>
@@ -30,53 +68,67 @@ function Header() {
 
 function Footer() {
   return (
-    <footer className="py-12 bg-primary text-primary-foreground">
-      <div className="container grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-        <div className="md:col-span-2">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white font-bold border border-white/20">
-              S
+    <footer>
+      <div className="footer-inner">
+        <div className="footer-top">
+          <div>
+            <div className="footer-brand">
+              <img src={strixIcon} alt="Strix" />
+              <span className="footer-brand-name">Strix</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">ستريكس</span>
+            <p className="footer-tagline">حوّل سيارتك إلى منقذ</p>
           </div>
-          <p className="text-primary-foreground/70 max-w-sm mb-6 text-sm">
-            نظام تقني متطور يهدف إلى أتمتة وتوثيق حوادث المركبات باستخدام تقنيات دمج الحساسات والذكاء الاصطناعي، لدعم الشفافية في تقدير الأضرار.
-          </p>
+
+          <div className="footer-links">
+            <div className="footer-link-group">
+              <h4>التطبيق</h4>
+              <ul>
+                <li><a href="#features">الميزات</a></li>
+                <li><a href="#how-it-works">كيف يعمل</a></li>
+                <li><a href="#join">المستخدمون الأوائل</a></li>
+              </ul>
+            </div>
+            <div className="footer-link-group">
+              <h4>تواصل</h4>
+              <ul>
+                <li><a href="mailto:info@strix-app.com">info@strix-app.com</a></li>
+                <li><a href="#">سياسة الخصوصية</a></li>
+                <li><a href="#">الشروط والأحكام</a></li>
+              </ul>
+            </div>
+          </div>
         </div>
-        
-        <div>
-          <h4 className="font-bold mb-4">روابط سريعة</h4>
-          <ul className="space-y-2 text-sm text-primary-foreground/70">
-            <li><a href="#features" className="hover:text-white transition-colors">المميزات والتقنيات</a></li>
-            <li><a href="#how-it-works" className="hover:text-white transition-colors">آلية العمل</a></li>
-            <li><a href="#join" className="hover:text-white transition-colors">انضم لقائمة الانتظار</a></li>
-          </ul>
+
+        <div className="footer-bottom">
+          <span>© 2026 Strix. جميع الحقوق محفوظة.</span>
+          <span>الرياض، المملكة العربية السعودية</span>
         </div>
-        
-        <div>
-          <h4 className="font-bold mb-4">تواصل معنا</h4>
-          <ul className="space-y-2 text-sm text-primary-foreground/70">
-            <li>الرياض، المملكة العربية السعودية</li>
-            <li>info@strix-app.com</li>
-          </ul>
-        </div>
-      </div>
-      
-      <div className="container pt-8 border-t border-white/10 text-center text-sm text-primary-foreground/50">
-        <p>© 2026 ستريكس. جميع الحقوق محفوظة.</p>
       </div>
     </footer>
   );
 }
 
 export default function App() {
+  // Scroll reveal
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(e => {
+        if (e.isIntersecting) e.target.classList.add('visible');
+      }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-1">
-        <Hero />
+    <div className="bg-mesh">
+      <Navbar />
+      <main>
+        <Hero icon={strixIcon} />
         <Features />
-        <LeadForm />
+        <HowItWorks />
+        <LeadForm icon={strixIcon} />
       </main>
       <Footer />
     </div>

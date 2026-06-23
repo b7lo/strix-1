@@ -129,6 +129,23 @@ export class KalmanFilter3D {
     this.ky.setMeasurementNoise(adaptedNoise);
     this.kz.setMeasurementNoise(adaptedNoise);
   }
+
+  /**
+   * تكييف ضوضاء العملية (Process Noise) بناءً على نوع الطريق:
+   * - طريق ناعم → Process Noise منخفض
+   * - طريق خشن → Process Noise مرتفع
+   */
+  adaptToRoadType(roadType: "smooth" | "normal" | "rough"): void {
+    let processNoise = 0.008; // default normal
+    if (roadType === "smooth") {
+      processNoise = 0.005; // less expected variance
+    } else if (roadType === "rough") {
+      processNoise = 0.02;  // higher expected variance
+    }
+    this.kx.setProcessNoise(processNoise);
+    this.ky.setProcessNoise(processNoise);
+    this.kz.setProcessNoise(processNoise);
+  }
 }
 
 // ════════════════════════════════════════════

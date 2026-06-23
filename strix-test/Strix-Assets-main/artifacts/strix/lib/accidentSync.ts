@@ -20,6 +20,7 @@
 import { Platform } from "react-native";
 import type { AccidentReport, CrossVerifiedAnalysis } from "./types";
 import { generateCrossVerifiedAnalysis } from "./crossVerification";
+import { haversineDistance } from "./geoUtils";
 
 // ─── Sync Config ───
 const STRIX_API_URL = process.env.EXPO_PUBLIC_STRIX_API_URL || "";
@@ -76,9 +77,16 @@ async function apiRequest(
   if (!isStrixApiConfigured()) return null;
 
   try {
+    const AsyncStorage = require("@react-native-async-storage/async-storage").default;
+    const token = await AsyncStorage.getItem("@strix_auth_token");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const response = await fetch(apiUrl(path), {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -139,6 +147,13 @@ async function supabaseRequest(
 
 // ─── الوظائف الرئيسية ───
 
+function sanitizeReportForStorage(report: AccidentReport): AccidentReport {
+  const sanitized = { ...report };
+  if (typeof sanitized.latitude === "number") sanitized.latitude = Number(sanitized.latitude.toFixed(3));
+  if (typeof sanitized.longitude === "number") sanitized.longitude = Number(sanitized.longitude.toFixed(3));
+  return sanitized;
+}
+
 /**
  * رفع حادث جديد على Supabase
  * @returns معرف الحادث المُدرج أو null
@@ -161,7 +176,7 @@ export async function uploadAccident(report: AccidentReport): Promise<string | n
     jerkPeak: report.jerkPeak,
     approachAngle: report.otherParty?.approachAngleDeg ?? 0,
     severity: report.severity,
-    reportJson: report as unknown as Record<string, unknown>,
+    reportJson: sanitizeReportForStorage(report) as unknown as Record<string, unknown>,
   };
 
   const apiResult = await apiRequest("/accidents", "POST", apiRecord);
@@ -183,16 +198,105 @@ export async function uploadAccident(report: AccidentReport): Promise<string | n
     jerk_peak: report.jerkPeak,
     approach_angle: report.otherParty?.approachAngleDeg ?? 0,
     severity: report.severity,
-    report_json: report,
+    report_json: sanitizeReportForStorage(report),
   };
 
-  const result = await supabaseRequest("accidents", "POST", record);
+  try {
+    const result = await supabaseRequest("accidents", "POST", record);
 
-  if (Array.isArray(result) && result.length > 0) {
-    lastSyncBackend = "supabase";
-    return result[0].id as string;
+    if (Array.isArray(result) && result.length > 0) {
+      lastSyncBackend = "supabase";
+      return result[0].id as string;
+    }
+    throw new Error("Failed to extract ID from Supabase response");
+  } catch (error) {
+    console.warn("[Strix Sync] Upload failed, adding to offline queue", error);
+    await enqueueOfflineAccident(report);
+    return null;
   }
-  throw new Error("Failed to extract ID from Supabase response");
+}
+
+// ─── Offline Queue Logic (I-2) ───
+
+const OFFLINE_QUEUE_KEY = "@strix_offline_queue";
+
+export async function enqueueOfflineAccident(report: AccidentReport): Promise<void> {
+  try {
+    const AsyncStorage = require("@react-native-async-storage/async-storage").default;
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    const queue: AccidentReport[] = queueStr ? JSON.parse(queueStr) : [];
+    
+    // Check if already in queue to prevent duplicates
+    if (!queue.some(r => r.id === report.id)) {
+      queue.push(report);
+      await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+      console.log(`[Strix Sync] Added accident ${report.id} to offline queue. Total: ${queue.length}`);
+    }
+  } catch (err) {
+    console.error("[Strix Sync] Failed to enqueue offline accident", err);
+  }
+}
+
+export async function processOfflineQueue(): Promise<void> {
+  if (!isStrixApiConfigured() && !isSupabaseConfigured()) return;
+  
+  try {
+    const AsyncStorage = require("@react-native-async-storage/async-storage").default;
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (!queueStr) return;
+    
+    const queue: AccidentReport[] = JSON.parse(queueStr);
+    if (queue.length === 0) return;
+    
+    console.log(`[Strix Sync] Processing offline queue (${queue.length} items)...`);
+    const remainingQueue: AccidentReport[] = [];
+    
+    for (const report of queue) {
+      try {
+        // Try to upload without enqueuing again if it fails
+        const uploadedId = await uploadAccidentDirect(report);
+        if (uploadedId) {
+          console.log(`[Strix Sync] Successfully synced offline accident: ${report.id}`);
+          // Also try to sync fault assessment if it exists
+          if (report.faultAssessment) {
+             await syncReportUpdate(report);
+          }
+        } else {
+          remainingQueue.push(report);
+        }
+      } catch (err) {
+        remainingQueue.push(report);
+      }
+    }
+    
+    await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
+  } catch (err) {
+    console.error("[Strix Sync] Failed to process offline queue", err);
+  }
+}
+
+/**
+ * Internal helper to upload directly without re-queueing on failure
+ */
+async function uploadAccidentDirect(report: AccidentReport): Promise<string | null> {
+  const record = {
+    local_id: report.id,
+    device_id: getDeviceId(),
+    timestamp: new Date(report.timestamp).toISOString(),
+    latitude: report.latitude,
+    longitude: report.longitude,
+    peak_g_force: report.peakGForce,
+    impact_zone: report.impactZone,
+    impact_direction: report.impactDirection,
+    speed_kmh: report.speedKmh,
+    jerk_peak: report.jerkPeak,
+    approach_angle: report.otherParty?.approachAngleDeg ?? 0,
+    severity: report.severity,
+    report_json: sanitizeReportForStorage(report),
+  };
+  const result = await supabaseRequest("accidents", "POST", record);
+  if (Array.isArray(result) && result.length > 0) return result[0].id as string;
+  return null;
 }
 
 export async function syncReportUpdate(report: AccidentReport): Promise<void> {
@@ -204,7 +308,7 @@ export async function syncReportUpdate(report: AccidentReport): Promise<void> {
   if (isSupabaseConfigured() && report.id) {
     try {
       await supabaseRequest(`accidents?local_id=eq.${encodeURIComponent(report.id)}`, "PATCH", {
-        report_json: report,
+        report_json: sanitizeReportForStorage(report),
       });
       console.log("[Strix Sync] Report updated in Supabase successfully");
 
@@ -354,9 +458,10 @@ export async function findMatchingAccident(
     }
   }
 
-  // v8.1 FIX: نبحث في آخر 5 دقائق للتجارب
-  const windowStart = new Date(report.timestamp - 300000).toISOString();
-  const windowEnd = new Date(report.timestamp + 300000).toISOString();
+  // نبحث في ±60 ثانية فقط — الحوادث المتزامنة الحقيقية يجب أن تكون في نفس اللحظة تقريباً
+  const MATCH_WINDOW_MS = 60_000;
+  const windowStart = new Date(report.timestamp - MATCH_WINDOW_MS).toISOString();
+  const windowEnd = new Date(report.timestamp + MATCH_WINDOW_MS).toISOString();
 
   const queryParams = [
     `timestamp=gte.${encodeURIComponent(windowStart)}`,
@@ -388,99 +493,109 @@ export async function findMatchingAccident(
       if (dist > 100) continue; // أبعد من 100 متر
     }
 
-    // فحص فرق الوقت
+    // فحص فرق الوقت — يجب أن يكون في نفس الدقيقة (60 ثانية)
     const timeDiff = Math.abs(report.timestamp - cTimestamp);
-    if (timeDiff > 300000) continue; // أكثر من 5 دقائق للتجارب
+    if (timeDiff > 60000) continue; // أكثر من 60 ثانية → ليس نفس الحادث
 
-    // فحص الزوايا المتعاكسة
+    // فحص الزوايا المتعاكسة — يجب أن تكون الزوايا متعاكسة بدقة ±45°
     const angleDiff = Math.abs(((myAngle - cAngle + 180 + 360) % 360) - 180);
     const anglesOpposite = angleDiff < 45;
 
-    // حساب نسبة الثقة في المطابقة
-    let confidence = 50;
-    if (timeDiff < 2000) confidence += 20;
-    else if (timeDiff < 4000) confidence += 10;
-    if (dist < 30) confidence += 20;
-    else if (dist < 60) confidence += 10;
-    if (anglesOpposite) confidence += 10;
+    // إذا لم تتوفر بيانات GPS حقيقية (lat/lon) ولم تكن الزوايا متعاكسة → رفض المطابقة
+    // هذا يمنع التطابق العشوائي بين حوادث مختلفة في بيئة الاختبار
+    const hasGPS = Boolean(myLat && myLon && cLat && cLon);
+    if (!hasGPS && !anglesOpposite) continue;
+
+    // حساب نسبة الثقة — تبدأ من 0 وتُبنى بناءً على الأدلة
+    let confidence = 0;
+    // أدلة الوقت (الأهم — 40 نقطة)
+    if (timeDiff < 3000) confidence += 40;
+    else if (timeDiff < 10000) confidence += 25;
+    else if (timeDiff < 30000) confidence += 10;
+    // أدلة المسافة (35 نقطة) — فقط إذا توفر GPS
+    if (hasGPS) {
+      if (dist < 20) confidence += 35;
+      else if (dist < 50) confidence += 25;
+      else if (dist < 100) confidence += 10;
+    }
+    // أدلة الزاوية (25 نقطة)
+    if (anglesOpposite) confidence += 25;
     confidence = Math.min(98, confidence);
 
-    if (confidence >= 60) {
-      const otherReport = candidate.report_json as AccidentReport | null;
-      let crossVerifiedAnalysis: CrossVerifiedAnalysis | null = null;
+    // الحد الأدنى للثقة رُفع إلى 70% لتجنب التطابق العشوائي
+    if (confidence < 70) continue;
 
-      if (otherReport) {
-        try {
-          crossVerifiedAnalysis = generateCrossVerifiedAnalysis(report, otherReport);
-          // Ensure we use the Supabase UUIDs, not the local IDs, to satisfy the foreign keys
-          crossVerifiedAnalysis.accident_a_id = ownAccidentId;
-          crossVerifiedAnalysis.accident_b_id = candidate.id as string;
+    const otherReport = candidate.report_json as AccidentReport | null;
+    let crossVerifiedAnalysis: CrossVerifiedAnalysis | null = null;
 
-          // Persist CrossVerifiedAnalysis
-          await supabaseRequest("cross_verified_analyses", "POST", {
-            id: crossVerifiedAnalysis.id,
-            accident_a_id: crossVerifiedAnalysis.accident_a_id,
-            accident_b_id: crossVerifiedAnalysis.accident_b_id,
-            verified_impact_zone_a: crossVerifiedAnalysis.verified_impact_zone_a,
-            verified_impact_zone_b: crossVerifiedAnalysis.verified_impact_zone_b,
-            verified_speed_a_kmh: crossVerifiedAnalysis.verified_speed_a_kmh,
-            verified_speed_b_kmh: crossVerifiedAnalysis.verified_speed_b_kmh,
-            first_contact_party: crossVerifiedAnalysis.first_contact_party,
-            consistency_status: crossVerifiedAnalysis.consistency_status,
-            consistency_flags: crossVerifiedAnalysis.consistency_flags,
-            liability_a_percent: crossVerifiedAnalysis.liability_a_percent,
-            liability_b_percent: crossVerifiedAnalysis.liability_b_percent,
-            created_at: new Date(crossVerifiedAnalysis.created_at).toISOString()
-          });
-        } catch (err) {
-          console.warn("[Strix Sync] Failed to persist CrossVerifiedAnalysis:", err);
-          // Analysis still available in-memory even if DB save failed
-        }
-      }
-
-      // Link the two accident records
+    if (otherReport) {
       try {
-        const ownReportUpdated: AccidentReport = {
-          ...report,
-          matchedAccidentId: candidate.id as string,
-          matchConfidence: confidence,
-          crossVerifiedId: crossVerifiedAnalysis?.id,
-          crossVerifiedAnalysis: crossVerifiedAnalysis || undefined,
-          liabilityScore: crossVerifiedAnalysis
-            ? crossVerifiedAnalysis.liability_a_percent
-            : report.liabilityScore,
-        };
+        crossVerifiedAnalysis = generateCrossVerifiedAnalysis(report, otherReport);
+        crossVerifiedAnalysis.accident_a_id = ownAccidentId;
+        crossVerifiedAnalysis.accident_b_id = candidate.id as string;
 
-        const otherReportUpdated: AccidentReport | undefined = otherReport ? {
-          ...otherReport,
-          matchedAccidentId: ownAccidentId,
-          matchConfidence: confidence,
-          crossVerifiedId: crossVerifiedAnalysis?.id,
-          crossVerifiedAnalysis: crossVerifiedAnalysis || undefined,
-          liabilityScore: crossVerifiedAnalysis ? crossVerifiedAnalysis.liability_b_percent : otherReport.liabilityScore
-        } : undefined;
-
-        await linkAccidents(
-          ownAccidentId,
-          candidate.id as string,
-          confidence,
-          crossVerifiedAnalysis?.id,
-          ownReportUpdated,
-          otherReportUpdated
-        );
+        await supabaseRequest("cross_verified_analyses", "POST", {
+          id: crossVerifiedAnalysis.id,
+          accident_a_id: crossVerifiedAnalysis.accident_a_id,
+          accident_b_id: crossVerifiedAnalysis.accident_b_id,
+          verified_impact_zone_a: crossVerifiedAnalysis.verified_impact_zone_a,
+          verified_impact_zone_b: crossVerifiedAnalysis.verified_impact_zone_b,
+          verified_speed_a_kmh: crossVerifiedAnalysis.verified_speed_a_kmh,
+          verified_speed_b_kmh: crossVerifiedAnalysis.verified_speed_b_kmh,
+          first_contact_party: crossVerifiedAnalysis.first_contact_party,
+          consistency_status: crossVerifiedAnalysis.consistency_status,
+          consistency_flags: crossVerifiedAnalysis.consistency_flags,
+          liability_a_percent: crossVerifiedAnalysis.liability_a_percent,
+          liability_b_percent: crossVerifiedAnalysis.liability_b_percent,
+          created_at: new Date(crossVerifiedAnalysis.created_at).toISOString()
+        });
       } catch (err) {
-        console.warn("[Strix Sync] Failed to link accidents:", err);
+        console.warn("[Strix Sync] Failed to persist CrossVerifiedAnalysis:", err);
       }
+    }
 
-      return {
+    // Link the two accident records
+    try {
+      const ownReportUpdated: AccidentReport = {
+        ...report,
         matchedAccidentId: candidate.id as string,
         matchConfidence: confidence,
-        otherReport: otherReport,
-        distanceMeters: Math.round(dist),
-        timeDiffMs: timeDiff,
-        crossVerifiedAnalysis: crossVerifiedAnalysis
+        crossVerifiedId: crossVerifiedAnalysis?.id,
+        crossVerifiedAnalysis: crossVerifiedAnalysis || undefined,
+        liabilityScore: crossVerifiedAnalysis
+          ? crossVerifiedAnalysis.liability_a_percent
+          : report.liabilityScore,
       };
+
+      const otherReportUpdated: AccidentReport | undefined = otherReport ? {
+        ...otherReport,
+        matchedAccidentId: ownAccidentId,
+        matchConfidence: confidence,
+        crossVerifiedId: crossVerifiedAnalysis?.id,
+        crossVerifiedAnalysis: crossVerifiedAnalysis || undefined,
+        liabilityScore: crossVerifiedAnalysis ? crossVerifiedAnalysis.liability_b_percent : otherReport.liabilityScore
+      } : undefined;
+
+      await linkAccidents(
+        ownAccidentId,
+        candidate.id as string,
+        confidence,
+        crossVerifiedAnalysis?.id,
+        ownReportUpdated,
+        otherReportUpdated
+      );
+    } catch (err) {
+      console.warn("[Strix Sync] Failed to link accidents:", err);
     }
+
+    return {
+      matchedAccidentId: candidate.id as string,
+      matchConfidence: confidence,
+      otherReport: otherReport,
+      distanceMeters: Math.round(dist),
+      timeDiffMs: timeDiff,
+      crossVerifiedAnalysis: crossVerifiedAnalysis
+    };
   }
 
   return null;
@@ -510,7 +625,7 @@ async function linkAccidents(
   // تحديث السجل الثاني مع رفع الـ JSON المحدث ليقرأه الهاتف الآخر
   const payload2: any = { matched_accident_id: id1, match_confidence: confidence };
   if (crossVerifiedId) payload2.cross_verified_id = crossVerifiedId;
-  if (otherReportUpdated) payload2.report_json = otherReportUpdated;
+  // if (otherReportUpdated) payload2.report_json = otherReportUpdated; // Prevent overwriting second party's report
   await patchAccidentRecord(id2, payload2);
 }
 
@@ -532,26 +647,7 @@ async function patchAccidentRecord(
   }
 }
 
-/**
- * المسافة بين نقطتين بالمتر (Haversine)
- */
-function haversineDistance(
-  lat1: number, lon1: number,
-  lat2: number, lon2: number
-): number {
-  const R = 6371e3; // نصف قطر الأرض بالمتر
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
-}
 
 // ─── Types ───
 

@@ -27,6 +27,23 @@ const CAR_LENGTH = 60;
 const CAR_WIDTH = 30;
 
 /**
+ * دالة لتنظيف مدخلات النصوص لمنع ثغرات XSS في ملفات SVG
+ */
+function escapeXml(unsafe: unknown): string {
+  if (unsafe === undefined || unsafe === null) return "";
+  return String(unsafe).replace(/[<>&'"]/g, function (c) {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+}
+
+/**
  * الوظيفة الرئيسية: توليد الكروكي
  */
 export function generateCroquis(
@@ -75,9 +92,10 @@ function buildSVG(
   `);
 
   // رسم مسارات الحركة (Trajectories)
-  // مسار المركبة A (من الخلف إلى المركز)
+  // مسار المركبة A (من الخلف إلى المركز) - طول المسار يرتبط ديناميكياً بالسرعة
+  const pathLengthA = Math.max(50, Math.min(180, report.speedKmh * 2.5));
   parts.push(`
-    <line x1="${CENTER_X}" y1="${CENTER_Y + 120}" x2="${CENTER_X}" y2="${CENTER_Y + CAR_LENGTH / 2}" 
+    <line x1="${CENTER_X}" y1="${CENTER_Y + pathLengthA}" x2="${CENTER_X}" y2="${CENTER_Y + CAR_LENGTH / 2}" 
           stroke="#94a3b8" stroke-width="2" stroke-dasharray="8,6" />
   `);
 
@@ -164,7 +182,7 @@ function buildSVG(
   // لوحة المفاتيح (Legend) - أعلى اليسار
   parts.push(`
     <g transform="translate(20, 20)">
-      <rect x="0" y="0" width="140" height="60" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
+      <rect x="0" y="0" width="140" height="80" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
       <circle cx="120" cy="20" r="5" fill="#1e3a8a" />
       <text x="105" y="24" text-anchor="end" fill="#64748b" font-size="11" font-family="sans-serif">مسار المركبة A</text>
       
@@ -177,13 +195,14 @@ function buildSVG(
   `);
 
   // معلومات إضافية - أسفل اليمين
-  const speedA = report.speedKmh;
-  const speedB = otherParty?.estimatedSpeedKmh ?? "?";
+  const speedA = escapeXml(report.speedKmh);
+  const speedB = escapeXml(otherParty?.estimatedSpeedKmh ?? "?");
+  const peakG = escapeXml(report.peakGForce.toFixed(1));
   parts.push(`
     <g transform="translate(${SVG_WIDTH - 150}, ${SVG_HEIGHT - 60})">
       <text x="130" y="10" text-anchor="end" fill="#94a3b8" font-size="10" font-family="sans-serif">السرعة المتوقعة (A): ${speedA} كم/س</text>
       <text x="130" y="25" text-anchor="end" fill="#94a3b8" font-size="10" font-family="sans-serif">السرعة المتوقعة (B): ${speedB} كم/س</text>
-      <text x="130" y="40" text-anchor="end" fill="#94a3b8" font-size="10" font-family="sans-serif">قوة الصدمة: ${report.peakGForce.toFixed(1)}g</text>
+      <text x="130" y="40" text-anchor="end" fill="#94a3b8" font-size="10" font-family="sans-serif">قوة الصدمة: ${peakG}g</text>
     </g>
   `);
 
@@ -229,14 +248,37 @@ function guessAngleFromZone(zone: ImpactZone): number {
 }
 
 function toBase64(svg: string): string {
-  // React Native compatible Base64 encoding
   try {
-    // في بيئة Node/Metro يمكن استخدام btoa أو Buffer
+    // Node.js fallback for testing
+    if (typeof global !== "undefined" && typeof (global as any).Buffer !== "undefined") {
+      return (global as any).Buffer.from(svg, "utf-8").toString("base64");
+    }
+    if (typeof Buffer !== "undefined") {
+      return Buffer.from(svg, "utf-8").toString("base64");
+    }
+    // Browser/Metro fallback
     if (typeof btoa !== "undefined") {
       return btoa(unescape(encodeURIComponent(svg)));
     }
-    // fallback: نرجع النص كما هو
-    return svg;
+    // Pure Javascript base64 encoding to be 100% safe in React Native
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const str = unescape(encodeURIComponent(svg));
+    let result = "";
+    for (let i = 0; i < str.length; i += 3) {
+      const b1 = str.charCodeAt(i);
+      const b2 = i + 1 < str.length ? str.charCodeAt(i + 1) : NaN;
+      const b3 = i + 2 < str.length ? str.charCodeAt(i + 2) : NaN;
+      
+      const r1 = b1 >> 2;
+      const r2 = ((b1 & 3) << 4) | (isNaN(b2) ? 0 : b2 >> 4);
+      const r3 = isNaN(b2) ? 64 : ((b2 & 15) << 2) | (isNaN(b3) ? 0 : b3 >> 6);
+      const r4 = isNaN(b3) ? 64 : b3 & 63;
+      
+      result += chars.charAt(r1) + chars.charAt(r2) +
+                (r3 === 64 ? "=" : chars.charAt(r3)) +
+                (r4 === 64 ? "=" : chars.charAt(r4));
+    }
+    return result;
   } catch {
     return svg;
   }

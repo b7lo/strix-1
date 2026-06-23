@@ -1,4 +1,4 @@
-import { StyleSheet, ViewStyle, TextStyle, ImageStyle } from "react-native";
+import { StyleSheet, ViewStyle, TextStyle, ImageStyle, I18nManager, FlexStyle } from "react-native";
 
 export type RTLDirection = "ltr" | "rtl";
 
@@ -9,6 +9,8 @@ export interface RTLStyles {
 }
 
 export function getRTLStyles(isRTL: boolean): RTLStyles {
+  // We always call I18nManager.forceRTL(false) so React Native never auto-flips.
+  // Therefore we directly apply the correct direction without double-flip logic.
   return {
     flexDirection: isRTL ? "row-reverse" : "row",
     textAlign: isRTL ? "right" : "left",
@@ -17,7 +19,7 @@ export function getRTLStyles(isRTL: boolean): RTLStyles {
 }
 
 export function rtlFlex(isRTL: boolean): ViewStyle {
-  return { flexDirection: isRTL ? "row-reverse" : "row" };
+  return { flexDirection: (isRTL ? "row-reverse" : "row") as FlexStyle["flexDirection"] };
 }
 
 export function rtlTextAlign(isRTL: boolean): TextStyle {
@@ -29,30 +31,30 @@ export function rtlWritingDirection(isRTL: boolean): TextStyle {
 }
 
 export function rtlMarginStart(value: number, isRTL: boolean): ViewStyle {
-  return isRTL ? { marginEnd: value } : { marginStart: value };
+  return isRTL ? { marginRight: value } : { marginLeft: value };
 }
 
 export function rtlMarginEnd(value: number, isRTL: boolean): ViewStyle {
-  return isRTL ? { marginStart: value } : { marginEnd: value };
+  return isRTL ? { marginLeft: value } : { marginRight: value };
 }
 
 export function rtlPaddingStart(value: number, isRTL: boolean): ViewStyle {
-  return isRTL ? { paddingEnd: value } : { paddingStart: value };
+  return isRTL ? { paddingRight: value } : { paddingLeft: value };
 }
 
 export function rtlPaddingEnd(value: number, isRTL: boolean): ViewStyle {
-  return isRTL ? { paddingStart: value } : { paddingEnd: value };
+  return isRTL ? { paddingLeft: value } : { paddingRight: value };
 }
 
 export function rtlBorderStart(width: number, color: string, isRTL: boolean): ViewStyle {
-  return isRTL ? { borderEndWidth: width, borderEndColor: color } : { borderStartWidth: width, borderStartColor: color };
+  return isRTL ? { borderRightWidth: width, borderRightColor: color } : { borderLeftWidth: width, borderLeftColor: color };
 }
 
 export function rtlBorderEnd(width: number, color: string, isRTL: boolean): ViewStyle {
-  return isRTL ? { borderStartWidth: width, borderStartColor: color } : { borderEndWidth: width, borderEndColor: color };
+  return isRTL ? { borderLeftWidth: width, borderLeftColor: color } : { borderRightWidth: width, borderRightColor: color };
 }
 
-export function rtlPosition(start?: number, end?: number, isRTL: boolean): ViewStyle {
+export function rtlPosition(start?: number, end?: number, isRTL?: boolean): ViewStyle {
   const styles: ViewStyle = {};
   if (start !== undefined) {
     isRTL ? (styles.right = start) : (styles.left = start);

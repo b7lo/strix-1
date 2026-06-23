@@ -30,6 +30,7 @@ import type {
   ImpactDirection,
 } from "./types";
 import type { RingSample } from "./sensorUtils";
+import i18n from "./i18n";
 
 // ─── ثوابت ───
 const YAW_SUDDEN_THRESHOLD_DEG_S = 45;   // عتبة الدوران المفاجئ (v7.3: رُفعت من 15 إلى 45 لتجنب الإيجابيات الكاذبة من تغيير الحارة العادي)
@@ -196,7 +197,9 @@ function analyzeRoadContext(
       const lastSample = preCrashGyro[preCrashGyro.length - 1];
       const sustainedDuration = lastSample.ts - sustainedYawStartTs;
 
-      if (sustainedDuration >= ROUNDABOUT_MIN_DURATION_MS) {
+      // Enhance roundabout detection: Must be between 5 km/h and 60 km/h
+      // (roundabouts are typically taken at moderate speeds)
+      if (sustainedDuration >= ROUNDABOUT_MIN_DURATION_MS && speedKmh > 5 && speedKmh < 60) {
         result.roadType = "roundabout";
         result.confirmedByGyro = true;
         result.hasPriority = true; // المركبة داخل الدوار لها الأولوية
@@ -565,18 +568,23 @@ function analyzePostImpact(
 
   if (result.vehicleStoppedImmediately) {
     result.score = -20; // التوقف الفوري لمركبة كانت متوقفة دليل براءة
-    result.factorsAr.push("المركبة بقيت في مكانها بعد الصدمة ولم تتحرك (دليل على التوقف التام)");
+    result.factorsAr.push(i18n.t("advancedAnalysisFactors.postStopped"));
   } else if (result.driftDirection !== "none") {
-    const dirAr = { "forward": "للأمام", "backward": "للخلف", "left": "لليسار", "right": "لليمين" };
-    result.factorsAr.push(`رُصد انحراف للمركبة ${dirAr[result.driftDirection]} بعد الاصطدام بقوة ${result.driftMagnitudeG}g`);
+    const dirAr: Record<string, string> = { 
+      "forward": i18n.t("liability.dirFront"), 
+      "backward": i18n.t("liability.dirRear"), 
+      "left": i18n.t("liability.dirSideLeft"), 
+      "right": i18n.t("liability.dirSideRight") 
+    };
+    result.factorsAr.push(i18n.t("advancedAnalysisFactors.postDrift", { dir: dirAr[result.driftDirection], g: result.driftMagnitudeG }));
   }
 
   if (result.postImpactRotation) {
-    result.factorsAr.push(`رُصد دوران للمركبة بعد الصدمة بمقدار ${result.postImpactYawRate}°/ث (فقدان السيطرة نتيجة الصدمة)`);
+    result.factorsAr.push(i18n.t("advancedAnalysisFactors.postRotation", { rate: result.postImpactYawRate }));
   }
 
   if (result.secondaryImpacts > 0) {
-    result.factorsAr.push(`رُصدت ${result.secondaryImpacts} صدمة ثانوية بعد الحادث (ارتداد أو اصطدام بعوائق أخرى)`);
+    result.factorsAr.push(i18n.t("advancedAnalysisFactors.postSecondary", { count: result.secondaryImpacts }));
   }
 
   return result;
@@ -650,17 +658,11 @@ export function runAdvancedAnalysis(input: AdvancedAnalysisInput): AdvancedAnaly
 
   // Module 1
   if (angularStability.wasEvasive) {
-    discoveredFactorsAr.push(
-      `رُصدت مناورة تفادي: انحراف مفاجئ (${angularStability.maxYawRatePreCrash}°/ث) مصحوب بفرملة قبل الصدمة — دليل على محاولة التفادي`
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.evasive", { yawRate: angularStability.maxYawRatePreCrash }));
   } else if (angularStability.hadSuddenYaw) {
-    discoveredFactorsAr.push(
-      `رُصد تغيير مسار مفاجئ (${angularStability.maxYawRatePreCrash}°/ث) قبل الصدمة بدون فرملة — يُرجّح أن المستخدم انحرف عن مساره`
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.suddenYaw", { yawRate: angularStability.maxYawRatePreCrash }));
   } else if (angularStability.score < 0) {
-    discoveredFactorsAr.push(
-      "المركبة كانت تسير في خط مستقيم قبل الصدمة — لم يُرصد أي تغيير في المسار"
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.straight"));
   }
 
   // Module 2 — يُعرض فقط للصدمات الجانبية (في الأمامية/الخلفية قوة Y العالية طبيعية)
@@ -669,49 +671,36 @@ export function runAdvancedAnalysis(input: AdvancedAnalysisInput): AdvancedAnaly
     (input.direction === "side-left" || input.direction === "side-right")
   ) {
     discoveredFactorsAr.push(
-      `تحليل متجهات القوة يُظهر مركبة طولية بنسبة ${Math.round(multiVector.rearPushRatio * 100)}٪ — الطرف الآخر كان مندفعاً بزاوية وليس بشكل عمودي`
+      i18n.t("advancedAnalysisFactors.rearPush", { ratio: Math.round(multiVector.rearPushRatio * 100) })
     );
   }
 
   // Module 3
   if (roadContext.roadType === "roundabout") {
-    discoveredFactorsAr.push(
-      "تحليل الحركة القوسية يُشير إلى أن الحادث وقع داخل دوار — الأولوية للمركبة الدائرة داخل الدوار"
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.roundabout"));
   }
   if (roadContext.wasStationary) {
-    discoveredFactorsAr.push(
-      "المركبة كانت متوقفة تماماً لحظة الاصطدام — المسؤولية الكاملة على الطرف المتحرك"
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.stationary"));
   }
 
   // Module 4
   if (microKinematic.scrapeDetected) {
-    const syncText = microKinematic.jerkGyroSync
-      ? " (مؤكّد بتزامن Jerk-Gyro)"
-      : "";
-    discoveredFactorsAr.push(
-      `رُصدت حكة/احتكاك جانبي (مدة ${microKinematic.vibrationDurationMs}ms)${syncText} — اصطدام سطحي من الطرف الآخر`
-    );
+    if (microKinematic.jerkGyroSync) {
+      discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.scrapeSync", { duration: microKinematic.vibrationDurationMs }));
+    } else {
+      discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.scrapeNoSync", { duration: microKinematic.vibrationDurationMs }));
+    }
   }
 
   // Module 5
   if (preCrashEvents.evasiveManeuver) {
-    discoveredFactorsAr.push(
-      "رُصدت مناورة تفادي كاملة (فرملة عنيفة + انحراف) قبل الصدمة — دليل قاطع على حسن النية ومحاولة تجنب الحادث"
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.preCrashEvasive"));
   } else if (preCrashEvents.hardBraking) {
-    discoveredFactorsAr.push(
-      "رُصدت فرملة عنيفة قبل الصدمة — دليل على انتباه السائق ومحاولة التوقف"
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.preCrashBraking"));
   } else if (preCrashEvents.hardAcceleration) {
-    discoveredFactorsAr.push(
-      "رُصد تسارع مفاجئ قبل الصدمة — قد يُشير إلى عدم الانتباه أو محاولة تجاوز إشارة"
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.preCrashAccel"));
   } else if (preCrashEvents.steadyDriving) {
-    discoveredFactorsAr.push(
-      "المركبة كانت تسير بثبات واستقرار تام قبل الصدمة — لا يوجد سلوك غير طبيعي"
-    );
+    discoveredFactorsAr.push(i18n.t("advancedAnalysisFactors.preCrashSteady"));
   }
 
   // Module 6

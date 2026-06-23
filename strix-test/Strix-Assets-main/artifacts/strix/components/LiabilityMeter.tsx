@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { Text } from "@/components/Text";;
 import { useColors } from "@/hooks/useColors";
+import { useLanguage } from "@/context/LanguageContext";
 import type { Confidence, CrossVerifiedAnalysis } from "@/lib/types";
 
 interface Props {
@@ -12,19 +14,14 @@ interface Props {
 }
 
 const CONFIDENCE_COLOR: Record<Confidence, string> = {
-  high: "#3FB950",
-  medium: "#D29922",
-  low: "#8B949E",
-};
-
-const CONFIDENCE_AR: Record<Confidence, string> = {
-  high: "ثقة عالية",
-  medium: "ثقة متوسطة",
-  low: "ثقة منخفضة",
+  high: "#10B981",
+  medium: "#F59E0B",
+  low: "#94A3B8",
 };
 
 export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossVerifiedAnalysis, currentAccidentId }: Props) {
   const colors = useColors();
+  const { t, isRTL, rtl } = useLanguage();
 
   let finalFaultPercent = userFaultPercent;
   if (crossVerifiedAnalysis && currentAccidentId) {
@@ -38,32 +35,39 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
   const otherPercent = 100 - finalFaultPercent;
   const confColor = CONFIDENCE_COLOR[confidence];
 
+  const confLabel: Record<Confidence, string> = {
+    high: t("liabilityMeter.confidenceHigh"),
+    medium: t("liabilityMeter.confidenceMedium"),
+    low: t("liabilityMeter.confidenceLow"),
+  };
+
   const faultLevel =
     finalFaultPercent >= 70 ? "high" : finalFaultPercent <= 30 ? "low" : "mid";
   const faultColor =
     faultLevel === "high"
-      ? "#FF4444"
+      ? "#EF4444"
       : faultLevel === "low"
-      ? "#3FB950"
-      : "#D29922";
+      ? "#10B981"
+      : "#F59E0B";
 
   // RTL: first child in row = RIGHT
   return (
     <View style={styles.container}>
       {/* header: title RIGHT, badge LEFT */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          تقدير المسؤولية
+      <View style={[styles.header, { flexDirection: rtl.flexDirection }]}>
+        <Text style={[styles.title, { color: colors.foreground, textAlign: rtl.textAlign }]}>
+          {t("liabilityMeter.title")}
         </Text>
         <View
           style={[
             styles.confBadge,
+            { flexDirection: rtl.flexDirection },
             { backgroundColor: confColor + "22", borderColor: confColor + "44" },
           ]}
         >
           <View style={[styles.confDot, { backgroundColor: confColor }]} />
           <Text style={[styles.confText, { color: confColor }]}>
-            {CONFIDENCE_AR[confidence]}
+            {confLabel[confidence]}
           </Text>
         </View>
       </View>
@@ -76,7 +80,9 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
               styles.barFill,
               {
                 width: `${otherPercent}%` as `${number}%`,
-                backgroundColor: "#3FB950",
+                backgroundColor: "#10B981",
+                borderTopRightRadius: finalFaultPercent === 0 ? 8 : 0,
+                borderBottomRightRadius: finalFaultPercent === 0 ? 8 : 0,
               },
             ]}
           />
@@ -87,7 +93,9 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
               styles.barFill,
               {
                 width: `${finalFaultPercent}%` as `${number}%`,
-                backgroundColor: "#FF4444",
+                backgroundColor: faultColor,
+                borderTopLeftRadius: otherPercent === 0 ? 8 : 0,
+                borderBottomLeftRadius: otherPercent === 0 ? 8 : 0,
               },
             ]}
           />
@@ -95,7 +103,7 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
       </View>
 
       {/* labels: "other party" RIGHT, "your fault" LEFT */}
-      <View style={styles.labels}>
+      <View style={[styles.labels, { flexDirection: rtl.flexDirection }]}>
         <View style={styles.partyBlock}>
           <Text
             style={[
@@ -106,7 +114,7 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
             {otherPercent}٪
           </Text>
           <Text style={[styles.partyLabel, { color: colors.mutedForeground }]}>
-            الطرف الآخر
+            {t("liabilityMeter.otherParty")}
           </Text>
         </View>
 
@@ -117,7 +125,7 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
             {finalFaultPercent}٪
           </Text>
           <Text style={[styles.partyLabel, { color: colors.mutedForeground }]}>
-            خطأك
+            {t("liabilityMeter.yourFault")}
           </Text>
         </View>
       </View>
@@ -132,10 +140,10 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
             },
           ]}
         >
-          <Text style={[styles.verdictText, { color: faultColor }]}>
+          <Text style={[styles.verdictText, { color: faultColor, textAlign: rtl.textAlign }]}>
             {faultLevel === "low"
-              ? "الطرف الآخر هو المسؤول الرئيسي عن الحادث"
-              : "المسؤولية تقع بشكل رئيسي على السائق"}
+              ? t("liabilityMeter.verdictOtherParty")
+              : t("liabilityMeter.verdictDriver")}
           </Text>
         </View>
       )}
@@ -147,11 +155,11 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
             { backgroundColor: colors.secondary, borderColor: colors.border },
           ]}
         >
-          <Text style={[styles.factorsHeader, { color: colors.foreground }]}>
-            أبرز عوامل التحليل
+          <Text style={[styles.factorsHeader, { color: colors.foreground, textAlign: rtl.textAlign }]}>
+            {t("liabilityMeter.topFactors")}
           </Text>
           {factorsAr.slice(0, 3).map((f, i) => (
-            <View key={i} style={styles.factorItem}>
+            <View key={i} style={[styles.factorItem, { flexDirection: rtl.flexDirection }]}>
               {/* bullet RIGHT, text LEFT (flows naturally in RTL row) */}
               <Text
                 style={[styles.factorBullet, { color: confColor }]}
@@ -159,7 +167,7 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
                 ●
               </Text>
               <Text
-                style={[styles.factorText, { color: colors.mutedForeground }]}
+                style={[styles.factorText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}
               >
                 {f}
               </Text>
@@ -168,67 +176,64 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
         </View>
       )}
 
-      <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
-        للأغراض الاستعلامية فقط — ليس حكماً قانونياً
+      <Text style={[styles.disclaimer, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+        {t("liabilityMeter.disclaimer")}
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
+  container: { gap: 14 },
   header: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     flexWrap: "wrap",
     gap: 8,
   },
-  title: { fontSize: 16, fontWeight: "600" },
+  title: { flex: 1, fontSize: 16, fontWeight: "800" },
   confBadge: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
   },
-  confDot: { width: 6, height: 6, borderRadius: 3 },
-  confText: { fontSize: 11, fontWeight: "600" },
+  confDot: { width: 7, height: 7, borderRadius: 4 },
+  confText: { fontSize: 11, fontWeight: "700" },
   barTrack: {
     flexDirection: "row",
-    height: 12,
-    borderRadius: 6,
+    height: 16,
+    borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "#21262D",
+    backgroundColor: "#1E2D3D",
   },
   barFill: { height: "100%" },
-  labels: { flexDirection: "row", alignItems: "center" },
-  partyBlock: { flex: 1, gap: 2 },
-  partyPercent: { fontSize: 28, fontWeight: "800" },
-  partyLabel: { fontSize: 12 },
-  divider: { width: 1, height: 44, marginHorizontal: 16 },
+  labels: { alignItems: "center" },
+  partyBlock: { flex: 1, gap: 3, alignItems: "center" },
+  partyPercent: { fontSize: 32, fontWeight: "800", textAlign: "center", letterSpacing: -1 },
+  partyLabel: { fontSize: 12, textAlign: "center", fontWeight: "500" },
+  divider: { width: 1, height: 48, marginHorizontal: 16 },
   verdictBox: {
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  verdictText: { fontSize: 13, fontWeight: "600" },
+  verdictText: { fontSize: 14, fontWeight: "700", lineHeight: 22 },
   factorsSection: {
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 12,
+    padding: 14,
     gap: 8,
   },
-  factorsHeader: { fontSize: 12, fontWeight: "700" },
+  factorsHeader: { fontSize: 12, fontWeight: "800", letterSpacing: 0.3 },
   factorItem: {
-    flexDirection: "row",
     alignItems: "flex-start",
-    gap: 7,
+    gap: 8,
   },
   factorBullet: { fontSize: 8, marginTop: 7, flexShrink: 0 },
-  factorText: { fontSize: 12, lineHeight: 20, flex: 1 },
-  disclaimer: { fontSize: 11, fontStyle: "italic" },
+  factorText: { fontSize: 13, lineHeight: 21, flex: 1 },
+  disclaimer: { fontSize: 11, fontStyle: "italic", lineHeight: 17 },
 });

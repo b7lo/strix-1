@@ -1,4 +1,5 @@
 import * as TaskManager from 'expo-task-manager';
+import * as Location from 'expo-location';
 import { updateCurrentSpeed } from './sensorUtils';
 
 export const BACKGROUND_LOCATION_TASK = 'background-location-task';
@@ -31,3 +32,16 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
     }
   }
 });
+
+export async function unregisterBackgroundTask() {
+  try {
+    const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
+    if (isRegistered) {
+      await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+      console.log(`[Strix BackgroundTask] Unregistered ${BACKGROUND_LOCATION_TASK}`);
+    }
+  } catch (error) {
+    console.error("[Strix BackgroundTask] Error unregistering task:", error);
+  }
+}
+

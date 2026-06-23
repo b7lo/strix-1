@@ -1,101 +1,121 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 
-export default function LeadForm() {
+interface LeadFormProps {
+  icon: string;
+}
+
+export default function LeadForm({ icon }: LeadFormProps) {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('submitting');
-    // Simulate API call
-    setTimeout(() => {
-      setStatus('success');
-    }, 1500);
+    setTimeout(() => setStatus('success'), 1500);
   };
 
   return (
-    <section className="py-24 bg-muted border-y border-border" id="join">
-      <div className="container max-w-4xl">
-        <div className="bg-background rounded-3xl border border-border overflow-hidden shadow-2xl flex flex-col md:flex-row">
-          
-          <div className="p-12 md:w-1/2 flex flex-col justify-center">
-            <h2 className="text-title mb-4 text-primary">كن من أوائل المستخدمين</h2>
-            <p className="text-body mb-8">
-              انضم إلى قائمة الانتظار الحصرية الآن واحصل على وصول مبكر لتطبيق ستريكس قبل الإطلاق الرسمي.
-            </p>
-            
-            <div className="space-y-4 text-sm font-medium">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center">✓</div>
-                <span>اشتراك مجاني للمستخدمين الأوائل</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center">✓</div>
-                <span>أولوية في الدعم الفني</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center">✓</div>
-                <span>تحديثات مستمرة لتقنيات الذكاء الاصطناعي</span>
-              </div>
+    <section className="form-section" id="join">
+      <div className="section-header">
+        <span className="section-eyebrow reveal">التسجيل المبكر</span>
+        <h2 className="section-title reveal reveal-delay-1">كن من أوائل المستخدمين</h2>
+        <p className="section-sub reveal reveal-delay-2">
+          سجّل الآن للحصول على وصول مبكر وأولوية في الدعم الفني.
+        </p>
+      </div>
+
+      <div className="form-card reveal">
+        {/* Left: Info */}
+        <div className="form-info">
+          <div className="form-info-logo">
+            <img src={icon} alt="Strix" />
+            <span>Strix</span>
+          </div>
+
+          <h3 className="form-info-title">ابدأ حماية سيارتك اليوم</h3>
+          <p className="form-info-sub">
+            انضم إلى قائمة الانتظار الحصرية واحصل على وصول مبكر لتطبيق ستركس قبل الإطلاق الرسمي.
+          </p>
+
+          <div className="form-perks">
+            <div className="form-perk">
+              <div className="perk-check">✓</div>
+              <span>تطبيق مجاني بالكامل بدون أي رسوم</span>
+            </div>
+            <div className="form-perk">
+              <div className="perk-check">✓</div>
+              <span>تحديثات مستمرة ومبكرة للتطبيق</span>
+            </div>
+            <div className="form-perk">
+              <div className="perk-check">✓</div>
+              <span>إشعار فوري عند الإطلاق الرسمي</span>
             </div>
           </div>
-          
-          <div className="p-12 md:w-1/2 bg-gradient-to-br from-primary/5 to-secondary/5 border-r border-border/50">
-            {status === 'success' ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="h-full flex flex-col items-center justify-center text-center py-8"
-              >
-                <div className="w-20 h-20 bg-accent/20 text-accent rounded-full flex items-center justify-center mb-6">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold mb-2">شكراً لانضمامك!</h3>
-                <p className="text-muted-foreground">تم تسجيل بياناتك بنجاح. سنقوم بالتواصل معك قريباً.</p>
-              </motion.div>
-            ) : (
+        </div>
+
+        {/* Right: Form */}
+        <div className="form-body">
+          {status === 'success' ? (
+            <div className="form-success">
+              <div className="success-icon">✅</div>
+              <div className="success-title">شكراً لانضمامك!</div>
+              <div className="success-sub">
+                تم تسجيل بياناتك بنجاح.<br />سنتواصل معك قريباً عند إطلاق التطبيق.
+              </div>
+            </div>
+          ) : (
+            <>
+              <h3>سجّل في قائمة الانتظار</h3>
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
                   <label className="form-label" htmlFor="fullName">الاسم الكامل *</label>
-                  <input type="text" id="fullName" className="form-input" required placeholder="محمد عبدالله" />
+                  <input
+                    type="text"
+                    id="fullName"
+                    className="form-input"
+                    required
+                    placeholder="محمد عبدالله"
+                  />
                 </div>
-                
+
                 <div className="form-group">
                   <label className="form-label" htmlFor="mobile">رقم الجوال *</label>
-                  <input type="tel" id="mobile" className="form-input text-right" required placeholder="05X XXX XXXX" dir="ltr" />
+                  <input
+                    type="tel"
+                    id="mobile"
+                    className="form-input"
+                    required
+                    placeholder="05X XXX XXXX"
+                    dir="ltr"
+                    style={{ textAlign: 'right' }}
+                  />
                 </div>
-                
+
                 <div className="form-group">
                   <label className="form-label" htmlFor="email">البريد الإلكتروني</label>
-                  <input type="email" id="email" className="form-input" placeholder="example@email.com" dir="ltr" />
+                  <input
+                    type="email"
+                    id="email"
+                    className="form-input"
+                    placeholder="example@email.com"
+                    dir="ltr"
+                    style={{ textAlign: 'right' }}
+                  />
                 </div>
-                
-                <div className="form-group">
-                  <label className="form-label" htmlFor="userType">نوع الاستخدام المستهدف</label>
-                  <select id="userType" className="form-input">
-                    <option value="personal">استخدام شخصي</option>
-                    <option value="insurance">شركة تأمين / معاينة</option>
-                    <option value="fleet">إدارة أسطول مركبات</option>
-                  </select>
-                </div>
-                
-                <button 
-                  type="submit" 
-                  className="btn btn-primary w-full mt-4" 
+
+                <button
+                  type="submit"
+                  className="form-submit"
                   disabled={status === 'submitting'}
-                  style={{ width: '100%' }}
                 >
-                  {status === 'submitting' ? 'جاري التسجيل...' : 'سجل في قائمة الانتظار'}
+                  {status === 'submitting' ? 'جاري التسجيل...' : 'سجّل الآن — مجاناً'}
                 </button>
-                <p className="text-xs text-center text-muted-foreground mt-4">
-                  لن نقوم بمشاركة بياناتك مع أي طرف ثالث.
+
+                <p className="form-privacy">
+                  🔒 لن نقوم بمشاركة بياناتك مع أي طرف ثالث.
                 </p>
               </form>
-            )}
-          </div>
-          
+            </>
+          )}
         </div>
       </div>
     </section>

@@ -16,7 +16,7 @@ const MOCK_POST_IMPACT = {
   factorsAr: [],
 };
 
-export const MOCK_REPORTS: AccidentReport[] = [
+const RAW_MOCK_REPORTS: AccidentReport[] = [
   {
     id: "demo_report_1",
     timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, // 2 days ago
@@ -239,6 +239,7 @@ export const MOCK_REPORTS: AccidentReport[] = [
   }
 ];
 
-MOCK_REPORTS.forEach(report => {
-  report.croquis = generateCroquis(report, report.otherParty);
-});
+export const MOCK_REPORTS: AccidentReport[] = RAW_MOCK_REPORTS.map(report => ({
+  ...report,
+  croquis: generateCroquis(report, report.otherParty ?? null),
+}));

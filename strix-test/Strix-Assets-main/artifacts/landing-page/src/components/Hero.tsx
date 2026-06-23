@@ -1,93 +1,104 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { ShieldAlert, CarFront, Activity } from 'lucide-react';
 
-export default function Hero() {
+interface HeroProps {
+  icon: string;
+}
+
+export default function Hero({ icon }: HeroProps) {
   return (
-    <section className="py-24 bg-gradient-primary">
-      <div className="container grid grid-cols-2 gap-12 items-center">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <h1 className="text-hero mb-4">
-            ستريكس <br />
-            <span className="text-gradient">أذكى نظام لرصد الحوادث</span>
+    <section className="hero">
+      <div className="hero-inner">
+        {/* Left: Text Content */}
+        <div>
+          <h1 className="hero-title reveal">
+            حوّل سيارتك<br />
+            إلى <span className="accent">منقذ</span>
           </h1>
-          <p className="text-subtitle mb-8">
-            حول هاتفك الذكي إلى جهاز متطور لرصد حوادث المركبات آلياً باستخدام الذكاء الاصطناعي. احصل على تقارير فنية دقيقة فور وقوع الحادث لدعم مطالبك التأمينية بثقة وشفافية.
+
+          <p className="hero-subtitle reveal reveal-delay-1">
+            ستركس يحوّل هاتفك إلى نظام ذكي لرصد الحوادث آلياً وتوثيقها بدقة عالية باستخدام المستشعرات، لتوثيق وقائع الحادث بثقة وشفافية.
           </p>
-          <div className="flex gap-4">
-            <button className="btn btn-primary">انضم لقائمة الانتظار</button>
-            <button className="btn btn-outline">اكتشف المزيد</button>
+
+          <div className="hero-actions reveal reveal-delay-2">
+            <a href="#join" className="btn-primary">
+              سجّل مبكراً — مجاناً
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+            <a href="#features" className="btn-ghost">
+              اكتشف الميزات
+            </a>
           </div>
-          
-          <div className="flex gap-8 mt-12 pt-8 border-t" style={{ borderColor: 'var(--border)'}}>
+
+          <div className="hero-stats reveal reveal-delay-3">
             <div>
-              <div className="text-title text-secondary">90%</div>
-              <div className="text-body text-sm">دقة في رصد نقاط التصادم</div>
+              <div className="hero-stat-value">90%</div>
+              <div className="hero-stat-label">دقة رصد نقطة التصادم</div>
             </div>
             <div>
-              <div className="text-title text-accent">10s</div>
-              <div className="text-body text-sm">تحليل ما قبل الاصطدام</div>
+              <div className="hero-stat-value">10s</div>
+              <div className="hero-stat-label">تحليل ما قبل الاصطدام</div>
             </div>
             <div>
-              <div className="text-title text-primary">16</div>
-              <div className="text-body text-sm">منطقة رصد في المركبة</div>
+              <div className="hero-stat-value">16</div>
+              <div className="hero-stat-label">منطقة رصد بالمركبة</div>
             </div>
           </div>
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative"
-        >
-          <div className="bg-muted p-8 rounded-3xl border border-border relative overflow-hidden" style={{ aspectRatio: '9/16', maxWidth: '300px', margin: '0 auto', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'}}>
-             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30px', background: 'var(--background)', display: 'flex', justifyContent: 'center', alignItems: 'center', borderBottom: '1px solid var(--border)'}}>
-                <div style={{ width: '60px', height: '6px', background: 'var(--border)', borderRadius: '10px'}}></div>
-             </div>
-             
-             <div className="mt-12 flex flex-col gap-4">
-                <div className="p-4 bg-background rounded-2xl border border-border shadow-sm flex items-center gap-4">
-                   <div className="p-3 bg-red-100 text-red-600 rounded-full" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' }}>
-                     <ShieldAlert size={24} />
-                   </div>
-                   <div>
-                     <div className="font-bold text-sm">تم رصد اصطدام قوي</div>
-                     <div className="text-xs text-muted-foreground">يتم تحليل البيانات الآن...</div>
-                   </div>
+        </div>
+
+        {/* Right: Phone Mockup */}
+        <div className="phone-wrap reveal reveal-delay-2">
+          <div className="phone-glow" />
+          <div className="phone">
+            <div className="phone-notch">
+              <div className="phone-notch-pill" />
+            </div>
+
+            <div style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border-subtle)' }}>
+              <img src={icon} alt="Strix" style={{ width: 22, height: 22, borderRadius: 6 }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--strix-green)' }}>Strix</span>
+            </div>
+
+            <div className="phone-content">
+              {/* Alert */}
+              <div className="phone-card phone-card-alert">
+                <div className="phone-alert-icon">🚨</div>
+                <div>
+                  <div className="phone-alert-title">تم رصد اصطدام قوي</div>
+                  <div className="phone-alert-sub">جاري تحليل البيانات...</div>
                 </div>
-                
-                <div className="p-4 bg-background rounded-2xl border border-border shadow-sm">
-                   <div className="flex items-center gap-3 mb-3">
-                     <CarFront className="text-secondary" size={20} />
-                     <span className="font-bold text-sm">نقطة التصادم: أمام يسار</span>
-                   </div>
-                   <div style={{ width: '100%', height: '120px', background: 'var(--muted)', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                      <span className="text-muted-foreground text-xs">رسم توضيحي للمركبة</span>
-                   </div>
+              </div>
+
+              {/* Car diagram */}
+              <div className="phone-card" style={{ padding: '0.75rem' }}>
+                <div className="phone-zone-label">منطقة الاصطدام: أمام يسار</div>
+                <div className="phone-car-diagram">
+                  <div className="car-icon">🚗</div>
+                  <div className="impact-dot" />
                 </div>
-                
-                <div className="p-4 bg-background rounded-2xl border border-border shadow-sm flex flex-col gap-2">
-                   <div className="flex justify-between items-center text-sm">
-                     <span className="flex items-center gap-2"><Activity size={16} className="text-muted-foreground" /> السرعة</span>
-                     <span className="font-bold text-red-500">85 كم/س</span>
-                   </div>
-                   <div className="flex justify-between items-center text-sm">
-                     <span className="flex items-center gap-2"><Activity size={16} className="text-muted-foreground" /> الانحراف</span>
-                     <span className="font-bold text-orange-500">حادة (يمين)</span>
-                   </div>
+              </div>
+
+              {/* Stats */}
+              <div className="phone-card" style={{ padding: '0.75rem' }}>
+                <div className="phone-stat-row">
+                  <span className="phone-stat-key">السرعة</span>
+                  <span className="phone-stat-val">85 km/h</span>
                 </div>
-                
-                <button className="btn btn-primary" style={{ width: '100%', marginTop: 'auto' }}>
-                  إصدار التقرير الفني
-                </button>
-             </div>
+                <div className="phone-stat-row">
+                  <span className="phone-stat-key">قوة الاصطدام</span>
+                  <span className="phone-stat-val">4.2g</span>
+                </div>
+                <div className="phone-stat-row">
+                  <span className="phone-stat-key">الفرملة قبل</span>
+                  <span className="phone-stat-val ok">✓ مُسجّلة</span>
+                </div>
+              </div>
+
+              <button className="phone-btn">إصدار التقرير الفني</button>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
