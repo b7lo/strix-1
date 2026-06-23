@@ -101,7 +101,6 @@ function Footer() {
 
         <div className="footer-bottom">
           <span>© 2026 Strix. جميع الحقوق محفوظة.</span>
-          <span>الرياض، المملكة العربية السعودية</span>
         </div>
       </div>
     </footer>
