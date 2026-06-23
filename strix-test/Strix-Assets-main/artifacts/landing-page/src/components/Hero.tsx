@@ -1,4 +1,5 @@
 import React from 'react';
+import { FileText, AlertTriangle } from 'lucide-react';
 
 interface HeroProps {
   icon: string;
@@ -48,8 +49,30 @@ export default function Hero({ icon }: HeroProps) {
         </div>
 
         {/* Right: Phone Mockup */}
-        <div className="phone-wrap reveal reveal-delay-2">
+        <div className="phone-wrap reveal reveal-delay-2" style={{ position: 'relative' }}>
           <div className="phone-glow" />
+
+          {/* Floating Elements */}
+          <div className="floating-card right">
+            <div className="floating-card-icon">
+              <FileText size={20} />
+            </div>
+            <div className="floating-card-text">
+              <div className="floating-card-title">تقرير الحادث.pdf</div>
+              <div className="floating-card-subtitle">جاهز للمشاركة</div>
+            </div>
+          </div>
+
+          <div className="floating-card left">
+            <div className="floating-card-icon red">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="floating-card-text">
+              <div className="floating-card-title">رصد تصادم قوي</div>
+              <div className="floating-card-subtitle">يتم الآن التحليل...</div>
+            </div>
+          </div>
+
           <div className="phone">
             <div className="phone-notch">
               <div className="phone-notch-pill" />

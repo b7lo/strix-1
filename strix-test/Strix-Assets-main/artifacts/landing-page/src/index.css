@@ -409,6 +409,97 @@ button { cursor: pointer; font-family: inherit; }
   50% { box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.08); }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes float-delay {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 var(--strix-green-glow-strong); }
+  70% { box-shadow: 0 0 0 10px rgba(29, 183, 104, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(29, 183, 104, 0); }
+}
+
+@keyframes pulse-ring-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.floating-card {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.875rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 10;
+  animation: float 4s ease-in-out infinite;
+  white-space: nowrap;
+}
+
+.floating-card.right {
+  top: 15%;
+  right: -25%;
+  animation: float-delay 5s ease-in-out infinite;
+}
+
+.floating-card.left {
+  bottom: 25%;
+  left: -25%;
+  animation: float 4.5s ease-in-out infinite;
+}
+
+@media (max-width: 768px) {
+  .floating-card {
+    display: none !important;
+  }
+}
+
+.floating-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--strix-green-glow);
+  color: var(--strix-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse-ring 2s infinite;
+}
+
+.floating-card-icon.red {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--destructive);
+  animation: pulse-ring-red 2s infinite;
+}
+
+.floating-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+.floating-card-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.floating-card-subtitle {
+  font-size: 0.7rem;
+  color: var(--foreground-muted);
+}
+
 .phone-alert-icon {
   width: 36px;
   height: 36px;
