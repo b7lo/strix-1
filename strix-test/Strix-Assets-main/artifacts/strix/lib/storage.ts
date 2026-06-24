@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { AccidentReport, Severity, AppSettings, ImpactZone } from "./types";
-export type { AppSettings } from "./types";
+import type { AccidentReport, Severity, AppSettings, ImpactZone, PendingSync } from "./types";
+export type { AppSettings, PendingSync } from "./types";
+
 
 const REPORTS_KEY = "@strix_reports_v3";
 const OLD_REPORTS_KEY = "@strix_reports_v2";
@@ -212,4 +213,22 @@ export async function getSettings(): Promise<AppSettings> {
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// ─── Sync Queue ───
+
+const SYNC_QUEUE_KEY = "@strix_sync_queue";
+
+export async function getSyncQueue(): Promise<PendingSync[]> {
+  try {
+    const data = await AsyncStorage.getItem(SYNC_QUEUE_KEY);
+    if (!data) return [];
+    return JSON.parse(data) as PendingSync[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveSyncQueue(queue: PendingSync[]): Promise<void> {
+  await AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
 }

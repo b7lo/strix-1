@@ -31,6 +31,7 @@ import { ReportsProvider } from "@/context/ReportsContext";
 import { SessionProvider } from "@/context/SessionContext";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { initI18n } from "@/lib/i18n";
+import { flushSyncQueue } from "@/lib/accidentSync";
 
 // Initialize background tasks early
 import "@/lib/backgroundTasks";
@@ -80,6 +81,7 @@ export default function RootLayout() {
   // Initialize i18n (device locale detection + SecureStore read) before render
   useEffect(() => {
     initI18n().then(() => setI18nReady(true));
+    flushSyncQueue().catch(console.error);
   }, []);
 
   useEffect(() => {

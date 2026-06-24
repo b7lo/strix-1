@@ -397,3 +397,10 @@ export const ZONE_LABELS_AR: Record<ImpactZone, string> = {
   "unknown":      "غير محدد",
 };
 
+export interface PendingSync {
+  id: string;
+  type: "upload" | "update" | "link";
+  payload: Record<string, unknown>;
+  retries: number;
+  createdAt: number;
+}

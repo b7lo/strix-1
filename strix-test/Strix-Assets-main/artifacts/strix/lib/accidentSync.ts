@@ -18,9 +18,10 @@
  */
 
 import { Platform } from "react-native";
-import type { AccidentReport, CrossVerifiedAnalysis } from "./types";
+import type { AccidentReport, CrossVerifiedAnalysis, PendingSync } from "./types";
 import { generateCrossVerifiedAnalysis } from "./crossVerification";
 import { haversineDistance } from "./geoUtils";
+import { getSyncQueue, saveSyncQueue } from "./storage";
 
 // ─── Sync Config ───
 const STRIX_API_URL = process.env.EXPO_PUBLIC_STRIX_API_URL || "";
@@ -211,67 +212,88 @@ export async function uploadAccident(report: AccidentReport): Promise<string | n
     throw new Error("Failed to extract ID from Supabase response");
   } catch (error) {
     console.warn("[Strix Sync] Upload failed, adding to offline queue", error);
-    await enqueueOfflineAccident(report);
+    await enqueueSyncTask("upload", report as unknown as Record<string, unknown>);
     return null;
   }
 }
 
-// ─── Offline Queue Logic (I-2) ───
+// ─── Sync Queue Logic (I-2) ───
 
-const OFFLINE_QUEUE_KEY = "@strix_offline_queue";
-
-export async function enqueueOfflineAccident(report: AccidentReport): Promise<void> {
+export async function enqueueSyncTask(
+  type: "upload" | "update" | "link",
+  payload: Record<string, unknown>
+): Promise<void> {
   try {
-    const AsyncStorage = require("@react-native-async-storage/async-storage").default;
-    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
-    const queue: AccidentReport[] = queueStr ? JSON.parse(queueStr) : [];
-    
-    // Check if already in queue to prevent duplicates
-    if (!queue.some(r => r.id === report.id)) {
-      queue.push(report);
-      await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
-      console.log(`[Strix Sync] Added accident ${report.id} to offline queue. Total: ${queue.length}`);
-    }
+    const queue = await getSyncQueue();
+    // Generate a unique ID for the task
+    const id = `task_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    queue.push({
+      id,
+      type,
+      payload,
+      retries: 0,
+      createdAt: Date.now(),
+    });
+    await saveSyncQueue(queue);
+    console.log(`[Strix Sync] Added ${type} task to queue. Total: ${queue.length}`);
   } catch (err) {
-    console.error("[Strix Sync] Failed to enqueue offline accident", err);
+    console.error("[Strix Sync] Failed to enqueue sync task", err);
   }
 }
 
-export async function processOfflineQueue(): Promise<void> {
+export async function flushSyncQueue(): Promise<void> {
   if (!isStrixApiConfigured() && !isSupabaseConfigured()) return;
   
   try {
-    const AsyncStorage = require("@react-native-async-storage/async-storage").default;
-    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
-    if (!queueStr) return;
-    
-    const queue: AccidentReport[] = JSON.parse(queueStr);
+    const queue = await getSyncQueue();
     if (queue.length === 0) return;
     
-    console.log(`[Strix Sync] Processing offline queue (${queue.length} items)...`);
-    const remainingQueue: AccidentReport[] = [];
+    console.log(`[Strix Sync] Flushing sync queue (${queue.length} tasks)...`);
+    const remainingQueue: typeof queue = [];
     
-    for (const report of queue) {
+    for (const task of queue) {
       try {
-        // Try to upload without enqueuing again if it fails
-        const uploadedId = await uploadAccidentDirect(report);
-        if (uploadedId) {
-          console.log(`[Strix Sync] Successfully synced offline accident: ${report.id}`);
-          // Also try to sync fault assessment if it exists
-          if (report.faultAssessment) {
-             await syncReportUpdate(report);
+        let success = false;
+        if (task.type === "upload") {
+          const report = task.payload as unknown as AccidentReport;
+          const uploadedId = await uploadAccidentDirect(report);
+          success = !!uploadedId;
+        } else if (task.type === "update") {
+          // payload should contain id and fields to update
+          const { id, ...fields } = task.payload as { id: string; [key: string]: unknown };
+          try {
+             await supabaseRequest(`accidents?id=eq.${id}`, "PATCH", fields);
+             success = true;
+          } catch (err) {
+             if ("cross_verified_id" in fields) {
+                const { cross_verified_id: _ignored, ...fallbackPayload } = fields;
+                try {
+                    await supabaseRequest(`accidents?id=eq.${id}`, "PATCH", fallbackPayload);
+                    success = true;
+                } catch (err2) {
+                    success = false;
+                }
+             } else {
+                success = false;
+             }
           }
+        }
+
+        if (success) {
+          console.log(`[Strix Sync] Successfully synced task: ${task.type}`);
         } else {
-          remainingQueue.push(report);
+          task.retries += 1;
+          if (task.retries < 5) remainingQueue.push(task); // Drop after 5 retries
         }
       } catch (err) {
-        remainingQueue.push(report);
+        task.retries += 1;
+        if (task.retries < 5) remainingQueue.push(task);
       }
     }
     
-    await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
+    await saveSyncQueue(remainingQueue);
   } catch (err) {
-    console.error("[Strix Sync] Failed to process offline queue", err);
+    console.error("[Strix Sync] Failed to flush sync queue", err);
   }
 }
 
@@ -636,14 +658,18 @@ async function patchAccidentRecord(
   try {
     await supabaseRequest(`accidents?id=eq.${accidentId}`, "PATCH", payload);
   } catch (err) {
-    if (!("cross_verified_id" in payload)) throw err;
-
-    const { cross_verified_id: _ignored, ...fallbackPayload } = payload;
-    await supabaseRequest(
-      `accidents?id=eq.${accidentId}`,
-      "PATCH",
-      fallbackPayload
-    );
+    if ("cross_verified_id" in payload) {
+      try {
+        const { cross_verified_id: _ignored, ...fallbackPayload } = payload;
+        await supabaseRequest(`accidents?id=eq.${accidentId}`, "PATCH", fallbackPayload);
+        return;
+      } catch (err2) {
+        console.warn(`[Strix Sync] Fallback patch failed, enqueuing...`);
+      }
+    } else {
+      console.warn(`[Strix Sync] Patch failed for ${accidentId}, enqueuing...`);
+    }
+    await enqueueSyncTask("update", { id: accidentId, ...payload });
   }
 }
 
