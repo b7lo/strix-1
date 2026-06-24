@@ -91,7 +91,6 @@ function Footer() {
             <div className="footer-link-group">
               <h4>تواصل</h4>
               <ul>
-                <li><a href="mailto:info@strix-app.com">info@strix-app.com</a></li>
                 <li><a href="#">سياسة الخصوصية</a></li>
                 <li><a href="#">الشروط والأحكام</a></li>
               </ul>
