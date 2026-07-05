@@ -12,12 +12,14 @@ import {
   FileBarChart,
   GitMerge,
   ShieldOff,
+  Users,
   RefreshCw,
 } from "lucide-react";
 import DashboardAccidents from "./DashboardAccidents";
 import DashboardAssessments from "./DashboardAssessments";
 import DashboardMatched from "./DashboardMatched";
 import DashboardFalseAlarms from "./DashboardFalseAlarms";
+import DashboardLeads from "./DashboardLeads";
 import StatsCards from "./StatsCards";
 import Charts from "./Charts";
 import { dashboardApi } from "../../lib/dashboard-api";
@@ -144,6 +146,10 @@ export default function DashboardHome() {
                       <ShieldOff className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">المرفوضة</span>
                     </TabsTrigger>
+                    <TabsTrigger value="leads" className="text-xs px-3 gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                      <Users className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">العملاء</span>
+                    </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -161,6 +167,9 @@ export default function DashboardHome() {
                 </TabsContent>
                 <TabsContent value="false-alarms" className="m-0 border-0 p-0 focus-visible:outline-none">
                   <DashboardFalseAlarms compact />
+                </TabsContent>
+                <TabsContent value="leads" className="m-0 border-0 p-0 focus-visible:outline-none">
+                  <DashboardLeads compact />
                 </TabsContent>
               </Tabs>
             </CardContent>

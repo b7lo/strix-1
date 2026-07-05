@@ -118,6 +118,27 @@ export const falseAlarmsTable = pgTable("false_alarms", {
     .defaultNow(),
 });
 
+// عملاء التسجيل المبكر (Leads) من صفحة الهبوط.
+// الأعمدة مطابقة لجدول Supabase الذي يكتب فيه الموقع مباشرةً (full_name/mobile/email).
+export const leadsTable = pgTable(
+  "leads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    fullName: varchar("full_name", { length: 200 }).notNull(),
+    mobile: varchar("mobile", { length: 40 }).notNull(),
+    email: varchar("email", { length: 200 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    createdAtIdx: index("leads_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export type InsertLead = typeof leadsTable.$inferInsert;
+export type Lead = typeof leadsTable.$inferSelect;
+
 export const crossVerifiedAnalysesTable = pgTable("cross_verified_analyses", {
   id: uuid("id").defaultRandom().primaryKey(),
   accidentAId: uuid("accident_a_id")

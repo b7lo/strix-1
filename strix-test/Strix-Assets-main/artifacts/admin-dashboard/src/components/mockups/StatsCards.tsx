@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { Activity, Shield, CheckCircle, FileText, AlertTriangle, Gauge, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Activity, Shield, CheckCircle, FileText, AlertTriangle, Gauge, Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { DashboardStats } from "../../types/dashboard";
 
 interface StatsCardsProps {
@@ -11,7 +11,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
   if (loading || !stats) {
     return (
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
           <Card key={i} className="shadow-sm border-border animate-pulse">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
@@ -28,6 +28,14 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
   }
 
   const cards = [
+    {
+      title: "العملاء المسجّلون",
+      value: Number(stats.totalLeads ?? 0).toLocaleString("ar-SA"),
+      trend: { value: 0, direction: "neutral" as const },
+      icon: Users,
+      iconBg: "bg-success/10",
+      iconColor: "text-success",
+    },
     {
       title: "إجمالي الحوادث",
       value: stats.totalAccidents,

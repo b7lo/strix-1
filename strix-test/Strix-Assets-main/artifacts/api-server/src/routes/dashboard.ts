@@ -5,6 +5,7 @@ import {
   falseAlarmsTable,
   crossVerifiedAnalysesTable,
   faultAssessmentsTable,
+  leadsTable,
 } from "@workspace/db/schema";
 import { desc, eq, isNotNull, sql, or } from "drizzle-orm";
 
@@ -47,6 +48,11 @@ router.get("/stats", async (req, res) => {
       .select({ avg: sql<number>`avg(${accidentsTable.peakGForce})` })
       .from(accidentsTable);
 
+    // عدد العملاء المسجّلين (Leads) من صفحة الهبوط
+    const totalLeadsResult = await db
+      .select({ count: sql<number>`cast(count(${leadsTable.id}) as int)` })
+      .from(leadsTable);
+
     // Group by severity
     const severityGroups = await db
       .select({
@@ -70,6 +76,7 @@ router.get("/stats", async (req, res) => {
       totalFalseAlarms: totalFalseAlarmsResult[0]?.count || 0,
       totalMatchedAccidents: totalMatchedAccidentsResult[0]?.count || 0,
       totalAssessments: totalAssessmentsResult[0]?.count || 0,
+      totalLeads: totalLeadsResult[0]?.count || 0,
       averageNajmDifference: averageNajmDifferenceResult[0]?.avg || null,
       averageGForce: averageGForceResult[0]?.avg || 0,
       accidentsBySeverity: severityGroups,
@@ -256,6 +263,43 @@ router.get("/false-alarms", async (req, res) => {
   } catch (error) {
     console.error("Failed to fetch false alarms", error);
     res.status(500).json({ error: "Failed to fetch false alarms" });
+  }
+});
+
+// GET /api/dashboard/leads — قائمة العملاء المسجّلين (اسم/جوال/إيميل)
+// تُخدَم من الخادم فقط (بيانات شخصية) — لا تُكشف عبر anon key العام.
+router.get("/leads", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = (page - 1) * limit;
+
+    const data = await db
+      .select({
+        id: leadsTable.id,
+        fullName: leadsTable.fullName,
+        mobile: leadsTable.mobile,
+        email: leadsTable.email,
+        createdAt: leadsTable.createdAt,
+      })
+      .from(leadsTable)
+      .orderBy(desc(leadsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const totalResult = await db
+      .select({ count: sql<number>`cast(count(${leadsTable.id}) as int)` })
+      .from(leadsTable);
+
+    res.json({
+      data,
+      total: totalResult[0]?.count || 0,
+      page,
+      limit,
+    });
+  } catch (error) {
+    console.error("Failed to fetch leads", error);
+    res.status(500).json({ error: "Failed to fetch leads" });
   }
 });
 

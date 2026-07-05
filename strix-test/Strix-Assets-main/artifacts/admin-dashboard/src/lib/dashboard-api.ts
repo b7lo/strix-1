@@ -4,6 +4,7 @@ import type {
   DashboardAssessment,
   DashboardMatched,
   DashboardFalseAlarm,
+  DashboardLead,
   PaginatedResponse,
 } from "../types/dashboard";
 
@@ -49,6 +50,15 @@ export const dashboardApi = {
   ): Promise<{ data: DashboardFalseAlarm[]; total: number }> => {
     const res = await fetch(`${API_BASE}/false-alarms?page=${page}&limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch false alarms");
+    return res.json();
+  },
+
+  getLeads: async (
+    page = 1,
+    limit = 20
+  ): Promise<PaginatedResponse<DashboardLead>> => {
+    const res = await fetch(`${API_BASE}/leads?page=${page}&limit=${limit}`);
+    if (!res.ok) throw new Error("Failed to fetch leads");
     return res.json();
   },
 };

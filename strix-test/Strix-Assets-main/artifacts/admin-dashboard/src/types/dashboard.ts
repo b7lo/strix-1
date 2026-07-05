@@ -3,6 +3,7 @@ export interface DashboardStats {
   totalFalseAlarms: number;
   totalMatchedAccidents: number;
   totalAssessments: number;
+  totalLeads: number;
   averageNajmDifference: number | null;
   averageGForce: number;
   accidentsBySeverity: { severity: string; count: number }[];
@@ -66,6 +67,14 @@ export interface DashboardFalseAlarm {
   reason: string;
   details: string | null;
   timestamp: string | null;
+}
+
+export interface DashboardLead {
+  id: string;
+  fullName: string;
+  mobile: string;
+  email: string | null;
+  createdAt: string;
 }
 
 export interface PaginatedResponse<T> {
