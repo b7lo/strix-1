@@ -27,24 +27,35 @@ export interface LeadInput {
 /** يُسجّل عميلًا جديدًا في جدول leads. يرمي خطأ عند الفشل ليعرضه النموذج. */
 export async function submitLead(input: LeadInput): Promise<void> {
   if (!isLeadsConfigured()) {
-    throw new Error("Supabase not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).");
+    // متغيّرات البيئة غير موجودة وقت البناء (شائع عند النشر على Cloudflare/Vercel
+    // بدون ضبط المتغيّرات ثم إعادة البناء).
+    throw new Error("MISSING_ENV");
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({
-      full_name: input.fullName.trim(),
-      mobile: input.mobile.trim(),
-      email: input.email?.trim() || null,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        full_name: input.fullName.trim(),
+        mobile: input.mobile.trim(),
+        email: input.email?.trim() || null,
+      }),
+    });
+  } catch (netErr) {
+    // فشل شبكي / CORS
+    throw new Error("NETWORK");
+  }
   if (!res.ok) {
-    throw new Error(`Lead submit failed: ${res.status}`);
+    const body = await res.text().catch(() => "");
+    // نطبع التفاصيل في الكونسول للتشخيص، ونرمي رمز الحالة للواجهة
+    console.error("[Strix] Lead submit failed:", res.status, body);
+    throw new Error(`HTTP_${res.status}`);
   }
 }
 

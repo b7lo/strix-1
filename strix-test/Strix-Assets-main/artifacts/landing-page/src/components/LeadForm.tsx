@@ -23,9 +23,22 @@ export default function LeadForm({ icon }: LeadFormProps) {
       setStatus('success');
       // نُبلغ بقية الصفحة أن عميلًا جديدًا سُجّل ليُحدّث العدّاد فورًا
       window.dispatchEvent(new CustomEvent('strix:lead-registered'));
-    } catch {
+    } catch (err) {
+      const code = err instanceof Error ? err.message : '';
+      let msg = 'تعذّر التسجيل الآن. حاول مرة أخرى لاحقًا.';
+      if (code === 'MISSING_ENV') {
+        msg = 'الإعداد ناقص: متغيّرات البيئة غير مضبوطة في النشر. أضِف VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY ثم أعِد البناء.';
+      } else if (code === 'HTTP_401' || code === 'HTTP_403') {
+        msg = 'الصلاحيات ترفض الإضافة (RLS). تأكد من سياسة INSERT للزائر (anon) على جدول leads.';
+      } else if (code === 'HTTP_404') {
+        msg = 'جدول leads غير موجود أو غير ظاهر في الـ API. تأكد من إنشائه في السكيمة public.';
+      } else if (code === 'NETWORK') {
+        msg = 'تعذّر الاتصال بـ Supabase (شبكة/رابط غير صحيح).';
+      } else if (code.startsWith('HTTP_')) {
+        msg = `تعذّر التسجيل (رمز ${code.replace('HTTP_', '')}). راجع الكونسول للتفاصيل.`;
+      }
       setStatus('error');
-      setErrorMsg('تعذّر التسجيل الآن. حاول مرة أخرى لاحقًا.');
+      setErrorMsg(msg);
     }
   };
 
