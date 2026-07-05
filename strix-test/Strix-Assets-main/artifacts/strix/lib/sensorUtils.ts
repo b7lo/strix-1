@@ -33,6 +33,22 @@ const BRAKING_DECEL_THRESHOLD = -0.3;
 const BRAKING_MIN_SAMPLES = 5;
 const MULTI_IMPACT_WINDOW_MS = 3000;
 const GYRO_SPIN_THRESHOLD = 150;
+// A-1: عدد العيّنات الدنيا للإحماء قبل تفعيل الكشف (تقارب الجاذبية)
+const WARMUP_SAMPLES = 60;
+// A-9: إغلاق الـ impulse — حد أقصى للمدة + إغلاق عند الهبوط النسبي عن القمة
+const IMPULSE_START_G = 1.5;
+const IMPULSE_END_G = 0.8;
+const IMPULSE_MAX_DURATION_MS = 400;
+const IMPULSE_CLOSE_FRACTION = 0.4; // أغلق إذا هبط دون 40% من القمة
+// A-5: أدنى دوران (deg/s) لاعتبار وجود محور مهيمن (≈ 0.5 rad/s، نفس عتبة النسخة السابقة)
+const DOMINANT_AXIS_MIN_DEG_S = 28.6;
+// A-2: عدد العيّنات المتتالية فوق العتبة لتأكيد الحادث (رفض السبايك المفرد الكاذب)
+const CRASH_CONFIRM_SAMPLES = 2;
+// عيّنة واحدة تتجاوز (العتبة × هذا المعامل) تُفعّل الكشف فورًا بلا انتظار عيّنتين.
+// = 1.0 يعني أي عيّنة فوق العتبة تُفعّل من أول ضربة (النبضات القصيرة قد لا تكمل
+// عيّنتين متتاليتين). الإنذارات الكاذبة يعالجها المستخدم عبر خانة "بلاغ كاذب"،
+// كما يبقى validateCrashWithGyro كفلتر يرفض الاهتزاز المستمر غير اللحظي.
+const CRASH_INSTANT_MULTIPLIER = 1.0;
 
 // ─── محركات الفلترة الذكية (v6) ───
 // ─── حالة عامة ───
@@ -91,7 +107,16 @@ export function getGravityVector(): { x: number; y: number; z: number } {
  *     → Y=يمين/يسار (حسب الاتجاه)، Z=أمام/خلف
  */
 
-function mapToVehicleFrame(vec: { x: number; y: number; z: number }): { vX: number; vY: number; vZ: number } {
+/**
+ * getLeveledFrame: التسوية بالجاذبية فقط (إطار الجوال المستوي) **قبل** تدوير
+ * الـ yaw نسبةً للسيارة. تُرجِع (vX, vY) في المستوى الأفقي و vZ على المحور
+ * الرأسي الحقيقي. هذا هو الإطار الذي يعمل فيه VehicleFrameEstimator (A-3).
+ *
+ * فُصِلت عن mapToVehicleFrame كي:
+ *  1) يستهلكها مُقدِّر الإطار (يحتاج المتجه قبل تدوير الـ yaw)، و
+ *  2) يبقى mapToVehicleFrame = getLeveledFrame ثم applyYawOffset (سلوك مطابق).
+ */
+export function getLeveledFrame(vec: { x: number; y: number; z: number }): { vX: number; vY: number; vZ: number } {
   const orientation = getPhoneOrientation();
   const gx = sensorEngine.gravityEstimate.x;
   const gy = sensorEngine.gravityEstimate.y;
@@ -128,20 +153,58 @@ function mapToVehicleFrame(vec: { x: number; y: number; z: number }): { vX: numb
       return { vX, vY, vZ };
     }
     case 'landscape': {
-      // UP is X. Lateral is Y. 
+      // UP is X. Lateral is Y.
       const latY = gx > 0 ? -1 : 1;
       const fMag = Math.sqrt(uZ*uZ + uX*uX);
       const vX = gx > 0 ? -vec.y : vec.y;
-      if (fMag < 0.1) return { vX, vY: -vec.z, vZ: vec.x * uX + vec.y * uY + vec.z * uZ };
-      
+      if (fMag < 0.1) {
+        return { vX, vY: -vec.z, vZ: vec.x * uX + vec.y * uY + vec.z * uZ };
+      }
+
       const fX = -uZ * latY / fMag;
       const fZ = uX * latY / fMag;
-      
+
       const vY = vec.x * fX + vec.z * fZ;
       const vZ = vec.x * uX + vec.y * uY + vec.z * uZ;
       return { vX, vY, vZ };
     }
+    default:
+      return { vX: vec.x, vY: vec.y, vZ: vec.z };
   }
+}
+
+/**
+ * تحويل التسارع من إطار الجهاز إلى إطار المركبة الكامل:
+ *   = getLeveledFrame (تسوية بالجاذبية) ثم applyYawOffset (تدوير yaw نسبةً للسيارة).
+ * عند phoneYawOffset=0 (غير معاير) فإن applyYawOffset = هوية → سلوك مطابق للسابق.
+ */
+function mapToVehicleFrame(vec: { x: number; y: number; z: number }): { vX: number; vY: number; vZ: number } {
+  const lf = getLeveledFrame(vec);
+  const r = applyYawOffset(lf.vX, lf.vY); // A-3
+  return { vX: r.vX, vY: r.vY, vZ: lf.vZ };
+}
+
+/**
+ * A-3: تدوير المركّبتين الأفقيتين (يمين/أمام) بإزاحة دوران الجوال نسبةً للسيارة.
+ * عند phoneYawOffset=0 (غير معاير) تُعيد القيم كما هي → لا تغيير في السلوك.
+ */
+function applyYawOffset(vX: number, vY: number): { vX: number; vY: number } {
+  const o = sensorEngine.phoneYawOffset;
+  if (!o) return { vX, vY };
+  const c = Math.cos(o);
+  const s = Math.sin(o);
+  return { vX: vX * c - vY * s, vY: vX * s + vY * c };
+}
+
+/**
+ * A-5: معدّل الدوران حول المحور الرأسي (yaw) بوحدة rad/s.
+ * يُحسب كإسقاط متجه السرعة الزاوية على متجه الجاذبية المُطبّع (الأعلى الحقيقي).
+ * هذا صحيح رياضياً بغضّ النظر عن وضعية الجوال (بخلاف mapToVehicleFrame المخصّص للتسارع).
+ */
+function gyroYawRateRad(g: { x: number; y: number; z: number }): number {
+  const grav = sensorEngine.gravityEstimate;
+  const m = Math.sqrt(grav.x * grav.x + grav.y * grav.y + grav.z * grav.z) || 1;
+  return (g.x * grav.x + g.y * grav.y + g.z * grav.z) / m;
 }
 
 
@@ -223,7 +286,9 @@ class TimeWindowBuffer<T extends { ts: number }> {
 // ─── حالة Impulse (v6) ───
 // ─── حالة Frequency (v6) ───
 export class SensorEngine {
-  kalmanAccel = new KalmanFilter3D(0.008, 0.1);
+  // ملاحظة: أُزيل kalmanAccel — كان يُنشأ ويُكيَّف (adaptToSpeed/adaptToRoadType)
+  // لكن .update() لم يُستدعَ عليه قط، فلم يكن يؤثّر على أي قيمة كشف (شيفرة ميتة
+  // + هدر حوسبة ~50/ث). الكشف يعتمد على الخام منزوع الجاذبية (انظر A-2).
   kalmanGyro = new KalmanFilter3D(0.005, 0.08);
   adaptiveBaseline = new AdaptiveBaseline();
   freqSeparator = new FrequencySeparator();
@@ -241,7 +306,8 @@ export class SensorEngine {
   peakYaw = 0;
   peakPitch = 0;
   peakRoll = 0;
-  gyroHistory = new TimeWindowBuffer<{ x: number; y: number; z: number; ts: number }>(400);
+  // A-4: السعة تكفي 6 ثوانٍ عند 100Hz (600 عيّنة) مع هامش
+  gyroHistory = new TimeWindowBuffer<{ x: number; y: number; z: number; ts: number }>(700);
 
   impactTimestamps: number[] = [];
 
@@ -252,6 +318,15 @@ export class SensorEngine {
 
   lastFreqImpulsive = false;
 
+  // A-2: عدّاد العيّنات المتتالية فوق العتبة (debounce لرفض السبايك المفرد)
+  crashCandidateStreak = 0;
+
+  // A-3: إزاحة دوران الجوال حول المحور الرأسي نسبةً للسيارة (راديان).
+  // 0 = لا معايرة (السلوك الافتراضي). تُضبط عبر setPhoneYawOffset عند توفّر مصدر اتجاه.
+  phoneYawOffset = 0;
+  phoneYawCalibrated = false;
+
+  // A-4: السعة تكفي 5 ثوانٍ عند 100Hz مع هامش واسع
   ringBuffer = new TimeWindowBuffer<RingSample>(1000);
 }
 
@@ -279,6 +354,10 @@ export interface FilteredReading {
 export function setSampleRate(hz: number): void {
   sensorEngine.sampleRateHz = Math.max(10, Math.min(100, hz));
   sensorEngine.ringBufferSize = BUFFER_DURATION_SEC * sensorEngine.sampleRateHz;
+  // A-4: أعد بناء المحركات المعتمدة على المعدل بالمعدل الحقيقي
+  // (FrequencySeparator: قطع التردد/alpha، AdaptiveBaseline: عتبة الاستقرار)
+  sensorEngine.freqSeparator = new FrequencySeparator(sensorEngine.sampleRateHz);
+  sensorEngine.adaptiveBaseline = new AdaptiveBaseline(5, sensorEngine.sampleRateHz);
 }
 
 export function getSampleRate(): number {
@@ -287,49 +366,69 @@ export function getSampleRate(): number {
 
 export function updateCurrentSpeed(speedKmh: number): void {
   sensorEngine.currentSpeedKmh = Math.max(0, speedKmh);
-  sensorEngine.kalmanAccel.adaptToSpeed(sensorEngine.currentSpeedKmh);
 }
 
-// ─── فلتر الإشارة (v6: Kalman) ───
+// ─── فلتر الإشارة (A-2 مُصحّح: قمة صادقة بلا تنعيم) ───
 
 /**
- * v7.2: Kalman Filter + إزالة الجاذبية
- * ─ Kalman يزيل الضوضاء العشوائية مع الحفاظ على الإشارة الحقيقية
- * ─ طرح sensorEngine.gravityEstimate يعطي تسارع المستخدم الصافي (بدون جاذبية)
+ * A-2 (مُصحّح): التسارع الصافي = الخام - الجاذبية، **بلا أي تنعيم**.
  *
- * ملاحظة: الكود يستخدم Accelerometer (يشمل الجاذبية بوحدة g)
- * وليس DeviceMotion.acceleration (بدون جاذبية بوحدة m/s²).
- * لذلك لازم نطرح الجاذبية يدوياً للحصول على قوة الصدمة الصافية.
+ * لماذا أزلنا median-of-3؟
+ *  الصدمة الحقيقية على الجوال تتذبذب (ترتد)، فتكون القمة أحياناً عيّنة معزولة
+ *  محاطة بقيم أقل مثل [1, 9, 1]. الـ median يختار الوسط (1) فيقتل القمة الحقيقية
+ *  → كانت قوة الـ G تنهار إلى 0.1–0.5 رغم أن الصدمة قوية.
+ *
+ *  الحل: نُبقي القمة صادقة تماماً (بلا تنعيم)، ونرفض السبايك المفرد الكاذب
+ *  عبر اشتراط عيّنتين متتاليتين فوق العتبة في التفعيل (registerThresholdCrossing).
+ *
+ * ملاحظة الوحدات: Accelerometer بوحدة g ويشمل الجاذبية، لذا نطرح gravityEstimate
+ * (المُقدّر بفلتر EMA بطيء) للحصول على قوة الصدمة الصافية.
  */
 export function applyHighPassFilter(raw: {
   x: number; y: number; z: number;
 }): FilteredReading {
-  // تحديث تقدير الجاذبية (فلتر بطيء جداً alpha=0.05)
-  // يتتبع اتجاه الجاذبية بثبات بدون ما يتأثر بالصدمات المفاجئة
+  // تحديث تقدير الجاذبية (EMA بطيء alpha=0.05) — لا يتأثر بالصدمات المفاجئة
   updateGravityEstimate(raw);
 
-  // Kalman: تنظيف الضوضاء العشوائية
-  const smoothed = sensorEngine.kalmanAccel.update(raw);
-
-  // v7.2 FIX: إزالة الجاذبية للحصول على التسارع الصافي
-  // بدون هذا الطرح: الجوال الثابت يقرأ ~1g (جاذبية الأرض)
-  // مع الطرح: الجوال الثابت يقرأ ~0g (لا حركة = لا قوة)
-  // هذا يصلح:
-  //   1. اتجاه الصدمة — بدون تشويش الجاذبية على المحاور
-  //   2. قوة الصدمة — تمثل القوة الحقيقية للاصطدام فقط
-  //   3. تحليل الفرملة — يقيس التباطؤ الفعلي بدون انحياز
   return {
-    x: smoothed.x - sensorEngine.gravityEstimate.x,
-    y: smoothed.y - sensorEngine.gravityEstimate.y,
-    z: smoothed.z - sensorEngine.gravityEstimate.z,
+    x: raw.x - sensorEngine.gravityEstimate.x,
+    y: raw.y - sensorEngine.gravityEstimate.y,
+    z: raw.z - sensorEngine.gravityEstimate.z,
   };
+}
+
+/**
+ * A-2: رفض الضوضاء على مستوى التفعيل بدل تشويه القمة.
+ * يتطلب CRASH_CONFIRM_SAMPLES عيّنات متتالية فوق العتبة لتأكيد الحادث.
+ * @returns true عند تأكيد التجاوز المتتالي (جاهز للتحليل)
+ */
+export function registerThresholdCrossing(aboveThreshold: boolean): boolean {
+  if (aboveThreshold) {
+    sensorEngine.crashCandidateStreak++;
+  } else {
+    sensorEngine.crashCandidateStreak = 0;
+  }
+  return sensorEngine.crashCandidateStreak >= CRASH_CONFIRM_SAMPLES;
+}
+
+/** A-2: إعادة ضبط عدّاد تأكيد الصدمة (بعد تحليل حادث أو إلغاء) */
+export function resetCrashStreak(): void {
+  sensorEngine.crashCandidateStreak = 0;
+}
+
+/**
+ * صدمة قوية فورية: هل تتجاوز العيّنة الواحدة (العتبة × CRASH_INSTANT_MULTIPLIER)؟
+ * تُستخدم لتفعيل الكشف من أول ضربة قوية جدًا دون انتظار عيّنتين متتاليتين،
+ * مع إبقاء الـ debounce للتجاوزات الحدّية (رفض الضوضاء والنقرات الخفيفة).
+ */
+export function isInstantStrongCrash(gForce: number, adaptiveThreshold: number): boolean {
+  return gForce >= adaptiveThreshold * CRASH_INSTANT_MULTIPLIER;
 }
 
 // ─── فلتر الإشارة الحقيقي (v6) ───
 
 
 export function resetFilter(): void {
-  sensorEngine.kalmanAccel.reset();
   sensorEngine.kalmanGyro.reset();
   sensorEngine.adaptiveBaseline.reset();
   sensorEngine.freqSeparator.reset();
@@ -337,11 +436,12 @@ export function resetFilter(): void {
   sensorEngine.lastSampleTs = 0;
   sensorEngine.jerkAccumPeak = 0;
   sensorEngine.ringBuffer.length = 0;
+  sensorEngine.crashCandidateStreak = 0;
   sensorEngine.peakRotationRate = 0;
   sensorEngine.peakYaw = 0;
   sensorEngine.peakPitch = 0;
   sensorEngine.peakRoll = 0;
-  sensorEngine.gyroHistory = new TimeWindowBuffer<{ x: number; y: number; z: number; ts: number }>(400);
+  sensorEngine.gyroHistory = new TimeWindowBuffer<{ x: number; y: number; z: number; ts: number }>(700);
   sensorEngine.impactTimestamps = [];
   sensorEngine.impulseStartTs = 0;
   sensorEngine.impulseActive = false;
@@ -350,6 +450,7 @@ export function resetFilter(): void {
   sensorEngine.lastFreqImpulsive = false;
   sensorEngine.currentSpeedKmh = 0;
   sensorEngine.gravityEstimate = { x: 0, y: -1, z: 0 };
+  // ملاحظة: لا نعيد ضبط phoneYawOffset هنا — المعايرة تبقى عبر الجلسات إن وُجدت
 }
 
 export function resetGyroPeaks(): void {
@@ -384,25 +485,26 @@ export function recordSample(
 
   // v6: Adaptive Baseline
   sensorEngine.adaptiveBaseline.addSample(gForce);
-  
-  // v8 (I-1): التكيف التلقائي لضوضاء العملية بناءً على نوع الطريق
-  const roadType = sensorEngine.adaptiveBaseline.getRoadType();
-  sensorEngine.kalmanAccel.adaptToRoadType(roadType);
 
   // v6: Frequency Analysis
   const freq = sensorEngine.freqSeparator.analyze(gForce);
   sensorEngine.lastFreqImpulsive = freq.isImpulsive;
 
-  // v6: Impulse Duration Tracking
-  if (gForce > 1.5 && !sensorEngine.impulseActive) {
+  // v6: Impulse Duration Tracking (A-9: إغلاق محسّن)
+  if (gForce > IMPULSE_START_G && !sensorEngine.impulseActive) {
     sensorEngine.impulseActive = true;
     sensorEngine.impulseStartTs = now;
     sensorEngine.impulsePeakG = gForce;
   } else if (sensorEngine.impulseActive) {
     if (gForce > sensorEngine.impulsePeakG) sensorEngine.impulsePeakG = gForce;
-    if (gForce < 0.8) {
-      // الصدمة انتهت
-      sensorEngine.lastImpulseDurationMs = now - sensorEngine.impulseStartTs;
+    const elapsed = now - sensorEngine.impulseStartTs;
+    const droppedBelowAbsolute = gForce < IMPULSE_END_G;
+    const droppedRelativeToPeak = gForce < sensorEngine.impulsePeakG * IMPULSE_CLOSE_FRACTION;
+    const exceededMaxDuration = elapsed >= IMPULSE_MAX_DURATION_MS;
+    // أغلق الصدمة عند أي شرط: هبوط مطلق، أو هبوط نسبي عن القمة، أو تجاوز المدة القصوى
+    // (يمنع المناورات المستمرة من تضخيم lastImpulseDurationMs وإفساد تصنيف نوع المركبة)
+    if (droppedBelowAbsolute || droppedRelativeToPeak || exceededMaxDuration) {
+      sensorEngine.lastImpulseDurationMs = Math.min(elapsed, IMPULSE_MAX_DURATION_MS);
       sensorEngine.impulseActive = false;
     }
   }
@@ -449,43 +551,44 @@ export function recordGyroscopeSample(gyro: { x: number; y: number; z: number })
 export function getGyroscopeSnapshot(): GyroscopeSnapshot {
   const spinDetected = sensorEngine.peakRotationRate > GYRO_SPIN_THRESHOLD;
 
-  let maxX = 0, maxY = 0, maxZ = 0;
-  let highRollCount = 0;
-  let highPitchCount = 0;
+  // A-5: نحسب الدوران الرأسي (yaw) كإسقاط على متجه الجاذبية،
+  // والدوران الأفقي كالمقدار المتعامد معه. كل القيم تُخرَج بـ deg/s
+  // (يصحّح خطأ وحدات سابق: كان يُخرج rad/s بينما محرك المسؤولية يتوقّع deg/s).
+  let maxYawDeg = 0;     // الدوران حول المحور الرأسي
+  let maxHorizDeg = 0;   // الدوران الأفقي (pitch+roll مجتمعين — لا يمكن فصلهما بثقة)
+  let highHorizCount = 0;
 
   sensorEngine.gyroHistory.forEach(s => {
-    // Project gyro into true vehicle axes
-    const veh = mapToVehicleFrame(s);
-    
-    // vX: Pitch Rate, vY: Roll Rate, vZ: Yaw Rate
-    maxX = Math.max(maxX, Math.abs(veh.vX));
-    maxY = Math.max(maxY, Math.abs(veh.vY));
-    maxZ = Math.max(maxZ, Math.abs(veh.vZ));
-    
-    // Use 2.0 rad/s (~115 deg/s) as realistic vehicle rollover threshold
-    if (Math.abs(veh.vY) > 2.0) highRollCount++;
-    if (Math.abs(veh.vX) > 2.0) highPitchCount++;
+    const yawRad = gyroYawRateRad(s);
+    const total = Math.sqrt(s.x * s.x + s.y * s.y + s.z * s.z);
+    const horizRad = Math.sqrt(Math.max(0, total * total - yawRad * yawRad));
+    const yawDeg = Math.abs(yawRad) * (180 / Math.PI);
+    const horizDeg = horizRad * (180 / Math.PI);
+    if (yawDeg > maxYawDeg) maxYawDeg = yawDeg;
+    if (horizDeg > maxHorizDeg) maxHorizDeg = horizDeg;
+    // ~2.0 rad/s (~115°/s) دوران أفقي مستدام = مؤشّر انقلاب واقعي
+    if (horizRad > 2.0) highHorizCount++;
   });
 
+  // dominantAxis: نميّز فقط بين الرأسي (yaw) والأفقي (نمثّله كـ "roll").
+  // فصل pitch عن roll غير موثوق بدون معرفة اتجاه الجوال نسبةً للسيارة.
   let dominantAxis: GyroscopeSnapshot["dominantAxis"] = "none";
-  const maxAll = Math.max(maxX, maxY, maxZ);
-  if (maxAll > 0.5) {
-    if (maxZ === maxAll) dominantAxis = "yaw";
-    else if (maxX === maxAll) dominantAxis = "pitch";
-    else dominantAxis = "roll";
+  const maxAll = Math.max(maxYawDeg, maxHorizDeg);
+  if (maxAll > DOMINANT_AXIS_MIN_DEG_S) {
+    dominantAxis = maxYawDeg >= maxHorizDeg ? "yaw" : "roll";
   }
 
-  // Require sustained roll over multiple samples
-  const rolloverDetected = highRollCount > 4 || highPitchCount > 4;
+  // يتطلب دوراناً أفقياً مستداماً عبر عدة عيّنات لتأكيد الانقلاب
+  const rolloverDetected = highHorizCount > 4;
 
-    return {
+  return {
     peakRotationRate: sensorEngine.peakRotationRate,
     spinDetected,
     dominantAxis,
     rolloverDetected,
-    pitchRate: maxX,
-    rollRate: maxY,
-    yawRate: maxZ,
+    pitchRate: 0,            // لا يمكن فصله بثقة — نتركه 0 بدل قيمة مضلّلة
+    rollRate: maxHorizDeg,   // الدوران الأفقي الكلي (deg/s)
+    yawRate: maxYawDeg,      // deg/s
   };
 }
 
@@ -549,11 +652,47 @@ export function getRoadType(): "smooth" | "normal" | "rough" { return sensorEngi
 export function getImpulseDurationMs(): number { return sensorEngine.lastImpulseDurationMs; }
 
 /**
+ * A-1: هل المحرك جاهز للكشف؟
+ * يمنع الإيجابيات الكاذبة في أول ثوانٍ قبل تقارب تقدير الجاذبية واستقرار الـ baseline.
+ */
+export function isEngineReady(): boolean {
+  return sensorEngine.adaptiveBaseline.isSettled()
+    && sensorEngine.ringBuffer.length >= WARMUP_SAMPLES;
+}
+
+/**
+ * A-3: ضبط إزاحة دوران الجوال حول المحور الرأسي نسبةً للسيارة (راديان).
+ * يُستدعى من طبقة مصدر الاتجاه (GPS course / Magnetometer) عند توفّرها.
+ * بدون استدعائها، تبقى الإزاحة 0 (= السلوك الافتراضي بلا تدوير).
+ */
+export function setPhoneYawOffset(offsetRad: number): void {
+  if (!Number.isFinite(offsetRad)) return;
+  sensorEngine.phoneYawOffset = offsetRad;
+  sensorEngine.phoneYawCalibrated = true;
+}
+
+export function getPhoneYawOffset(): number { return sensorEngine.phoneYawOffset; }
+
+/** A-3: هل تمت معايرة اتجاه الجوال نسبةً للسيارة؟ (تُستخدم لتقييد الثقة بصدق) */
+export function isDirectionCalibrated(): boolean { return sensorEngine.phoneYawCalibrated; }
+
+/**
  * v7: تصدير تاريخ الجيروسكوب للتحليل المتقدم
  * يُستخدم في Module 1 (Angular Stability) و Module 3 (Road Context)
  */
 export function getGyroHistory(): readonly { x: number; y: number; z: number; ts: number }[] {
   return sensorEngine.gyroHistory.toArray();
+}
+
+/**
+ * A-3 (دمج الحساسات): معدل الدوران الرأسي (yaw) اللحظي لآخر عيّنة جيروسكوب
+ * بوحدة deg/s. يُستخدم كبوّابة في VehicleFrameEstimator لرفض المعايرة أثناء
+ * الانعطاف (نعاير فقط أثناء السير المستقيم).
+ */
+export function getLatestGyroYawRateDegS(): number {
+  const last = sensorEngine.gyroHistory.getLast();
+  if (!last) return 0;
+  return Math.abs(gyroYawRateRad(last)) * (180 / Math.PI);
 }
 
 /**
@@ -672,9 +811,8 @@ function getWindowedYaw(): { yawDeg: number; hasData: boolean } {
 
   sensorEngine.gyroHistory.forEach(s => {
     if (s.ts >= windowStart) {
-      // Map to vehicle frame to get true yaw
-      const veh = mapToVehicleFrame(s);
-      const yaw = Math.abs(veh.vZ) * (180 / Math.PI);
+      // A-5: yaw الحقيقي = إسقاط على الجاذبية (deg/s)
+      const yaw = Math.abs(gyroYawRateRad(s)) * (180 / Math.PI);
       if (yaw > maxYaw) maxYaw = yaw;
     }
   });

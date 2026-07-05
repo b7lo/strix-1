@@ -46,7 +46,7 @@ export function ReportsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>({
     crashThresholdG: 2.0,
     autoAlertEnabled: true,
-    sampleRateHz: 50,
+    sampleRateHz: 100,
     gyroscopeEnabled: true,
     gyroscopeThreshold: 80,
   });

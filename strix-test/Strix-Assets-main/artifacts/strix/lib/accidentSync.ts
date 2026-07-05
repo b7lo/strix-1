@@ -186,6 +186,14 @@ export async function uploadAccident(report: AccidentReport): Promise<string | n
     return apiResult.id;
   }
 
+  // Idempotency: لا نُدرج نفس الحادث مرتين (قد يُعاد الرفع من قائمة الأوفلاين).
+  // نبحث عن سجل بنفس local_id أولًا؛ إن وُجد نُرجِع معرّفه بدل إدراج مكرّر.
+  const existingId = await findExistingAccidentId(report.id);
+  if (existingId) {
+    lastSyncBackend = "supabase";
+    return existingId;
+  }
+
   const record = {
     local_id: report.id,
     device_id: getDeviceId(),
@@ -301,6 +309,10 @@ export async function flushSyncQueue(): Promise<void> {
  * Internal helper to upload directly without re-queueing on failure
  */
 async function uploadAccidentDirect(report: AccidentReport): Promise<string | null> {
+  // Idempotency: تفادَ الإدراج المكرّر عند إعادة المحاولة من قائمة الأوفلاين.
+  const existingId = await findExistingAccidentId(report.id);
+  if (existingId) return existingId;
+
   const record = {
     local_id: report.id,
     device_id: getDeviceId(),
@@ -625,6 +637,25 @@ export async function findMatchingAccident(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Idempotency helper: يبحث عن حادث مرفوع مسبقًا بنفس local_id ويُرجِع معرّفه (UUID)
+ * أو null. يمنع تكرار السجلات عند إعادة الرفع (قائمة الأوفلاين / إعادة المحاولة).
+ * أي فشل → null (نكمل بالإدراج العادي، لا نكسر المسار).
+ */
+async function findExistingAccidentId(localId: string): Promise<string | null> {
+  if (!isSupabaseConfigured() || !localId) return null;
+  try {
+    const params = `local_id=eq.${encodeURIComponent(localId)}&select=id&limit=1`;
+    const result = await supabaseRequest("accidents", "GET", undefined, params);
+    if (Array.isArray(result) && result.length > 0 && typeof result[0].id === "string") {
+      return result[0].id as string;
+    }
+  } catch {
+    /* تجاهل — سنكمل بالإدراج العادي */
+  }
+  return null;
 }
 
 /**

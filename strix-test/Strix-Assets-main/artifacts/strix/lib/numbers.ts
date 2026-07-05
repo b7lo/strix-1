@@ -64,7 +64,8 @@ export function formatTimestamp(
   locale: "ar" | "en" = "en",
   options?: Intl.DateTimeFormatOptions
 ): string {
-  const localeTag = locale === "ar" ? "ar-SA" : "en-US";
+  // التقويم الميلادي دائماً (مع أسماء الأشهر بالعربية في الواجهة العربية)
+  const localeTag = locale === "ar" ? "ar-SA-u-ca-gregory" : "en-US";
   const defaultOptions: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
@@ -72,20 +73,20 @@ export function formatTimestamp(
     minute: "2-digit",
     ...options,
   };
-  return new Date(timestamp).toLocaleString(localeTag, defaultOptions);
+  return toWesternNumerals(new Date(timestamp).toLocaleString(localeTag, defaultOptions));
 }
 
 export function formatDateOnly(
   timestamp: number,
   locale: "ar" | "en" = "en"
 ): string {
-  const localeTag = locale === "ar" ? "ar-SA" : "en-US";
-  return new Date(timestamp).toLocaleDateString(localeTag, {
+  const localeTag = locale === "ar" ? "ar-SA-u-ca-gregory" : "en-US";
+  return toWesternNumerals(new Date(timestamp).toLocaleDateString(localeTag, {
     weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
+  }));
 }
 
 export function formatTimeOnly(
@@ -93,12 +94,14 @@ export function formatTimeOnly(
   locale: "ar" | "en" = "en"
 ): string {
   const localeTag = locale === "ar" ? "ar-SA" : "en-US";
-  return new Date(timestamp).toLocaleTimeString(localeTag, {
+  return toWesternNumerals(new Date(timestamp).toLocaleTimeString(localeTag, {
     hour: "2-digit",
     minute: "2-digit",
-  });
+  }));
 }
 
 export function getNumeralSystem(locale: "ar" | "en"): NumeralSystem {
-  return locale === "ar" ? "arabic" : "western";
+  // التطبيق يعرض الأرقام بالصيغة الإنجليزية (الغربية) دائماً في كل الشاشات،
+  // بما في ذلك واجهة اللغة العربية.
+  return "western";
 }

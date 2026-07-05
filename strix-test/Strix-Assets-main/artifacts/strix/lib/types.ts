@@ -138,6 +138,26 @@ export interface AccidentReport {
   isFalseAlarm?: boolean;
   falseAlarmReason?: string;
   falseAlarmDetails?: string;
+
+  // ─── A-6: شفافية المسؤولية المرتبطة بالثقة ───
+  /** نسبة الخطأ الخام قبل التقريب للسلّم القانوني */
+  liabilityRaw?: number;
+  /** هل النتيجة قاطعة (ثقة عالية + اتجاه معروف ومعاير)؟ */
+  liabilityConclusive?: boolean;
+  /** نطاق المسؤولية عند عدم القطعية [أدنى, أعلى] */
+  liabilityRange?: [number, number];
+  /** هل عُوير اتجاه الجوال نسبةً للسيارة لحظة الحادث؟ */
+  directionCalibrated?: boolean;
+
+  // ─── طبقة جودة البيانات (مستقلة عن المسؤولية) + دمج الحساسات (A-3) ───
+  /** درجة جودة الأدلة 0..100 (DataQuality) */
+  dataQualityScore?: number;
+  /** مستوى الجودة المشتق */
+  dataQualityLevel?: "high" | "medium" | "low";
+  /** قيود صريحة أضعفت الثقة (مفاتيح i18n) */
+  dataQualityLimitations?: string[];
+  /** ثقة معايرة اتجاه الجوال نسبةً للسيارة لحظة الحادث (0..100) */
+  directionCalibrationConfidence?: number;
 }
 
 /**
@@ -160,13 +180,19 @@ export interface CrossVerifiedAnalysis {
 }
 
 /**
- * تقييم نسبة المسؤولية ومقارنتها بتقرير نجم
+ * تقييم نسبة المسؤولية ومقارنتها بتقرير الجهة الرسمية
  */
+export type AuthoritySource = "najm" | "saudi_traffic" | "other";
+
 export interface FaultAssessment {
   appLiability: number; // 100, 75, 50, 25
-  najmLiability: number; // 100, 75, 50, 25
+  najmLiability: number; // نسبة الخطأ حسب التقرير الرسمي: 100, 75, 50, 25
   liabilityDifference: number;
   userDescription?: string;
+  /** الجهة المُصدِرة للتقرير الرسمي */
+  authoritySource?: AuthoritySource;
+  /** اسم الجهة عند اختيار "أخرى" */
+  authorityOther?: string;
   createdAt: number;
 }
 

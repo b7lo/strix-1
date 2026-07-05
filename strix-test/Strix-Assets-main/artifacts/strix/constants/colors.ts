@@ -11,7 +11,7 @@ const colors = {
     secondary: "#E8EDE8",         // Light Gray
     secondaryForeground: "#111411",
     muted: "#E8EDE8",
-    mutedForeground: "#8A9A8A",   // Mid Gray
+    mutedForeground: "#5F6B5F",   // U-5: غُمّق من #8A9A8A ليجتاز تباين WCAG AA على الأبيض
     accent: "#0d8a49",            // Deep Green
     accentForeground: "#FFFFFF",
     destructive: "#FF3B30",       // Critical Red
@@ -23,6 +23,11 @@ const colors = {
     warning: "#FF9500",           // Warning Orange
     warningForeground: "#FFFFFF",
     info: "#007AFF",              // Info Blue
+    // U-1: ألوان الشدّة موحّدة (نفس القيم المعتمدة في شاشة التقرير والبطاقة)
+    severityCritical: "#FF3B30",
+    severitySevere: "#FF3B30",
+    severityModerate: "#FF9340",
+    severityMinor: "#34C759",
   },
   dark: {
     text: "#FFFFFF",
@@ -48,6 +53,11 @@ const colors = {
     warning: "#FF9500",           // Warning Orange
     warningForeground: "#FFFFFF",
     info: "#007AFF",              // Info Blue
+    // U-1: ألوان الشدّة موحّدة (نفس قيم النمط الفاتح — درجات حيّة تظهر جيداً على الداكن)
+    severityCritical: "#FF3B30",
+    severitySevere: "#FF3B30",
+    severityModerate: "#FF9340",
+    severityMinor: "#34C759",
   },
   radius: 12,                     // Medium radius from specs
 };

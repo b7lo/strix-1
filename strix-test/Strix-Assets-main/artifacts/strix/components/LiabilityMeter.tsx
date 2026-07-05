@@ -45,10 +45,10 @@ export function LiabilityMeter({ userFaultPercent, confidence, factorsAr, crossV
     finalFaultPercent >= 70 ? "high" : finalFaultPercent <= 30 ? "low" : "mid";
   const faultColor =
     faultLevel === "high"
-      ? "#EF4444"
+      ? "#FF3B30"
       : faultLevel === "low"
-      ? "#10B981"
-      : "#F59E0B";
+      ? "#34C759"
+      : "#FF9340";
 
   // RTL: first child in row = RIGHT
   return (

@@ -1,16 +1,32 @@
 import React, { useState } from 'react';
+import { submitLead } from '../lib/leads';
 
 interface LeadFormProps {
   icon: string;
 }
 
 export default function LeadForm({ icon }: LeadFormProps) {
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    const fullName = (form.elements.namedItem('fullName') as HTMLInputElement)?.value ?? '';
+    const mobile = (form.elements.namedItem('mobile') as HTMLInputElement)?.value ?? '';
+    const email = (form.elements.namedItem('email') as HTMLInputElement)?.value ?? '';
+
     setStatus('submitting');
-    setTimeout(() => setStatus('success'), 1500);
+    setErrorMsg('');
+    try {
+      await submitLead({ fullName, mobile, email });
+      setStatus('success');
+      // نُبلغ بقية الصفحة أن عميلًا جديدًا سُجّل ليُحدّث العدّاد فورًا
+      window.dispatchEvent(new CustomEvent('strix:lead-registered'));
+    } catch {
+      setStatus('error');
+      setErrorMsg('تعذّر التسجيل الآن. حاول مرة أخرى لاحقًا.');
+    }
   };
 
   return (
@@ -109,6 +125,12 @@ export default function LeadForm({ icon }: LeadFormProps) {
                 >
                   {status === 'submitting' ? 'جاري التسجيل...' : 'سجّل الآن — مجاناً'}
                 </button>
+
+                {status === 'error' && (
+                  <p className="form-privacy" style={{ color: '#e5484d' }}>
+                    ⚠️ {errorMsg}
+                  </p>
+                )}
 
                 <p className="form-privacy">
                   🔒 لن نقوم بمشاركة بياناتك مع أي طرف ثالث.

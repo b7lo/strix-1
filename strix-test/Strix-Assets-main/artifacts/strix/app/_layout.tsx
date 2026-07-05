@@ -18,8 +18,11 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { View, I18nManager } from "react-native";
 
-// Force React Native's native RTL off as early as possible
-// since we handle all RTL layout styling manually.
+// Force React Native's native RTL off as early as possible since we handle RTL
+// layout styling manually. On an Arabic *device* this alone does NOT flip
+// I18nManager.isRTL for the current session — ensureLTRNativeBase() (called at
+// startup) reloads once so the forced-LTR base takes effect, making the app
+// independent of the device language.
 I18nManager.allowRTL(false);
 I18nManager.forceRTL(false);
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -31,6 +34,8 @@ import { ReportsProvider } from "@/context/ReportsContext";
 import { SessionProvider } from "@/context/SessionContext";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { initI18n } from "@/lib/i18n";
+import { ensureLTRNativeBase } from "@/lib/rtl";
+import { initRemoteConfig } from "@/lib/remoteConfig";
 import { flushSyncQueue } from "@/lib/accidentSync";
 
 // Initialize background tasks early
@@ -49,7 +54,9 @@ function RootLayoutNav() {
         options={{ headerShown: false, presentation: "fullScreenModal" }}
       />
       <Stack.Screen name="report/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="settings-detection" options={{ headerShown: false }} />
+      <Stack.Screen name="settings-about" options={{ headerShown: false }} />
+      <Stack.Screen name="privacy" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -78,9 +85,17 @@ export default function RootLayout() {
 
   const [i18nReady, setI18nReady] = useState(false);
 
-  // Initialize i18n (device locale detection + SecureStore read) before render
+  // Guarantee an LTR native base (reloading once on RTL devices), then
+  // initialize i18n (device locale detection + SecureStore read) before render.
   useEffect(() => {
-    initI18n().then(() => setI18nReady(true));
+    (async () => {
+      const reloading = await ensureLTRNativeBase();
+      if (reloading) return; // app is about to reload; skip further init
+      // Remote Config (best-effort): يعاير العتبات من الخادم مع بقاء الافتراضيات
+      await initRemoteConfig().catch(() => {});
+      await initI18n();
+      setI18nReady(true);
+    })();
     flushSyncQueue().catch(console.error);
   }, []);
 

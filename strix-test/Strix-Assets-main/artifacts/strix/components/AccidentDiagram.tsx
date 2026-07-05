@@ -22,12 +22,12 @@ interface Props {
   currentAccidentId?: string;
 }
 
-const USER_COLOR = "#3B82F6";
-const OTHER_COLOR = "#EAB308";
-const IMPACT_COLOR = "#FF4444";
-const BODY_COLOR = "#1E293B";
-const OUTLINE_COLOR = "#334155";
-const GLASS_COLOR = "rgba(56,189,248,0.12)";
+const USER_COLOR = "#1DB768";   // أخضر الهوية (كان أزرق #3B82F6)
+const OTHER_COLOR = "#FF9500";  // برتقالي الهوية (كان أصفر #EAB308)
+const IMPACT_COLOR = "#FF3B30"; // أحمر موحّد مع بقية الشاشات
+const BODY_COLOR = "#FFFFFF";   // جسم السيارة فاتح
+const OUTLINE_COLOR = "#A9BBAF"; // حدود رمادية-خضراء فاتحة
+const GLASS_COLOR = "rgba(29,183,104,0.12)"; // زجاج أخضر فاتح
 
 // ─── إحداثيات مناطق الاصطدام (نسبية لحجم السيارة) ───
 function getZonePosition(
@@ -139,10 +139,10 @@ function CarTopView({
       <Rect x={x + glassInset + 2} y={y + h - h * 0.1 - glassH * 0.8} width={w - (glassInset + 2) * 2} height={glassH * 0.8} rx={3} fill={GLASS_COLOR} stroke={OUTLINE_COLOR} strokeWidth={0.5} />
       <Rect x={x + 1} y={y + h * 0.35} width={w - 2} height={0.5} fill={OUTLINE_COLOR} opacity={0.3} />
       <Rect x={x + 1} y={y + h * 0.65} width={w - 2} height={0.5} fill={OUTLINE_COLOR} opacity={0.3} />
-      <Rect x={x - wheelW + 1} y={y + h * 0.1} width={wheelW} height={wheelH} rx={wheelR} fill="#0F172A" stroke="#475569" strokeWidth={0.5} />
-      <Rect x={x + w - 1} y={y + h * 0.1} width={wheelW} height={wheelH} rx={wheelR} fill="#0F172A" stroke="#475569" strokeWidth={0.5} />
-      <Rect x={x - wheelW + 1} y={y + h - h * 0.1 - wheelH} width={wheelW} height={wheelH} rx={wheelR} fill="#0F172A" stroke="#475569" strokeWidth={0.5} />
-      <Rect x={x + w - 1} y={y + h - h * 0.1 - wheelH} width={wheelW} height={wheelH} rx={wheelR} fill="#0F172A" stroke="#475569" strokeWidth={0.5} />
+      <Rect x={x - wheelW + 1} y={y + h * 0.1} width={wheelW} height={wheelH} rx={wheelR} fill="#7C8B82" stroke="#5F6B5F" strokeWidth={0.5} />
+      <Rect x={x + w - 1} y={y + h * 0.1} width={wheelW} height={wheelH} rx={wheelR} fill="#7C8B82" stroke="#5F6B5F" strokeWidth={0.5} />
+      <Rect x={x - wheelW + 1} y={y + h - h * 0.1 - wheelH} width={wheelW} height={wheelH} rx={wheelR} fill="#7C8B82" stroke="#5F6B5F" strokeWidth={0.5} />
+      <Rect x={x + w - 1} y={y + h - h * 0.1 - wheelH} width={wheelW} height={wheelH} rx={wheelR} fill="#7C8B82" stroke="#5F6B5F" strokeWidth={0.5} />
       <Rect x={x + 3} y={y + 2} width={6} height={3} rx={1.5} fill="#FCD34D" opacity={0.6} />
       <Rect x={x + w - 9} y={y + 2} width={6} height={3} rx={1.5} fill="#FCD34D" opacity={0.6} />
       <Rect x={x + 3} y={y + h - 5} width={6} height={3} rx={1.5} fill="#EF4444" opacity={0.6} />
@@ -201,13 +201,13 @@ export function AccidentDiagram({
         </Defs>
 
         {/* خلفية */}
-        <Rect x={0} y={0} width={width} height={height} fill="#0D1117" rx={14} />
+        <Rect x={0} y={0} width={width} height={height} fill="#E8EFEA" rx={14} />
 
         {/* شبكة خلفية */}
         {[0.25, 0.5, 0.75].map((r) => (
           <G key={r}>
-            <Rect x={width * r} y={10} width={0.5} height={height - 20} fill="#1E293B" opacity={0.3} />
-            <Rect x={10} y={height * r} width={width - 20} height={0.5} fill="#1E293B" opacity={0.3} />
+            <Rect x={width * r} y={10} width={0.5} height={height - 20} fill="#CBD8CE" opacity={0.6} />
+            <Rect x={10} y={height * r} width={width - 20} height={0.5} fill="#CBD8CE" opacity={0.6} />
           </G>
         ))}
 
@@ -228,7 +228,7 @@ export function AccidentDiagram({
               y={otherPlacement.y - 18}
               width={50}
               height={14}
-              fill="rgba(234,179,8,0.18)"
+              fill="rgba(255,149,0,0.18)"
               rx={4}
             />
             <SvgText
@@ -273,12 +273,12 @@ export function AccidentDiagram({
         )}
 
         {/* تسمية المنطقة */}
-        <Rect x={8} y={height - 34} width={width - 16} height={26} fill="rgba(13,17,23,0.85)" rx={6} />
+        <Rect x={8} y={height - 34} width={width - 16} height={26} fill="rgba(255,255,255,0.9)" rx={6} />
         <SvgText
           x={width / 2}
           y={height - 17}
           textAnchor="middle"
-          fill={isUnknown ? "#8B949E" : IMPACT_COLOR}
+          fill={isUnknown ? "#5F6B5F" : IMPACT_COLOR}
           fontSize={12}
           fontWeight="600"
         >
@@ -290,20 +290,20 @@ export function AccidentDiagram({
         {/* مفتاح الألوان */}
         <G transform="translate(12, 12)">
           <Rect x={0} y={0} width={10} height={10} rx={2} fill={USER_COLOR} />
-          <SvgText x={13} y={9} fill="#8B949E" fontSize={9}>{t("report.yourCar")}</SvgText>
+          <SvgText x={13} y={9} fill="#5F6B5F" fontSize={9}>{t("report.yourCar")}</SvgText>
           {showOtherCar && (
             <>
               <Rect x={55} y={0} width={10} height={10} rx={2} fill={OTHER_COLOR} />
-              <SvgText x={68} y={9} fill="#8B949E" fontSize={9}>{t("liabilityMeter.otherParty")}</SvgText>
+              <SvgText x={68} y={9} fill="#5F6B5F" fontSize={9}>{t("liabilityMeter.otherParty")}</SvgText>
             </>
           )}
           <Circle cx={showOtherCar ? 140 : 60} cy={5} r={4} fill={IMPACT_COLOR} />
-          <SvgText x={showOtherCar ? 147 : 67} y={9} fill="#8B949E" fontSize={9}>{t("report.impactPoint")}</SvgText>
+          <SvgText x={showOtherCar ? 147 : 67} y={9} fill="#5F6B5F" fontSize={9}>{t("report.impactPoint")}</SvgText>
         </G>
 
         {/* اتجاه الحركة */}
-        <SvgText x={width / 2} y={carY - 14} textAnchor="middle" fill="#475569" fontSize={9}>▲ {t("report.front")}</SvgText>
-        <SvgText x={width / 2} y={carY + carH + 22} textAnchor="middle" fill="#475569" fontSize={9}>▼ {t("report.back")}</SvgText>
+        <SvgText x={width / 2} y={carY - 14} textAnchor="middle" fill="#5F6B5F" fontSize={9}>▲ {t("report.front")}</SvgText>
+        <SvgText x={width / 2} y={carY + carH + 22} textAnchor="middle" fill="#5F6B5F" fontSize={9}>▼ {t("report.back")}</SvgText>
       </Svg>
     </View>
   );

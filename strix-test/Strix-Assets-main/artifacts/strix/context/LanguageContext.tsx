@@ -215,9 +215,13 @@ export function useLanguage() {
 
 function applyRTL(_rtl: boolean) {
   // NOTE: We handle RTL manually via lib/rtl.ts helpers.
-  // Do NOT call I18nManager.forceRTL() — it causes React Native
-  // to auto-flip flexDirection/margins, which double-flips our
-  // manual RTL overrides and breaks Arabic layout alignment.
+  // We still keep allowRTL(false)/forceRTL(false) to enforce an LTR native base
+  // on LTR devices. IMPORTANT: on an Arabic *device* these calls CANNOT flip
+  // I18nManager.isRTL for the current session (they only take effect after a
+  // full relaunch), so the app runs with isRTL === true regardless. Correctness
+  // now comes from the native-aware helpers in lib/rtl.ts and the tab layout,
+  // which compute effectiveFlip = desiredRTL XOR I18nManager.isRTL so layout is
+  // applied exactly once and never double-flips.
   try {
     I18nManager.allowRTL(false);
     I18nManager.forceRTL(false);

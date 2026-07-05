@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText, AlertTriangle } from 'lucide-react';
+import LeadCounter from './LeadCounter.tsx';
 
 interface HeroProps {
   icon: string;
@@ -31,6 +32,8 @@ export default function Hero({ icon }: HeroProps) {
               اكتشف الميزات
             </a>
           </div>
+
+          <LeadCounter className="hero-lead-counter reveal reveal-delay-3" />
 
           <div className="hero-stats reveal reveal-delay-3">
             <div>

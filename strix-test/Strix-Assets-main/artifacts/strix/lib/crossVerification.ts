@@ -289,11 +289,13 @@ export function generateCrossVerifiedAnalysis(
   }
 
   // Determine first contact based on timestamp
+  // A-7: لا نعتمد على ساعة الجهاز المحلية إلا إذا تجاوز الفرق هامش الانجراف.
+  // الفرق الزمني الصغير متوقّع في نفس الحادث، لذا لا نضعه في flags (حتى لا نُفسد
+  // حالة التطابق)، بل نترك firstContact = UNKNOWN بصمت لتجنّب ظلم طرف.
   let firstContact: "A" | "B" | "UNKNOWN" = "UNKNOWN";
-  if (reportA.timestamp < reportB.timestamp) {
-    firstContact = "A";
-  } else if (reportB.timestamp < reportA.timestamp) {
-    firstContact = "B";
+  const timeDelta = reportB.timestamp - reportA.timestamp;
+  if (Math.abs(timeDelta) > THRESHOLDS.CLOCK_DRIFT_MARGIN_MS) {
+    firstContact = timeDelta > 0 ? "A" : "B"; // الأقدم زمنياً هو أول تماس
   }
 
   // Verified speeds (use pre-crash as primary, crash speed as fallback)

@@ -13,13 +13,7 @@ import { SensorGauge } from "@/components/SensorGauge";
 import { flipIconName } from "@/lib/rtl";
 import type { Severity } from "@/lib/types";
 import { ZONE_LABELS_AR } from "@/lib/types";
-
-const SEVERITY_COLOR: Record<Severity, string> = {
-  critical: "#FF3B30",
-  severe: "#FF6B35",
-  moderate: "#F59E0B",
-  minor: "#34C759",
-};
+import { severityColor } from "@/lib/severityColors";
 
 function formatDuration(sec: number): string {
   const m = Math.floor(sec / 60).toString().padStart(2, "0");
@@ -33,6 +27,7 @@ export default function SessionScreen() {
   const { t, isRTL, locale, rtl } = useLanguage();
   const {
     isActive,
+    isCalibrating,
     currentGForce,
     peakGForce,
     currentSpeedKmh,
@@ -85,7 +80,7 @@ export default function SessionScreen() {
   }, [latestReport]);
 
   const sev = latestReport?.severity ?? "moderate";
-  const sevColor = SEVERITY_COLOR[sev];
+  const sevColor = severityColor(colors, sev);
 
   // Severity label — uses locale
   const SEVERITY_LABEL: Record<Severity, string> = {
@@ -136,7 +131,7 @@ export default function SessionScreen() {
             </Text>
           )}
         </View>
-        <TouchableOpacity onPress={handleStop} style={styles.closeBtn}>
+        <TouchableOpacity onPress={handleStop} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t("a11y.close")}>
           <Feather name="x" size={22} color={colors.mutedForeground} />
         </TouchableOpacity>
       </View>
@@ -219,6 +214,24 @@ export default function SessionScreen() {
               </View>
             </View>
 
+            {isActive && isCalibrating && !isAnalyzing && !crashDetected && (
+              <View
+                style={[
+                  styles.analyzingBanner,
+                  {
+                    backgroundColor: colors.primary + "18",
+                    borderColor: colors.primary + "40",
+                    flexDirection: rtl.flexDirection,
+                  },
+                ]}
+              >
+                <Feather name="loader" size={16} color={colors.primary} />
+                <Text style={[styles.analyzingText, { color: colors.primary }]}>
+                  {t("session.calibrating")}
+                </Text>
+              </View>
+            )}
+
             {isAnalyzing && (
               <View
                 style={[
@@ -269,29 +282,29 @@ export default function SessionScreen() {
                     <Text style={[styles.crashStatVal, { color: sevColor }]}>
                       {latestReport.peakGForce.toFixed(1)}g
                     </Text>
-                    <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
+                    <Text style={[styles.crashStatLbl, { color: "#5F6B5F" }]}>
                       {t("session.peakG")}
                     </Text>
                   </View>
                   <View
-                    style={[styles.crashStatDiv, { backgroundColor: "#30363D" }]}
+                    style={[styles.crashStatDiv, { backgroundColor: "#D2E6D9" }]}
                   />
                   <View style={styles.crashStat}>
                     <Text style={styles.crashStatVal2}>
                       {latestReport.speedKmh} {t("session.kmh")}
                     </Text>
-                    <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
+                    <Text style={[styles.crashStatLbl, { color: "#5F6B5F" }]}>
                       {t("session.speed")}
                     </Text>
                   </View>
                   <View
-                    style={[styles.crashStatDiv, { backgroundColor: "#30363D" }]}
+                    style={[styles.crashStatDiv, { backgroundColor: "#D2E6D9" }]}
                   />
                   <View style={styles.crashStat}>
                     <Text style={[styles.crashStatVal2, { textAlign: 'center', maxWidth: 90 }]} numberOfLines={2}>
                       {zoneLabel}
                     </Text>
-                    <Text style={[styles.crashStatLbl, { color: "#8B949E" }]}>
+                    <Text style={[styles.crashStatLbl, { color: "#5F6B5F" }]}>
                       {t("session.zone")}
                     </Text>
                   </View>
@@ -317,7 +330,7 @@ export default function SessionScreen() {
                     style={styles.dismissBtn}
                     onPress={resetCrash}
                   >
-                    <Text style={[styles.dismissText, { color: "#8B949E" }]}>
+                    <Text style={[styles.dismissText, { color: "#5F6B5F" }]}>
                       {t("session.dismissContinue")}
                     </Text>
                   </TouchableOpacity>
@@ -395,8 +408,8 @@ const styles = StyleSheet.create({
   },
   headerCenter: { flex: 1, alignItems: "center", gap: 3 },
   closeBtn: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
@@ -465,7 +478,7 @@ const styles = StyleSheet.create({
   },
   webWarningText: { flex: 1, fontSize: 13, lineHeight: 18 },
   crashCard: {
-    backgroundColor: "#120B0B",
+    backgroundColor: "#EAF6EF",
     borderWidth: 1.5,
     borderRadius: 16,
     padding: 20,
@@ -483,14 +496,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sevText: { fontSize: 12, fontWeight: "700" },
-  crashTitle: { color: "#F0F6FF", fontSize: 18, fontWeight: "800", flex: 1 },
+  crashTitle: { color: "#111411", fontSize: 18, fontWeight: "800", flex: 1 },
   crashStats: {
     alignItems: "center",
     justifyContent: "space-around",
   },
   crashStat: { alignItems: "center", gap: 4 },
   crashStatVal: { fontSize: 22, fontWeight: "800" },
-  crashStatVal2: { fontSize: 14, fontWeight: "700", color: "#F0F6FF" },
+  crashStatVal2: { fontSize: 14, fontWeight: "700", color: "#111411" },
   crashStatLbl: { fontSize: 10 },
   crashStatDiv: { width: 1, height: 32 },
   crashActions: { gap: 10 },

@@ -16,9 +16,11 @@ export interface EmergencyContact {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
+  // 100Hz (عيّنة كل 10ms): يلتقط قمة الصدمة القصيرة أدقّ من 50Hz.
+  // النبضات القصيرة جدًا (ضرب الجوال باليد) قد تُفوَّت بين العيّنات عند معدلات أقل.
   crashThresholdG: 2.0,
   autoAlertEnabled: true,
-  sampleRateHz: 50,
+  sampleRateHz: 100,
   gyroscopeEnabled: true,
   gyroscopeThreshold: 80,
 };

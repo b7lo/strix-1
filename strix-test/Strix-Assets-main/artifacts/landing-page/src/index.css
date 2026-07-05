@@ -1132,3 +1132,26 @@ footer {
   .footer-links { flex-direction: column; gap: 1.5rem; }
   .footer-top { flex-direction: column; }
 }
+
+/* ── عدّاد العملاء المسجّلين ── */
+.hero-lead-counter {
+  margin-top: 1.25rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--strix-green) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--strix-green) 30%, transparent);
+}
+.lead-counter-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--strix-green);
+  letter-spacing: 0.5px;
+}
+.lead-counter-label {
+  font-size: 0.9rem;
+  color: var(--foreground);
+  opacity: 0.85;
+}

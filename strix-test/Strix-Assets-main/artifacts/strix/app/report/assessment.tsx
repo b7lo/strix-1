@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Platform,
@@ -9,14 +8,19 @@ import {
   TextInput,
   Alert,
 } from "react-native";
+import { Text } from "@/components/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useReports } from "@/context/ReportsContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { flipIconName, getRTLStyles } from "@/lib/rtl";
+import type { AuthoritySource } from "@/lib/types";
 
 const LIABILITY_OPTIONS = [100, 75, 50, 25, 0];
+const AUTHORITY_OPTIONS: AuthoritySource[] = ["najm", "saudi_traffic", "other"];
 
 export default function AssessmentScreen() {
   const { t, i18n } = useTranslation();
@@ -28,15 +32,21 @@ export default function AssessmentScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const isRTL = i18n.language === "ar";
   const textAlign = isRTL ? "right" : "left";
-  const rowDirection = isRTL ? "row-reverse" : "row";
+  // Native-aware: counters React Native's auto-flip on RTL devices so the row
+  // direction follows the in-app language, not the device language.
+  const rowDirection = getRTLStyles(isRTL).flexDirection;
 
   const report = reports.find((r) => r.id === id) ?? null;
 
   const initialNajm = report?.faultAssessment?.najmLiability ?? null;
   const initialDesc = report?.faultAssessment?.userDescription ?? "";
+  const initialAuthority = report?.faultAssessment?.authoritySource ?? null;
+  const initialAuthorityOther = report?.faultAssessment?.authorityOther ?? "";
 
   const [najmLiability, setNajmLiability] = useState<number | null>(initialNajm);
   const [description, setDescription] = useState<string>(initialDesc);
+  const [authoritySource, setAuthoritySource] = useState<AuthoritySource | null>(initialAuthority);
+  const [authorityOther, setAuthorityOther] = useState<string>(initialAuthorityOther);
   const [isSaving, setIsSaving] = useState(false);
 
   if (!report) {
@@ -79,6 +89,14 @@ export default function AssessmentScreen() {
   const signedDifference = najmLiability !== null ? mappedAppLiability - najmLiability : null;
 
   const handleSave = async () => {
+    if (!authoritySource) {
+      Alert.alert(t("assessment.alertMissingTitle"), t("assessment.alertMissing"));
+      return;
+    }
+    if (authoritySource === "other" && authorityOther.trim().length === 0) {
+      Alert.alert(t("assessment.alertMissingTitle"), t("assessment.alertMissing"));
+      return;
+    }
     if (najmLiability === null) {
       Alert.alert(t("assessment.alertMissingTitle"), t("assessment.alertMissing"));
       return;
@@ -93,6 +111,8 @@ export default function AssessmentScreen() {
           najmLiability,
           liabilityDifference: signedDifference!,
           userDescription: description,
+          authoritySource,
+          authorityOther: authoritySource === "other" ? authorityOther.trim() : undefined,
           createdAt: report.faultAssessment?.createdAt ?? Date.now(),
         },
       };
@@ -160,15 +180,73 @@ export default function AssessmentScreen() {
           </View>
         </View>
 
+        {/* Reporting Authority Selector */}
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
+            {t("assessment.authorityLabel")}
+          </Text>
+          <View style={[styles.optionsRow, { flexDirection: rowDirection }]}>
+            {AUTHORITY_OPTIONS.map((opt) => {
+              const isSelected = authoritySource === opt;
+              const label =
+                opt === "najm"
+                  ? t("assessment.authorityNajm")
+                  : opt === "saudi_traffic"
+                  ? t("assessment.authoritySaudiTraffic")
+                  : t("assessment.authorityOther");
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  onPress={() => setAuthoritySource(opt)}
+                  style={[
+                    styles.optionBtn,
+                    {
+                      backgroundColor: isSelected ? colors.primary : colors.background,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.optionText,
+                      styles.authorityText,
+                      { color: isSelected ? "#fff" : colors.foreground },
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {authoritySource === "other" && (
+            <TextInput
+              style={[
+                styles.input,
+                styles.authorityOtherInput,
+                {
+                  backgroundColor: colors.background,
+                  color: colors.foreground,
+                  borderColor: colors.border,
+                },
+              ]}
+              placeholder={t("assessment.authorityOtherPlaceholder")}
+              placeholderTextColor={colors.mutedForeground}
+              value={authorityOther}
+              onChangeText={setAuthorityOther}
+              textAlign={textAlign}
+            />
+          )}
+        </View>
+
         {/* Najm Liability Input (US2) */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground, textAlign }]}>
             {t("assessment.najmEstimate")}
           </Text>
           <Text style={[styles.sectionSub, { color: colors.mutedForeground, textAlign }]}>
-            {i18n.language === "ar"
-              ? `اختر ${t("assessment.faultUser")} حسب تقرير نجم`
-              : `Choose ${t("assessment.faultUser")} from the Najm report`}
+            {t("assessment.najmSub")}
           </Text>
           <View style={[styles.optionsRow, { flexDirection: rowDirection }]}>
             {LIABILITY_OPTIONS.map((opt) => {
@@ -338,6 +416,13 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  authorityText: {
+    fontSize: 14,
+  },
+  authorityOtherInput: {
+    minHeight: 48,
+    marginTop: 12,
   },
   diffBox: {
     marginTop: 12,

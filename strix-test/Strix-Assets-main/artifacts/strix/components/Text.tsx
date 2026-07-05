@@ -38,10 +38,14 @@ export function Text({ style, weight, ...props }: TextProps) {
   // Remove fontWeight from style to let fontFamily take over cleanly
   const { fontWeight, ...restStyle } = flattenedStyle as TextStyle;
 
-  // Auto-apply RTL defaults for Arabic
+  // Always pin text direction + alignment to the IN-APP locale, never the
+  // device. React Native's default text alignment follows I18nManager.isRTL
+  // (the device language), so on an Arabic device English text would render
+  // right-aligned unless we set it explicitly here. Setting both directions
+  // makes the app independent of the device language.
   const rtlDefaults: TextStyle = isArabic
     ? { writingDirection: "rtl", textAlign: restStyle.textAlign || "right" }
-    : {};
+    : { writingDirection: "ltr", textAlign: restStyle.textAlign || "left" };
 
   return (
     <RNText

@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Modal, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Modal, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Image } from "react-native";
 import { Text } from "@/components/Text";;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
@@ -14,7 +14,9 @@ import { SpeedGraph } from "@/components/SpeedGraph";
 import { exportReportToPDF } from "@/lib/pdfExport";
 import { fetchUpdatedReportFromSupabase, markAccidentAsFalseAlarm } from "@/lib/accidentSync";
 import { flipIconName } from "@/lib/rtl";
+import { THRESHOLDS } from "@/lib/thresholds";
 import type { AccidentReport, Severity, ImpactDirection } from "@/lib/types";
+import { severityColor } from "@/lib/severityColors";
 
 const getDirectionAr = (t: any): Record<ImpactDirection, string> => ({
   front: t('liability.dirFront'),
@@ -23,13 +25,6 @@ const getDirectionAr = (t: any): Record<ImpactDirection, string> => ({
   "side-right": t('liability.dirSideRight'),
   unknown: t('liability.dirUnknown'),
 });
-
-const SEVERITY_COLOR: Record<Severity, string> = {
-  critical: "#FF4444",
-  severe: "#FF6B35",
-  moderate: "#D29922",
-  minor: "#3FB950",
-};
 
 const getSeverityAr = (t: any): Record<Severity, string> => ({
   critical: t('report.severityCritical'),
@@ -50,12 +45,14 @@ export default function ReportScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const { reports, submitFeedback, removeReport, updateReport } = useReports();
-  const { t, isRTL, rtl, formatDate: fmtDate, formatGForce: fmtG, formatSpeed: fmtS } = useLanguage();
+  const { t, isRTL, rtl, formatDate: fmtDate, formatGForce: fmtG, formatSpeed: fmtS, formatPercentage: fmtPct } = useLanguage();
 
   const [falseAlarmModalVisible, setFalseAlarmModalVisible] = useState(false);
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [falseAlarmDetails, setFalseAlarmDetails] = useState("");
   const [isSendingFalseAlarm, setIsSendingFalseAlarm] = useState(false);
+  // U-10: طيّ قائمة عوامل التحليل لتقصير التمرير
+  const [factorsExpanded, setFactorsExpanded] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -146,7 +143,7 @@ export default function ReportScreen() {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: topPad + 8, flexDirection: rtl.flexDirection }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} accessibilityRole="button" accessibilityLabel={t("a11y.back")}>
             <Feather
               name={flipIconName("arrow-left", isRTL) as any}
               size={22}
@@ -165,7 +162,7 @@ export default function ReportScreen() {
 
   const displayReport = liveReport ?? report;
   const sev = displayReport.severity ?? "moderate";
-  const sevColor = SEVERITY_COLOR[sev];
+  const sevColor = severityColor(colors, sev);
   const currentFeedback = liveReport?.feedback ?? null;
   const speedDiff = displayReport.preCrashSpeedKmh - displayReport.speedKmh;
   const wasBraking = speedDiff > 5;
@@ -173,28 +170,34 @@ export default function ReportScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: topPad, flexDirection: rtl.flexDirection }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
-            <Feather
-            name={flipIconName("arrow-left", isRTL) as any}
-            size={22}
-            color={colors.foreground}
+          <View style={{ flex: 1, alignItems: isRTL ? "flex-end" : "flex-start" }}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} accessibilityRole="button" accessibilityLabel={t("a11y.back")}>
+              <Feather
+                name={flipIconName("arrow-left", isRTL) as any}
+                size={22}
+                color={colors.foreground}
+              />
+            </TouchableOpacity>
+          </View>
+          <Image
+            source={require("@/assets/images/logo-insid-the-app.png")}
+            style={styles.headerLogo}
+            resizeMode="contain"
           />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {t("report.title")}
-        </Text>
-        <View style={{ flexDirection: rtl.flexDirection, gap: 12 }}>
-          <TouchableOpacity onPress={() => router.push({ pathname: '/report/assessment', params: { id: displayReport.id } })} style={styles.navBtn}>
-            <Feather name="file-text" size={18} color={colors.foreground} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.navBtn}>
-            <Feather name="trash-2" size={18} color={colors.destructive} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => exportReportToPDF(displayReport)} style={styles.navBtn}>
-            <Feather name="share" size={18} color={colors.foreground} />
-          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: isRTL ? "flex-start" : "flex-end" }}>
+            <View style={{ flexDirection: rtl.flexDirection, gap: 12 }}>
+              <TouchableOpacity onPress={() => router.push({ pathname: '/report/assessment', params: { id: displayReport.id } })} style={styles.navBtn} accessibilityRole="button" accessibilityLabel={t("a11y.najmAssessment")}>
+                <Feather name="file-text" size={18} color={colors.foreground} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete} style={styles.navBtn} accessibilityRole="button" accessibilityLabel={t("a11y.deleteReport")}>
+                <Feather name="trash-2" size={18} color={colors.destructive} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => exportReportToPDF(displayReport)} style={styles.navBtn} accessibilityRole="button" accessibilityLabel={t("a11y.shareReport")}>
+                <Feather name="share" size={18} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
 
       <ScrollView
         contentContainerStyle={[
@@ -210,8 +213,12 @@ export default function ReportScreen() {
             {
               backgroundColor: colors.card,
               borderColor: colors.border,
-              borderStartWidth: 4,
-              borderStartColor: sevColor,
+              // Physical side keyed to the in-app language (device-independent).
+              // Logical borderStart* auto-flips with the device's I18nManager.isRTL,
+              // which would break in-app English on an Arabic device.
+              ...(isRTL
+                ? { borderRightWidth: 4, borderRightColor: sevColor }
+                : { borderLeftWidth: 4, borderLeftColor: sevColor }),
             },
           ]}
         >
@@ -309,9 +316,9 @@ export default function ReportScreen() {
                   {
                     color:
                       displayReport.jerkPeak >= 20
-                        ? "#FF4444"
+                        ? "#FF3B30"
                         : displayReport.jerkPeak >= 10
-                        ? "#D29922"
+                        ? "#FF9340"
                         : colors.foreground,
                   },
                 ]}
@@ -418,20 +425,41 @@ export default function ReportScreen() {
           </View>
         )}
 
-        {/* تقدير المسؤولية */}
-        <View
-          style={[
-            styles.section,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <LiabilityMeter
-            userFaultPercent={displayReport.liabilityScore}
-            confidence={displayReport.confidence}
-            factorsAr={displayReport.factorsAr}
-            crossVerifiedAnalysis={displayReport.crossVerifiedAnalysis}
-            currentAccidentId={displayReport.id}
-          />
+
+        {/* تقدير المسؤولية - بطاقتا الطرفين */}
+        <View style={[styles.partiesRow, { flexDirection: rtl.flexDirection }]}>
+          {(() => {
+            const myPercent = displayReport.crossVerifiedAnalysis
+              ? (displayReport.crossVerifiedAnalysis.accident_a_id === displayReport.id
+                  ? displayReport.crossVerifiedAnalysis.liability_a_percent
+                  : displayReport.crossVerifiedAnalysis.liability_b_percent)
+              : displayReport.liabilityScore;
+            return (
+              <View style={[styles.partyCard, { backgroundColor: colors.card, borderColor: "#34C75950" }]}>
+                <View style={[styles.partyCardHeader, { flexDirection: rtl.flexDirection, backgroundColor: "#34C75918" }]}>
+                  <Feather name="user" size={16} color="#34C759" />
+                  <Text style={[styles.partyCardTitle, { color: "#34C759" }]}>{t("liabilityMeter.yourFault")}</Text>
+                </View>
+                <Text style={[styles.partyCardPercent, { color: "#34C759" }]}>{fmtPct(myPercent)}</Text>
+              </View>
+            );
+          })()}
+          {(() => {
+            const otherPercent = displayReport.crossVerifiedAnalysis
+              ? (displayReport.crossVerifiedAnalysis.accident_a_id === displayReport.id
+                  ? displayReport.crossVerifiedAnalysis.liability_b_percent
+                  : displayReport.crossVerifiedAnalysis.liability_a_percent)
+              : 100 - displayReport.liabilityScore;
+            return (
+              <View style={[styles.partyCard, { backgroundColor: colors.card, borderColor: "#34C75950" }]}>
+                <View style={[styles.partyCardHeader, { flexDirection: rtl.flexDirection, backgroundColor: "#34C75918" }]}>
+                  <Feather name="users" size={16} color="#34C759" />
+                  <Text style={[styles.partyCardTitle, { color: "#34C759" }]}>{t("liabilityMeter.otherParty")}</Text>
+                </View>
+                <Text style={[styles.partyCardPercent, { color: "#34C759" }]}>{fmtPct(otherPercent)}</Text>
+              </View>
+            );
+          })()}
         </View>
 
         {/* تحليل السيناريو */}
@@ -456,21 +484,87 @@ export default function ReportScreen() {
             {displayReport.descriptionAr}
           </Text>
 
+          <View style={[styles.scenarioDisclaimer, { flexDirection: rtl.flexDirection }]}>
+            <Feather name="alert-triangle" size={15} color="#FF9500" style={styles.scenarioDisclaimerIcon} />
+            <Text
+              style={[
+                styles.scenarioDisclaimerText,
+                { color: colors.mutedForeground, textAlign: rtl.textAlign },
+              ]}
+            >
+              {t("feedback.legalNote")}
+            </Text>
+          </View>
+
           {displayReport.factorsAr && displayReport.factorsAr.length > 0 && (
             <View style={[styles.factorsBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-              <Text style={[styles.factorsTitle, { color: colors.foreground, textAlign: rtl.textAlign }]}>
-                {t("report.analysisFactors")}
-              </Text>
-              {displayReport.factorsAr.map((f, i) => (
-                <View key={i} style={[styles.factorRow, { flexDirection: rtl.flexDirection }]}>
-                  <View
-                    style={[styles.factorDot, { backgroundColor: sevColor }]}
-                  />
-                  <Text style={[styles.factorText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
-                    {f}
-                  </Text>
+              <TouchableOpacity
+                onPress={() => setFactorsExpanded((v) => !v)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: factorsExpanded }}
+                style={[styles.factorsHeader, { flexDirection: rtl.flexDirection }]}
+              >
+                <Text style={[styles.factorsTitle, { color: colors.foreground, textAlign: rtl.textAlign }]}>
+                  {t("report.analysisFactors")} ({displayReport.factorsAr.length})
+                </Text>
+                <Feather
+                  name={factorsExpanded ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={colors.mutedForeground}
+                />
+              </TouchableOpacity>
+              {factorsExpanded &&
+                displayReport.factorsAr.map((f, i) => (
+                  <View key={i} style={[styles.factorRow, { flexDirection: rtl.flexDirection }]}>
+                    <View
+                      style={[styles.factorDot, { backgroundColor: sevColor }]}
+                    />
+                    <Text style={[styles.factorText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+                      {f}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          )}
+        </View>
+
+        {/* جودة البيانات والثقة (شفافية) */}
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+            {t("report.qualityTitle")}
+          </Text>
+          {(() => {
+            const level = displayReport.dataQualityLevel ?? (displayReport.directionCalibrated ? "medium" : "low");
+            const qColor = level === "high" ? "#34C759" : level === "medium" ? "#D29922" : "#FF4444";
+            const qLabel = level === "high" ? t("report.qualityHigh") : level === "medium" ? t("report.qualityMedium") : t("report.qualityLow");
+            return (
+              <View style={{ flexDirection: rtl.flexDirection, alignItems: "center", marginBottom: 8 }}>
+                <View style={{ backgroundColor: qColor + "22", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 }}>
+                  <Text style={{ color: qColor, fontWeight: "700", fontSize: 13 }}>{qLabel}</Text>
                 </View>
-              ))}
+              </View>
+            );
+          })()}
+          {displayReport.directionCalibrated === false && (
+            <View style={[styles.scenarioDisclaimer, { flexDirection: rtl.flexDirection }]}>
+              <Feather name="alert-triangle" size={15} color="#D29922" style={styles.scenarioDisclaimerIcon} />
+              <Text style={[styles.scenarioDisclaimerText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+                {t("report.qualityDirectionApprox")}
+              </Text>
+            </View>
+          )}
+          {displayReport.peakGForce >= THRESHOLDS.DQ_ACCEL_SATURATION_G && (
+            <View style={[styles.scenarioDisclaimer, { flexDirection: rtl.flexDirection }]}>
+              <Feather name="alert-triangle" size={15} color="#FF9500" style={styles.scenarioDisclaimerIcon} />
+              <Text style={[styles.scenarioDisclaimerText, { color: colors.mutedForeground, textAlign: rtl.textAlign }]}>
+                {t("report.qualityAccelSaturated")}
+              </Text>
             </View>
           )}
         </View>
@@ -750,6 +844,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 12,
     gap: 12,
@@ -766,6 +861,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
+  headerLogo: {
+    height: 48,
+    width: 48,
+  },
   scroll: { paddingHorizontal: 20, gap: 12 },
   section: {
     borderRadius: 18,
@@ -774,9 +873,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
     letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
   summaryTop: {
     justifyContent: "space-between",
@@ -820,13 +920,24 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   scenarioDesc: { fontSize: 14, lineHeight: 24 },
+  scenarioDisclaimer: {
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 12,
+  },
+  scenarioDisclaimerIcon: { marginTop: 3, flexShrink: 0 },
+  scenarioDisclaimerText: { flex: 1, fontSize: 12, lineHeight: 19, fontStyle: "italic" },
   factorsBox: {
     borderRadius: 12,
     borderWidth: 1,
     padding: 16,
     gap: 10,
   },
-  factorsTitle: { fontSize: 13, fontWeight: "800" },
+  factorsTitle: { fontSize: 13, fontWeight: "800", flex: 1 },
+  factorsHeader: {
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   factorRow: {
     alignItems: "flex-start",
     gap: 8,
@@ -987,5 +1098,33 @@ const styles = StyleSheet.create({
   inputHeaderLabel: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  // ─── بطاقتا الطرفين ───
+  partiesRow: {
+    gap: 12,
+  },
+  partyCard: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    overflow: "hidden",
+  },
+  partyCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  partyCardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  partyCardPercent: {
+    fontSize: 40,
+    fontWeight: "900",
+    textAlign: "center",
+    letterSpacing: -1,
+    paddingVertical: 14,
   },
 });

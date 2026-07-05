@@ -37,6 +37,7 @@ import type {
   BrakingAnalysis,
 } from "./types";
 import type { RingSample } from "./sensorUtils";
+import i18n from "./i18n";
 
 /**
  * تقدير كتلة المركبة بالكيلوجرام حسب النوع
@@ -98,7 +99,8 @@ export function analyzeOtherParty(params: {
 
   return {
     approachAngleDeg: Math.round(approachAngleDeg),
-    estimatedSpeedKmh: Math.round(estimatedSpeedKmh),
+    // A-8: تقريب لأقرب 5 كم/س — تقدير فيزيائي تقريبي، نتجنّب الإيحاء بدقة زائفة
+    estimatedSpeedKmh: Math.round(estimatedSpeedKmh / 5) * 5,
     impactForce,
     vehicleType,
     wasAccelerating,
@@ -194,8 +196,14 @@ function estimateOtherSpeed(
   // v7.1: حساب ΔV بالتكامل الرقمي من Ring Buffer
   let deltaV = 0; // m/s
 
-  // البحث عن عينات الصدمة (isImpulsive) في آخر 500ms
-  const impulseSamples = ringBuffer.filter(s => s.isImpulsive);
+  // A-8 FIX: قصر التكامل على عيّنات الصدمة ضمن آخر 500ms فقط.
+  // (سابقاً كان يفلتر كامل الـ buffer ≈ حتى 20s فيجمع عيّنات impulsive كثيرة
+  //  غير مرتبطة بالصدمة → مبالغة كبيرة في تقدير ΔV وسرعة الطرف الآخر.)
+  const IMPACT_INTEGRATION_WINDOW_MS = 500;
+  const lastTs = ringBuffer.length > 0 ? ringBuffer[ringBuffer.length - 1].ts : 0;
+  const impulseSamples = ringBuffer.filter(
+    (s) => s.isImpulsive && lastTs - s.ts <= IMPACT_INTEGRATION_WINDOW_MS
+  );
 
   if (impulseSamples.length >= 2) {
     // تكامل رقمي: ΔV = Σ (gForce[i] × 9.81 × dt)
@@ -306,7 +314,7 @@ function calculateConfidence(
 }
 
 /**
- * بناء الوصف العربي
+ * بناء الوصف (يتبع اللغة الحالية عبر i18n)
  */
 function buildDescription(
   angle: number,
@@ -317,41 +325,43 @@ function buildDescription(
   wasBraking: boolean,
   confidence: number
 ): string {
-  const vehicleAr: Record<string, string> = {
-    light: "مركبة خفيفة (سيارة صغيرة)",
-    medium: "مركبة متوسطة (سيدان/جيب)",
-    heavy: "مركبة ثقيلة (شاحنة/باص)",
+  const vehicleKey: Record<string, string> = {
+    light: "otherParty.vehicleLight",
+    medium: "otherParty.vehicleMedium",
+    heavy: "otherParty.vehicleHeavy",
+  };
+  const forceKey: Record<string, string> = {
+    light: "otherParty.forceLight",
+    moderate: "otherParty.forceModerate",
+    heavy: "otherParty.forceHeavy",
+    severe: "otherParty.forceSevere",
   };
 
-  const forceAr: Record<string, string> = {
-    light: "خفيفة",
-    moderate: "متوسطة",
-    heavy: "عنيفة",
-    severe: "بالغة الشدة",
-  };
+  // تحويل الزاوية لمفتاح اتجاه
+  let dirKey = "otherParty.dirUnknown";
+  if (angle >= 337.5 || angle < 22.5) dirKey = "otherParty.dirFrontDirect";
+  else if (angle < 67.5) dirKey = "otherParty.dirFrontRight";
+  else if (angle < 112.5) dirKey = "otherParty.dirRight";
+  else if (angle < 157.5) dirKey = "otherParty.dirRearRight";
+  else if (angle < 202.5) dirKey = "otherParty.dirRearDirect";
+  else if (angle < 247.5) dirKey = "otherParty.dirRearLeft";
+  else if (angle < 292.5) dirKey = "otherParty.dirLeft";
+  else dirKey = "otherParty.dirFrontLeft";
 
-  // تحويل الزاوية لاتجاه نصي
-  let dirAr = "اتجاه غير محدد";
-  if (angle >= 337.5 || angle < 22.5) dirAr = "من الأمام مباشرة";
-  else if (angle < 67.5) dirAr = "من الأمام الأيمن";
-  else if (angle < 112.5) dirAr = "من الجانب الأيمن";
-  else if (angle < 157.5) dirAr = "من الخلف الأيمن";
-  else if (angle < 202.5) dirAr = "من الخلف مباشرة";
-  else if (angle < 247.5) dirAr = "من الخلف الأيسر";
-  else if (angle < 292.5) dirAr = "من الجانب الأيسر";
-  else dirAr = "من الأمام الأيسر";
-
-  let desc = `تحليل الطرف الآخر: يُرجّح أن ${vehicleAr[vehicleType]} اقتربت ${dirAr}`;
-  desc += ` بسرعة تقديرية ${speed} كم/س.`;
-  desc += ` قوة الصدمة ${forceAr[force]}.`;
+  let desc = i18n.t("otherParty.desc", {
+    vehicle: i18n.t(vehicleKey[vehicleType]),
+    dir: i18n.t(dirKey),
+    speed,
+    force: i18n.t(forceKey[force]),
+  });
 
   if (wasAccelerating) {
-    desc += " التحليل يُشير إلى أن الطرف الآخر كان مسرعاً ولم يحاول الفرملة.";
+    desc += i18n.t("otherParty.wasAccelerating");
   } else if (wasBraking) {
-    desc += " التحليل يُشير إلى أن الطرف الآخر حاول الفرملة قبل الاصطدام.";
+    desc += i18n.t("otherParty.wasBraking");
   }
 
-  desc += ` (نسبة الثقة: ${confidence}٪)`;
+  desc += i18n.t("otherParty.confidenceSuffix", { confidence });
 
   return desc;
 }

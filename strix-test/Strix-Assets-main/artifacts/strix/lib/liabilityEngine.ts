@@ -40,6 +40,12 @@ export interface LiabilityResult {
   descriptionAr: string;
   factorsAr: string[];
   confidenceDetails: ConfidenceDetails;
+  /** A-6: نسبة الخطأ الخام قبل التقريب للسلّم القانوني (شفافية داخلية) */
+  rawFaultPercent: number;
+  /** A-6: هل النتيجة قاطعة؟ (ثقة عالية + اتجاه معروف ومعاير) */
+  isConclusive: boolean;
+  /** A-6: نطاق المسؤولية عند عدم القطعية [أدنى, أعلى] */
+  faultRange: [number, number];
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -329,7 +335,8 @@ export function calculateLiability(
   impactCount = 1,
   baselineG = 0,
   zone: ImpactZone = "unknown",
-  advancedAnalysis: AdvancedAnalysisResult | null = null
+  advancedAnalysis: AdvancedAnalysisResult | null = null,
+  directionCalibrated = true
 ): LiabilityResult {
   // تعويض baseline G (اهتزازات الطريق)
   const g = Math.max(0, peakGForce - baselineG);
@@ -338,6 +345,13 @@ export function calculateLiability(
 
   const severity = classifySeverity(g, speed);
   const confidenceDetails = buildConfidenceDetails(direction, g, speed, jerk, gyro, braking);
+
+  // A-6: إذا لم يُعاير اتجاه الجوال نسبةً للسيارة، لا نسمح بثقة "عالية"
+  // (الاتجاه/المنطقة تقديري حينها → نكون صادقين بدل ادّعاء القطعية).
+  if (!directionCalibrated && confidenceDetails.level === "high") {
+    confidenceDetails.level = "medium";
+    confidenceDetails.factors.push(i18n.t("sysNotes.directionUncalibrated"));
+  }
 
   let analyzed: { fault: number; code: string; title: string; factors: string[] };
 
@@ -438,6 +452,18 @@ export function calculateLiability(
 
   const otherFault = 100 - userFault;
 
+  // A-6: ربط القطعية بالثقة — لا نُصدر رقماً حاسماً عند ثقة غير عالية أو اتجاه مجهول
+  const isConclusive =
+    confidenceDetails.level === "high" && direction !== "unknown" && directionCalibrated;
+
+  let faultRange: [number, number] = [userFault, userFault];
+  if (!isConclusive) {
+    const idx = allowedValues.indexOf(userFault);
+    const lo = allowedValues[Math.max(0, idx - 1)];
+    const hi = allowedValues[Math.min(allowedValues.length - 1, idx + 1)];
+    faultRange = [lo, hi];
+  }
+
   return {
     userFaultPercent: userFault,
     otherFaultPercent: otherFault,
@@ -448,6 +474,9 @@ export function calculateLiability(
     descriptionAr: buildDescription(direction, userFault, g, speed, jerk, severity, braking),
     factorsAr: analyzed.factors,
     confidenceDetails,
+    rawFaultPercent: rawFault,
+    isConclusive,
+    faultRange,
   };
 }
 

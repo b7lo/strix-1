@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useLanguage } from "@/context/LanguageContext";
 import type { AccidentReport, ImpactDirection, Severity } from "@/lib/types";
+import { severityColor, severityBg } from "@/lib/severityColors";
 
 interface Props {
   report: AccidentReport;
@@ -20,26 +21,12 @@ const DIRECTION_ICON: Record<ImpactDirection, keyof typeof Feather.glyphMap> = {
   unknown: "help-circle",
 };
 
-const SEVERITY_COLOR: Record<Severity, string> = {
-  critical: "#FF3B30",
-  severe: "#FF6B35",
-  moderate: "#F59E0B",
-  minor: "#34C759",
-};
-
-const SEVERITY_BG: Record<Severity, string> = {
-  critical: "#FF3B3015",
-  severe: "#FF6B3515",
-  moderate: "#F59E0B15",
-  minor: "#34C75915",
-};
-
 export function ReportCard({ report, onPress }: Props) {
   const colors = useColors();
   const sev: Severity = report.severity ?? "moderate";
-  const sevColor = SEVERITY_COLOR[sev];
-  const sevBg = SEVERITY_BG[sev];
-  const { t, isRTL, rtl, formatDate: fmtDate } = useLanguage();
+  const sevColor = severityColor(colors, sev);
+  const sevBg = severityBg(colors, sev);
+  const { t, isRTL, rtl, formatDate: fmtDate, formatPercentage: fmtPct } = useLanguage();
 
   // إذا الحادث من خلال 30 دقيقة → جديد
   const isNew = Date.now() - report.timestamp < 30 * 60 * 1000;
@@ -64,7 +51,7 @@ export function ReportCard({ report, onPress }: Props) {
       ? "#FF3B30"
       : report.liabilityScore <= 25
       ? "#34C759"
-      : "#F59E0B";
+      : "#FF9340";
 
   const handlePress = () => {
     if (onPress) {
@@ -149,7 +136,7 @@ export function ReportCard({ report, onPress }: Props) {
               {/* نسبة المسؤولية */}
               <View style={[styles.chip, { backgroundColor: faultColor + "18", borderColor: faultColor + "40" }]}>
                 <Text style={[styles.chipText, { color: faultColor, fontWeight: "700" }]}>
-                  {report.liabilityScore}٪
+                  {fmtPct(report.liabilityScore)}
                 </Text>
               </View>
               {/* حالة التحقق */}
