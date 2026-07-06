@@ -1,6 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Sidebar, { type Page } from "./components/layout/Sidebar";
 import Topbar from "./components/layout/Topbar";
+import Login from "./components/Login";
+import { isAuthed, logout as authLogout } from "./lib/auth";
 import DashboardHome from "./components/mockups/DashboardHome";
 import DashboardAccidents from "./components/mockups/DashboardAccidents";
 import DashboardAssessments from "./components/mockups/DashboardAssessments";
@@ -32,12 +34,29 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [authed, setAuthed] = useState<boolean>(isAuthed());
   const { theme, setTheme, resolvedTheme } = useTheme();
+
+  // عند انتهاء الجلسة/401 من أي طلب، نعيد المستخدم لشاشة الدخول
+  useEffect(() => {
+    const onUnauthorized = () => setAuthed(false);
+    window.addEventListener("strix:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("strix:unauthorized", onUnauthorized);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    authLogout();
+    setAuthed(false);
+  }, []);
 
   const handleNavigate = useCallback((page: Page) => {
     setCurrentPage(page);
     setMobileSidebarOpen(false);
   }, []);
+
+  if (!authed) {
+    return <Login onSuccess={() => setAuthed(true)} />;
+  }
 
   const toggleTheme = useCallback(() => {
     setTheme(resolvedTheme === "light" ? "dark" : "light");
@@ -122,6 +141,7 @@ export default function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+          onLogout={handleLogout}
         />
         <main className="flex-1 overflow-y-auto">
           {pageComponents[currentPage]}

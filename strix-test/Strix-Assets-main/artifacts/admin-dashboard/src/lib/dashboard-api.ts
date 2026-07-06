@@ -7,12 +7,13 @@ import type {
   DashboardLead,
   PaginatedResponse,
 } from "../types/dashboard";
+import { authedFetch } from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api/dashboard";
 
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
-    const res = await fetch(`${API_BASE}/stats`);
+    const res = await authedFetch(`${API_BASE}/stats`);
     if (!res.ok) throw new Error("Failed to fetch stats");
     return res.json();
   },
@@ -21,7 +22,7 @@ export const dashboardApi = {
     page = 1,
     limit = 20
   ): Promise<PaginatedResponse<DashboardAccident>> => {
-    const res = await fetch(`${API_BASE}/accidents?page=${page}&limit=${limit}`);
+    const res = await authedFetch(`${API_BASE}/accidents?page=${page}&limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch accidents");
     return res.json();
   },
@@ -30,7 +31,7 @@ export const dashboardApi = {
     page = 1,
     limit = 20
   ): Promise<{ data: DashboardAssessment[]; total: number; averageDifference: number | null }> => {
-    const res = await fetch(`${API_BASE}/assessments?page=${page}&limit=${limit}`);
+    const res = await authedFetch(`${API_BASE}/assessments?page=${page}&limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch assessments");
     return res.json();
   },
@@ -39,7 +40,7 @@ export const dashboardApi = {
     page = 1,
     limit = 20
   ): Promise<{ data: DashboardMatched[]; total: number }> => {
-    const res = await fetch(`${API_BASE}/matched?page=${page}&limit=${limit}`);
+    const res = await authedFetch(`${API_BASE}/matched?page=${page}&limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch matched accidents");
     return res.json();
   },
@@ -48,7 +49,7 @@ export const dashboardApi = {
     page = 1,
     limit = 20
   ): Promise<{ data: DashboardFalseAlarm[]; total: number }> => {
-    const res = await fetch(`${API_BASE}/false-alarms?page=${page}&limit=${limit}`);
+    const res = await authedFetch(`${API_BASE}/false-alarms?page=${page}&limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch false alarms");
     return res.json();
   },
@@ -57,7 +58,7 @@ export const dashboardApi = {
     page = 1,
     limit = 20
   ): Promise<PaginatedResponse<DashboardLead>> => {
-    const res = await fetch(`${API_BASE}/leads?page=${page}&limit=${limit}`);
+    const res = await authedFetch(`${API_BASE}/leads?page=${page}&limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch leads");
     return res.json();
   },

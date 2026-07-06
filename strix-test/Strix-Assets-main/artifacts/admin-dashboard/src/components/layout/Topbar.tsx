@@ -25,6 +25,7 @@ interface TopbarProps {
   theme: "light" | "dark" | "system";
   onToggleTheme: () => void;
   onOpenMobileSidebar: () => void;
+  onLogout?: () => void;
 }
 
 const pageLabels: Record<Page, string> = {
@@ -46,7 +47,7 @@ function formatGregorianDate(): string {
   });
 }
 
-export default function Topbar({ currentPage, theme, onToggleTheme, onOpenMobileSidebar }: TopbarProps) {
+export default function Topbar({ currentPage, theme, onToggleTheme, onOpenMobileSidebar, onLogout }: TopbarProps) {
   const resolvedTheme = theme === "system"
     ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
     : theme;
@@ -152,7 +153,7 @@ export default function Topbar({ currentPage, theme, onToggleTheme, onOpenMobile
                 الإعدادات
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-destructive cursor-pointer">
+              <DropdownMenuItem className="gap-2 text-destructive cursor-pointer" onClick={onLogout}>
                 <LogOut className="w-4 h-4" />
                 تسجيل الخروج
               </DropdownMenuItem>

@@ -11,14 +11,7 @@ import { desc, eq, isNotNull, sql, or } from "drizzle-orm";
 
 const router = Router();
 
-// Middleware for Admin authentication (Mocked for now)
-router.use((req, res, next) => {
-  // TODO: Add proper Admin API Key or Token validation here
-  const apiKey = req.headers["x-admin-api-key"];
-  // For development, we allow passing if explicitly set or we just bypass it
-  // if (apiKey !== process.env.ADMIN_API_KEY) return res.status(401).json({ error: "Unauthorized" });
-  next();
-});
+// المصادقة مفروضة في routes/index.ts عبر requireAuth قبل الوصول لهذا الراوتر.
 
 // GET /api/dashboard/stats
 router.get("/stats", async (req, res) => {
