@@ -33,6 +33,7 @@ const pageLabels: Record<Page, string> = {
   assessments: "تقييمات نجم",
   matched: "الحوادث المشتركة",
   "false-alarms": "الإنذارات الكاذبة",
+  leads: "العملاء المسجّلون",
 };
 
 function formatGregorianDate(): string {

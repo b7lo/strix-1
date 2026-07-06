@@ -5,6 +5,7 @@ import {
   FileBarChart,
   GitMerge,
   ShieldOff,
+  Users,
   Settings,
   HelpCircle,
   ChevronLeft,
@@ -14,7 +15,7 @@ import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { ScrollArea } from "../ui/scroll-area";
 
-export type Page = "home" | "accidents" | "assessments" | "matched" | "false-alarms";
+export type Page = "home" | "accidents" | "assessments" | "matched" | "false-alarms" | "leads";
 
 interface SidebarProps {
   currentPage: Page;
@@ -37,6 +38,7 @@ const navGroups = [
       { id: "assessments" as Page, label: "تقييمات نجم", icon: FileBarChart },
       { id: "matched" as Page, label: "الحوادث المشتركة", icon: GitMerge },
       { id: "false-alarms" as Page, label: "الإنذارات الكاذبة", icon: ShieldOff },
+      { id: "leads" as Page, label: "العملاء المسجّلون", icon: Users },
     ],
   },
 ];

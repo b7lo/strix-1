@@ -6,6 +6,7 @@ import DashboardAccidents from "./components/mockups/DashboardAccidents";
 import DashboardAssessments from "./components/mockups/DashboardAssessments";
 import DashboardMatched from "./components/mockups/DashboardMatched";
 import DashboardFalseAlarms from "./components/mockups/DashboardFalseAlarms";
+import DashboardLeads from "./components/mockups/DashboardLeads";
 import { useTheme } from "./hooks/use-theme";
 import { ScrollArea } from "./components/ui/scroll-area";
 import {
@@ -14,6 +15,7 @@ import {
   FileBarChart,
   GitMerge,
   ShieldOff,
+  Users,
   X,
 } from "lucide-react";
 
@@ -23,6 +25,7 @@ const mobileNavItems: { id: Page; label: string; icon: React.ComponentType<{ cla
   { id: "assessments", label: "تقييمات نجم", icon: FileBarChart },
   { id: "matched", label: "الحوادث المشتركة", icon: GitMerge },
   { id: "false-alarms", label: "الإنذارات الكاذبة", icon: ShieldOff },
+  { id: "leads", label: "العملاء المسجّلون", icon: Users },
 ];
 
 export default function App() {
@@ -46,6 +49,7 @@ export default function App() {
     assessments: <DashboardAssessments />,
     matched: <DashboardMatched />,
     "false-alarms": <DashboardFalseAlarms />,
+    leads: <DashboardLeads />,
   };
 
   return (
