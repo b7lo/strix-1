@@ -363,6 +363,8 @@ export async function syncReportUpdate(report: AccidentReport): Promise<void> {
             najm_liability_other: 100 - report.faultAssessment.najmLiability,
             liability_difference: report.faultAssessment.liabilityDifference,
             user_description: report.faultAssessment.userDescription || null,
+            authority_source: report.faultAssessment.authoritySource || null,
+            authority_other: report.faultAssessment.authorityOther || null,
             assessed_at: new Date(report.faultAssessment.createdAt).toISOString()
           };
           

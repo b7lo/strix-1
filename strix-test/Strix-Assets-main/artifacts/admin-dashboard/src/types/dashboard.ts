@@ -29,6 +29,8 @@ export interface DashboardAccident {
   isFalseAlarm: boolean;
 }
 
+export type AuthoritySource = "najm" | "saudi_traffic" | "other" | null;
+
 export interface DashboardAssessment {
   id: string;
   accidentId: string;
@@ -38,6 +40,8 @@ export interface DashboardAssessment {
   najmLiabilityOther: number | null;
   liabilityDifference: number | null;
   userDescription: string | null;
+  authoritySource: AuthoritySource;
+  authorityOther: string | null;
   assessedAt: string;
   accidentTimestamp: string;
   accidentSeverity: string;
@@ -101,6 +105,8 @@ export interface AccidentDetail {
     najmLiabilityOther: number | null;
     liabilityDifference: number | null;
     userDescription: string | null;
+    authoritySource: AuthoritySource;
+    authorityOther: string | null;
     assessedAt: string;
   } | null;
   falseAlarm: {

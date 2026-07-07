@@ -316,6 +316,8 @@ router.get("/assessments", async (req, res) => {
         najmLiabilityOther: faultAssessmentsTable.najmLiabilityOther,
         liabilityDifference: faultAssessmentsTable.liabilityDifference,
         userDescription: faultAssessmentsTable.userDescription,
+        authoritySource: faultAssessmentsTable.authoritySource,
+        authorityOther: faultAssessmentsTable.authorityOther,
         assessedAt: faultAssessmentsTable.assessedAt,
         accidentTimestamp: accidentsTable.timestamp,
         accidentSeverity: accidentsTable.severity,

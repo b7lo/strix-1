@@ -95,6 +95,10 @@ export const faultAssessmentsTable = pgTable("fault_assessments", {
   najmLiabilityOther: integer("najm_liability_other"),
   liabilityDifference: integer("liability_difference"),
   userDescription: varchar("user_description", { length: 1000 }),
+  // الجهة المُصدِرة للتقرير الرسمي: najm | saudi_traffic | other
+  authoritySource: varchar("authority_source", { length: 20 }),
+  // اسم الجهة عند اختيار "أخرى"
+  authorityOther: varchar("authority_other", { length: 100 }),
   assessedAt: timestamp("assessed_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

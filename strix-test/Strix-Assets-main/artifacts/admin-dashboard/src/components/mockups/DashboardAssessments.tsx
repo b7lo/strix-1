@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Search, FileText, Download, TrendingDown, Tr
 import { Input } from "../ui/input";
 import { dashboardApi } from "../../lib/dashboard-api";
 import { exportToCsv } from "../../lib/csv";
+import { authorityLabel } from "../../lib/authority";
 import { useDebounce } from "../../hooks/use-debounce";
 import type { DashboardAssessment } from "../../types/dashboard";
 
@@ -51,14 +52,16 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
       [
         { key: "accidentId", header: "معرف الحادث" },
         { key: "assessedAt", header: "تاريخ التقييم" },
+        { key: "authority", header: "الجهة المسؤولة" },
         { key: "appLiabilityUser", header: "مسؤولية النظام %" },
-        { key: "najmLiabilityUser", header: "مسؤولية نجم %" },
+        { key: "najmLiabilityUser", header: "مسؤولية الجهة %" },
         { key: "signed", header: "الانحراف الموقّع %" },
         { key: "userDescription", header: "وصف المستخدم" },
       ],
       data.map((r) => ({
         accidentId: r.accidentId,
         assessedAt: r.assessedAt,
+        authority: authorityLabel(r.authoritySource, r.authorityOther),
         appLiabilityUser: r.appLiabilityUser,
         najmLiabilityUser: r.najmLiabilityUser,
         signed: signedDeviation(r),
@@ -108,9 +111,10 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="text-xs font-semibold py-3 px-4">تاريخ التقييم</TableHead>
                   <TableHead className="text-xs font-semibold py-3">معرف الحادث</TableHead>
+                  <TableHead className="text-xs font-semibold py-3">الجهة المسؤولة</TableHead>
                   <TableHead className="text-xs font-semibold py-3">مسؤولية النظام</TableHead>
-                  <TableHead className="text-xs font-semibold py-3">مسؤولية نجم</TableHead>
-                  <TableHead className="text-xs font-semibold py-3">الانحراف (± مقابل نجم)</TableHead>
+                  <TableHead className="text-xs font-semibold py-3">مسؤولية الجهة</TableHead>
+                  <TableHead className="text-xs font-semibold py-3">الانحراف (± مقابل الجهة)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -119,6 +123,7 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
                     <TableRow key={i} className="animate-pulse">
                       <TableCell className="py-3 px-4"><div className="h-4 w-24 bg-muted rounded" /></TableCell>
                       <TableCell className="py-3"><div className="h-4 w-28 bg-muted rounded" /></TableCell>
+                      <TableCell className="py-3"><div className="h-5 w-20 bg-muted rounded" /></TableCell>
                       <TableCell className="py-3"><div className="h-5 w-16 bg-muted rounded" /></TableCell>
                       <TableCell className="py-3"><div className="h-5 w-16 bg-muted rounded" /></TableCell>
                       <TableCell className="py-3"><div className="h-5 w-16 bg-muted rounded" /></TableCell>
@@ -126,7 +131,7 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
                   ))
                 ) : data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
+                    <TableCell colSpan={6} className="h-32 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <FileText className="w-8 h-8 opacity-40" />
                         <p className="text-sm">لا توجد تقييمات مطابقة</p>
@@ -145,6 +150,11 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
                         </TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground py-3">
                           <span className="bg-muted px-2 py-1 rounded select-all">{row.accidentId.slice(0, 8)}...</span>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <Badge variant="outline" className="text-[10px] font-medium">
+                            {authorityLabel(row.authoritySource, row.authorityOther)}
+                          </Badge>
                         </TableCell>
                         <TableCell className="py-3 text-sm font-semibold">
                           {row.appLiabilityUser}%

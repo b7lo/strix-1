@@ -15,6 +15,7 @@ import {
 import { Input } from "../ui/input";
 import { dashboardApi } from "../../lib/dashboard-api";
 import { exportToCsv } from "../../lib/csv";
+import { authorityLabel } from "../../lib/authority";
 import { useDebounce } from "../../hooks/use-debounce";
 import type { DashboardAccident, AccidentDetail } from "../../types/dashboard";
 
@@ -388,7 +389,14 @@ export default function DashboardAccidents({ compact }: { compact?: boolean }) {
 
                 {/* تقييم نجم */}
                 <div className="p-5 space-y-3">
-                  <p className="text-xs font-bold flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5 text-primary" /> تقييم المسؤولية</p>
+                  <p className="text-xs font-bold flex items-center gap-1.5">
+                    <ClipboardList className="w-3.5 h-3.5 text-primary" /> تقييم المسؤولية
+                    {asmt && (
+                      <Badge variant="outline" className="text-[10px] font-medium mr-1">
+                        الجهة: {authorityLabel(asmt.authoritySource, asmt.authorityOther)}
+                      </Badge>
+                    )}
+                  </p>
                   {asmt ? (
                     <>
                       <div className="grid grid-cols-3 gap-3">
@@ -397,7 +405,7 @@ export default function DashboardAccidents({ compact }: { compact?: boolean }) {
                           <p className="text-lg font-bold font-mono">{asmt.appLiabilityUser}%</p>
                         </div>
                         <div className="bg-muted/40 rounded-lg p-3 text-center">
-                          <p className="text-[10px] text-muted-foreground mb-1">مسؤولية نجم</p>
+                          <p className="text-[10px] text-muted-foreground mb-1">مسؤولية {authorityLabel(asmt.authoritySource, asmt.authorityOther)}</p>
                           <p className="text-lg font-bold font-mono">
                             {asmt.najmLiabilityUser !== null ? `${asmt.najmLiabilityUser}%` : "—"}
                           </p>
