@@ -36,30 +36,40 @@ app.use(
   }),
 );
 
-// ─── CORS مقيّد: نقرأ الأصول المسموحة من DASHBOARD_ORIGIN (مفصولة بفواصل) ───
-// إن لم تُضبط، نسمح للجميع في التطوير فقط مع تحذير (لا للإنتاج).
-const allowedOrigins = (process.env.DASHBOARD_ORIGIN || "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
+// ─── CORS مقيّد: أصول اللوحة المسموحة ───
+// نجمع بين قيم DASHBOARD_ORIGIN (من البيئة، مفصولة بفواصل) وأصول افتراضية
+// معروفة للإنتاج، حتى تعمل اللوحة حتى لو لم يُضبط المتغيّر في بيئة النشر.
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://dashboard.strixsa.com",
+  "https://www.strixsa.com",
+  "https://strixsa.com",
+];
 
-if (allowedOrigins.length === 0 && process.env.NODE_ENV === "production") {
-  logger.warn(
-    "DASHBOARD_ORIGIN is not set in production — CORS will reject browser requests. Set it to your dashboard URL.",
-  );
-}
+const normalizeOrigin = (o: string) => o.trim().replace(/\/+$/, "");
+
+const allowedOrigins = Array.from(
+  new Set(
+    [
+      ...(process.env.DASHBOARD_ORIGIN || "").split(","),
+      ...DEFAULT_ALLOWED_ORIGINS,
+    ]
+      .map(normalizeOrigin)
+      .filter(Boolean),
+  ),
+);
+
+logger.info({ allowedOrigins }, "CORS allowed origins configured");
 
 const corsOptions: CorsOptions = {
   origin(origin, callback) {
     // طلبات بلا Origin (curl/تطبيق جوال) مسموحة
     if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0) {
-      // تطوير: اسمح، لكن لا تفعل هذا في الإنتاج (مضبوط بالتحذير أعلاه)
-      if (process.env.NODE_ENV !== "production") return callback(null, true);
-      return callback(new Error("Not allowed by CORS"), false);
+    if (allowedOrigins.includes(normalizeOrigin(origin))) {
+      return callback(null, true);
     }
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"), false);
+    // أصل غير مسموح: لا نرمي خطأ (يتسبب في 500)، بل نمنع ترويسات CORS فقط
+    logger.warn({ origin }, "CORS: origin not allowed");
+    return callback(null, false);
   },
   credentials: true,
 };
