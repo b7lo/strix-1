@@ -4,7 +4,7 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 ARG VITE_API_URL
-ENV VITE_API_URL=${VITE_API_URL:-https://dashboard.awadhdev.tech/api/dashboard}
+ENV VITE_API_URL=${VITE_API_URL:-https://api.strixsa.com/api/dashboard}
 
 # Copy workspace configuration
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
