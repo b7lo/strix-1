@@ -226,7 +226,9 @@ router.get("/accidents/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("Failed to fetch accident detail", error);
-    res.status(500).json({ error: "Failed to fetch accident detail" });
+    // مؤقت للتشخيص: نكشف رسالة الخطأ للأدمن (خلف المصادقة) لتحديد السبب الجذري.
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({ error: "Failed to fetch accident detail", detail: message });
   }
 });
 
