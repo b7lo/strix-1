@@ -75,8 +75,8 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
       {!compact && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-foreground">تقييمات نجم</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">سجل التقييمات ومقارنات المسؤولية</p>
+            <h2 className="text-xl font-bold text-foreground">تقييم الجهات الرسمية</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">سجل التقييمات ومقارنات المسؤولية مع الجهة الرسمية</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExport} disabled={data.length === 0}>

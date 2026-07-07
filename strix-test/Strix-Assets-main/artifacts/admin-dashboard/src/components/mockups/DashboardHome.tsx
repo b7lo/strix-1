@@ -140,7 +140,7 @@ export default function DashboardHome() {
                     </TabsTrigger>
                     <TabsTrigger value="assessments" className="text-xs px-3 gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
                       <FileBarChart className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">تقييم نجم</span>
+                      <span className="hidden sm:inline">الجهات الرسمية</span>
                     </TabsTrigger>
                     <TabsTrigger value="matched" className="text-xs px-3 gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
                       <GitMerge className="w-3.5 h-3.5" />

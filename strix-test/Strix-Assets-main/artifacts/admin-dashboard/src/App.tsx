@@ -24,7 +24,7 @@ import {
 const mobileNavItems: { id: Page; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "home", label: "نظرة عامة", icon: LayoutDashboard },
   { id: "accidents", label: "سجل الحوادث", icon: Car },
-  { id: "assessments", label: "تقييمات نجم", icon: FileBarChart },
+  { id: "assessments", label: "تقييم الجهات الرسمية", icon: FileBarChart },
   { id: "matched", label: "الحوادث المشتركة", icon: GitMerge },
   { id: "false-alarms", label: "الإنذارات الكاذبة", icon: ShieldOff },
   { id: "leads", label: "العملاء المسجّلون", icon: Users },

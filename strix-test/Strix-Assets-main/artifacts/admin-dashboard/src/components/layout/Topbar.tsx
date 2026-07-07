@@ -27,7 +27,7 @@ interface TopbarProps {
 const pageLabels: Record<Page, string> = {
   home: "نظرة عامة",
   accidents: "سجل الحوادث",
-  assessments: "تقييمات نجم",
+  assessments: "تقييم الجهات الرسمية",
   matched: "الحوادث المشتركة",
   "false-alarms": "الإنذارات الكاذبة",
   leads: "العملاء المسجّلون",

@@ -57,7 +57,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
       iconColor: "text-success",
     },
     {
-      title: "تقييمات نجم",
+      title: "تقييم الجهات الرسمية",
       value: stats.totalAssessments,
       icon: FileText,
       iconBg: "bg-primary/10",

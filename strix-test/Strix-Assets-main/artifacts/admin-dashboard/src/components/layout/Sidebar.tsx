@@ -35,7 +35,7 @@ const navGroups = [
     label: "إدارة البيانات",
     items: [
       { id: "accidents" as Page, label: "سجل الحوادث", icon: Car },
-      { id: "assessments" as Page, label: "تقييمات نجم", icon: FileBarChart },
+      { id: "assessments" as Page, label: "تقييم الجهات الرسمية", icon: FileBarChart },
       { id: "matched" as Page, label: "الحوادث المشتركة", icon: GitMerge },
       { id: "false-alarms" as Page, label: "الإنذارات الكاذبة", icon: ShieldOff },
       { id: "leads" as Page, label: "العملاء المسجّلون", icon: Users },
