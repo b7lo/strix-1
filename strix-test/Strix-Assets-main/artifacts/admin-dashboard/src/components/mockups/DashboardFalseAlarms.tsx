@@ -3,9 +3,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
-import { ChevronLeft, ChevronRight, Search, ShieldOff, Download, Filter, Info } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, ShieldOff, Download, Info } from "lucide-react";
 import { Input } from "../ui/input";
 import { dashboardApi } from "../../lib/dashboard-api";
+import { exportToCsv } from "../../lib/csv";
+import { useDebounce } from "../../hooks/use-debounce";
 import type { DashboardFalseAlarm } from "../../types/dashboard";
 
 export default function DashboardFalseAlarms({ compact }: { compact?: boolean }) {
@@ -14,21 +16,48 @@ export default function DashboardFalseAlarms({ compact }: { compact?: boolean })
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery);
   const limit = compact ? 5 : 10;
 
-  useEffect(() => { fetchData(); }, [page]);
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await dashboardApi.getFalseAlarms(page, limit);
-      setData(res.data);
-      setTotal(res.total);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await dashboardApi.getFalseAlarms(page, limit, { search: debouncedSearch });
+        if (!active) return;
+        setData(res.data);
+        setTotal(res.total);
+      } catch (err) { console.error(err); }
+      finally { if (active) setLoading(false); }
+    };
+    fetchData();
+    return () => { active = false; };
+  }, [page, limit, debouncedSearch]);
 
   const totalPages = Math.ceil(total / limit);
+
+  const handleExport = () => {
+    exportToCsv(
+      "false-alarms",
+      [
+        { key: "deviceId", header: "الجهاز" },
+        { key: "reportedAt", header: "تاريخ الإبلاغ" },
+        { key: "reason", header: "السبب" },
+        { key: "peakGForce", header: "G-Force" },
+        { key: "details", header: "تفاصيل" },
+      ],
+      data.map((r) => ({
+        deviceId: r.deviceId,
+        reportedAt: r.reportedAt,
+        reason: r.reason,
+        peakGForce: r.peakGForce,
+        details: r.details,
+      })),
+    );
+  };
 
   return (
     <div className={compact ? "" : "p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6"}>
@@ -39,10 +68,7 @@ export default function DashboardFalseAlarms({ compact }: { compact?: boolean })
             <p className="text-sm text-muted-foreground mt-0.5">الإنذارات المرفوضة بواسطة النظام أو المستخدم</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Filter className="w-3.5 h-3.5" /> تصفية
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExport} disabled={data.length === 0}>
               <Download className="w-3.5 h-3.5" /> تصدير
             </Button>
           </div>
@@ -56,7 +82,7 @@ export default function DashboardFalseAlarms({ compact }: { compact?: boolean })
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="بحث بالجهاز..."
+                  placeholder="بحث بالجهاز أو السبب..."
                   className="pr-9 h-9 text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

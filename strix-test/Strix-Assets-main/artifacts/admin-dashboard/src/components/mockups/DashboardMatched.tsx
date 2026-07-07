@@ -3,9 +3,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
-import { ChevronLeft, ChevronRight, Search, GitMerge, Download, Filter, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, GitMerge, Download, CheckCircle2, AlertCircle } from "lucide-react";
 import { Input } from "../ui/input";
 import { dashboardApi } from "../../lib/dashboard-api";
+import { exportToCsv } from "../../lib/csv";
+import { useDebounce } from "../../hooks/use-debounce";
 import type { DashboardMatched } from "../../types/dashboard";
 
 export default function DashboardMatched({ compact }: { compact?: boolean }) {
@@ -14,21 +16,50 @@ export default function DashboardMatched({ compact }: { compact?: boolean }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery);
   const limit = compact ? 5 : 10;
 
-  useEffect(() => { fetchData(); }, [page]);
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await dashboardApi.getMatched(page, limit);
-      setData(res.data);
-      setTotal(res.total);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await dashboardApi.getMatched(page, limit, { search: debouncedSearch });
+        if (!active) return;
+        setData(res.data);
+        setTotal(res.total);
+      } catch (err) { console.error(err); }
+      finally { if (active) setLoading(false); }
+    };
+    fetchData();
+    return () => { active = false; };
+  }, [page, limit, debouncedSearch]);
 
   const totalPages = Math.ceil(total / limit);
+
+  const handleExport = () => {
+    exportToCsv(
+      "matched-accidents",
+      [
+        { key: "accidentAId", header: "معرف الحادث (أ)" },
+        { key: "accidentBId", header: "معرف الحادث (ب)" },
+        { key: "createdAt", header: "تاريخ المطابقة" },
+        { key: "consistencyStatus", header: "الحالة" },
+        { key: "liabilityAPercent", header: "مسؤولية أ %" },
+        { key: "liabilityBPercent", header: "مسؤولية ب %" },
+      ],
+      data.map((r) => ({
+        accidentAId: r.accidentAId,
+        accidentBId: r.accidentBId,
+        createdAt: r.createdAt,
+        consistencyStatus: r.consistencyStatus,
+        liabilityAPercent: r.liabilityAPercent,
+        liabilityBPercent: r.liabilityBPercent,
+      })),
+    );
+  };
 
   return (
     <div className={compact ? "" : "p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6"}>
@@ -39,10 +70,7 @@ export default function DashboardMatched({ compact }: { compact?: boolean }) {
             <p className="text-sm text-muted-foreground mt-0.5">تقاطعات الحوادث بين أطراف متعددة</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Filter className="w-3.5 h-3.5" /> تصفية
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExport} disabled={data.length === 0}>
               <Download className="w-3.5 h-3.5" /> تصدير
             </Button>
           </div>

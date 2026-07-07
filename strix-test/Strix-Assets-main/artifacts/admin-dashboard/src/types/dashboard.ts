@@ -77,6 +77,56 @@ export interface DashboardLead {
   createdAt: string;
 }
 
+// العرض الموحّد لحالة واحدة: الحادث + تقييمه + إنذاره الكاذب + مطابقته
+export interface AccidentDetail {
+  accident: {
+    id: string;
+    deviceId: string;
+    timestamp: string;
+    latitude: number | null;
+    longitude: number | null;
+    peakGForce: number;
+    impactZone: string;
+    impactDirection: string;
+    speedKmh: number;
+    severity: string;
+    matchedAccidentId: string | null;
+    matchConfidence: number | null;
+  };
+  assessment: {
+    id: string;
+    appLiabilityUser: number;
+    appLiabilityOther: number;
+    najmLiabilityUser: number | null;
+    najmLiabilityOther: number | null;
+    liabilityDifference: number | null;
+    userDescription: string | null;
+    assessedAt: string;
+  } | null;
+  falseAlarm: {
+    id: string;
+    reason: string;
+    details: string | null;
+    createdAt: string;
+  } | null;
+  matched: {
+    id: string;
+    accidentAId: string;
+    accidentBId: string;
+    consistencyStatus: string;
+    liabilityAPercent: number;
+    liabilityBPercent: number;
+    firstContactParty: string;
+  } | null;
+  partner: {
+    id: string;
+    deviceId: string;
+    timestamp: string;
+    severity: string;
+    impactZone: string;
+  } | null;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;

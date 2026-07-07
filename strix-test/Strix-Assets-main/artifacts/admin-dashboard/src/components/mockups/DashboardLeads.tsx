@@ -3,9 +3,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
-import { ChevronLeft, ChevronRight, Search, Users, Download, Filter } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Users, Download } from "lucide-react";
 import { Input } from "../ui/input";
 import { dashboardApi } from "../../lib/dashboard-api";
+import { exportToCsv } from "../../lib/csv";
+import { useDebounce } from "../../hooks/use-debounce";
 import type { DashboardLead } from "../../types/dashboard";
 
 export default function DashboardLeads({ compact }: { compact?: boolean }) {
@@ -14,29 +16,43 @@ export default function DashboardLeads({ compact }: { compact?: boolean }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery);
   const limit = compact ? 5 : 10;
 
-  useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [page]);
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await dashboardApi.getLeads(page, limit);
-      setData(res.data);
-      setTotal(res.total);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await dashboardApi.getLeads(page, limit, { search: debouncedSearch });
+        if (!active) return;
+        setData(res.data);
+        setTotal(res.total);
+      } catch (err) { console.error(err); }
+      finally { if (active) setLoading(false); }
+    };
+    fetchData();
+    return () => { active = false; };
+  }, [page, limit, debouncedSearch]);
 
   const totalPages = Math.ceil(total / limit);
 
-  const filtered = searchQuery
-    ? data.filter((r) =>
-        [r.fullName, r.mobile, r.email ?? ""].some((v) =>
-          v.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      )
-    : data;
+  const filtered = data;
+
+  const handleExport = () => {
+    exportToCsv(
+      "leads",
+      [
+        { key: "fullName", header: "الاسم" },
+        { key: "mobile", header: "الجوال" },
+        { key: "email", header: "البريد الإلكتروني" },
+        { key: "createdAt", header: "تاريخ التسجيل" },
+      ],
+      data.map((r) => ({ ...r })),
+    );
+  };
 
   return (
     <div className={compact ? "" : "p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6"}>
@@ -47,10 +63,7 @@ export default function DashboardLeads({ compact }: { compact?: boolean }) {
             <p className="text-sm text-muted-foreground mt-0.5">العملاء المسجّلون عبر صفحة الهبوط</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Filter className="w-3.5 h-3.5" /> تصفية
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExport} disabled={data.length === 0}>
               <Download className="w-3.5 h-3.5" /> تصدير
             </Button>
           </div>

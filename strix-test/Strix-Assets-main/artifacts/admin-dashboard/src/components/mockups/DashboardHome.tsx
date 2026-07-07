@@ -5,9 +5,6 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   AlertTriangle,
-  ArrowUpLeft,
-  ArrowDownLeft,
-  Clock,
   Car,
   FileBarChart,
   GitMerge,
@@ -79,13 +76,20 @@ export default function DashboardHome() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5 py-1.5 px-3 text-xs font-medium">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
-            </span>
-            النظام متصل
-          </Badge>
+          {error ? (
+            <Badge variant="outline" className="gap-1.5 py-1.5 px-3 text-xs font-medium border-destructive/30 text-destructive">
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive" />
+              غير متصل
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1.5 py-1.5 px-3 text-xs font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+              </span>
+              النظام متصل
+            </Badge>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -175,38 +179,6 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          {/* Quick activity log */}
-          <Card className="shadow-sm border-border">
-            <CardHeader className="px-5 pt-5 pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                آخر الأنشطة
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-5 pb-5">
-              <div className="space-y-3">
-                {[
-                  { action: "تم رصد حادث جديد — منطقة الاصطدام: أمامي يسار", time: "منذ 5 دقائق", type: "accident" },
-                  { action: "تم تحديث تقييم نجم — الفرق: 12%", time: "منذ 23 دقيقة", type: "assessment" },
-                  { action: "تم رفض إنذار كاذب — السبب: اهتزاز خفيف", time: "منذ ساعة", type: "false-alarm" },
-                  { action: "تم مطابقة حادث مشترك — نسبة التطابق: كامل", time: "منذ ساعتين", type: "matched" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm group">
-                    <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${
-                      item.type === "accident" ? "bg-primary" :
-                      item.type === "assessment" ? "bg-chart-2" :
-                      item.type === "false-alarm" ? "bg-destructive" :
-                      "bg-chart-4"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-foreground/90 truncate">{item.action}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Charts sidebar */}

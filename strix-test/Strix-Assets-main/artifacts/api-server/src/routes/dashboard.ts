@@ -7,11 +7,17 @@ import {
   faultAssessmentsTable,
   leadsTable,
 } from "@workspace/db/schema";
-import { desc, eq, isNotNull, sql, or } from "drizzle-orm";
+import { desc, eq, isNotNull, sql, and, type SQL } from "drizzle-orm";
 
 const router = Router();
 
 // المصادقة مفروضة في routes/index.ts عبر requireAuth قبل الوصول لهذا الراوتر.
+
+// أداة مساعدة: قراءة نص البحث من الاستعلام (منقّى ومحدود الطول).
+function getSearch(req: { query: Record<string, unknown> }): string {
+  const raw = typeof req.query.search === "string" ? req.query.search : "";
+  return raw.trim().slice(0, 120);
+}
 
 // GET /api/dashboard/stats
 router.get("/stats", async (req, res) => {
@@ -64,6 +70,17 @@ router.get("/stats", async (req, res) => {
       .from(accidentsTable)
       .groupBy(accidentsTable.impactZone);
 
+    // الحوادث حسب اليوم لآخر 30 يومًا (بيانات فعلية لرسم الاتجاه الزمني)
+    const byDay = await db
+      .select({
+        date: sql<string>`to_char(date_trunc('day', ${accidentsTable.timestamp}), 'YYYY-MM-DD')`,
+        count: sql<number>`cast(count(${accidentsTable.id}) as int)`,
+      })
+      .from(accidentsTable)
+      .where(sql`${accidentsTable.timestamp} >= now() - interval '30 days'`)
+      .groupBy(sql`date_trunc('day', ${accidentsTable.timestamp})`)
+      .orderBy(sql`date_trunc('day', ${accidentsTable.timestamp})`);
+
     res.json({
       totalAccidents: totalAccidentsResult[0]?.count || 0,
       totalFalseAlarms: totalFalseAlarmsResult[0]?.count || 0,
@@ -74,8 +91,7 @@ router.get("/stats", async (req, res) => {
       averageGForce: averageGForceResult[0]?.avg || 0,
       accidentsBySeverity: severityGroups,
       accidentsByImpactZone: zoneGroups,
-      // For a real app we'd group by day using sql`date_trunc('day', timestamp)`
-      accidentsByDay: [],
+      accidentsByDay: byDay,
     });
   } catch (error) {
     console.error("Failed to fetch stats", error);
@@ -89,6 +105,21 @@ router.get("/accidents", async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    const search = getSearch(req);
+    const severityFilter = typeof req.query.severity === "string" ? req.query.severity : "";
+
+    // بناء شروط البحث/الفلترة
+    const conditions: SQL[] = [];
+    if (search) {
+      const like = `%${search}%`;
+      conditions.push(
+        sql`(${accidentsTable.deviceId} ILIKE ${like} OR ${accidentsTable.id}::text ILIKE ${like} OR ${accidentsTable.impactZone}::text ILIKE ${like})`,
+      );
+    }
+    if (severityFilter) {
+      conditions.push(sql`${accidentsTable.severity}::text = ${severityFilter}`);
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined;
 
     const data = await db
       .select({
@@ -111,13 +142,15 @@ router.get("/accidents", async (req, res) => {
       .from(accidentsTable)
       .leftJoin(falseAlarmsTable, eq(accidentsTable.id, falseAlarmsTable.accidentId))
       .leftJoin(faultAssessmentsTable, eq(accidentsTable.id, faultAssessmentsTable.accidentId))
+      .where(whereClause)
       .orderBy(desc(accidentsTable.timestamp))
       .limit(limit)
       .offset(offset);
 
     const totalResult = await db
       .select({ count: sql<number>`cast(count(${accidentsTable.id}) as int)` })
-      .from(accidentsTable);
+      .from(accidentsTable)
+      .where(whereClause);
 
     res.json({
       data,
@@ -131,12 +164,79 @@ router.get("/accidents", async (req, res) => {
   }
 });
 
+// GET /api/dashboard/accidents/:id — عرض موحّد لكل ما يخص حالة واحدة
+// (تفاصيل الحادث + تقييم نجم + الإنذار الكاذب + المطابقة/الحادث المشترك)
+router.get("/accidents/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const accidentRows = await db
+      .select()
+      .from(accidentsTable)
+      .where(eq(accidentsTable.id, id))
+      .limit(1);
+
+    const accident = accidentRows[0];
+    if (!accident) {
+      res.status(404).json({ error: "Accident not found" });
+      return;
+    }
+
+    const assessmentRows = await db
+      .select()
+      .from(faultAssessmentsTable)
+      .where(eq(faultAssessmentsTable.accidentId, id))
+      .limit(1);
+
+    const falseAlarmRows = await db
+      .select()
+      .from(falseAlarmsTable)
+      .where(eq(falseAlarmsTable.accidentId, id))
+      .limit(1);
+
+    // المطابقة: نبحث في تحليلات التحقق المتقاطع عن أي سجل يضم هذا الحادث
+    const matchedRows = await db
+      .select()
+      .from(crossVerifiedAnalysesTable)
+      .where(
+        sql`${crossVerifiedAnalysesTable.accidentAId} = ${id} OR ${crossVerifiedAnalysesTable.accidentBId} = ${id}`,
+      )
+      .limit(1);
+
+    // بيانات الحادث الشريك (إن وُجد matchedAccidentId)
+    let partner: typeof accidentRows[number] | null = null;
+    if (accident.matchedAccidentId) {
+      const partnerRows = await db
+        .select()
+        .from(accidentsTable)
+        .where(eq(accidentsTable.id, accident.matchedAccidentId))
+        .limit(1);
+      partner = partnerRows[0] ?? null;
+    }
+
+    res.json({
+      accident,
+      assessment: assessmentRows[0] ?? null,
+      falseAlarm: falseAlarmRows[0] ?? null,
+      matched: matchedRows[0] ?? null,
+      partner,
+    });
+  } catch (error) {
+    console.error("Failed to fetch accident detail", error);
+    res.status(500).json({ error: "Failed to fetch accident detail" });
+  }
+});
+
 // GET /api/dashboard/assessments
 router.get("/assessments", async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    const search = getSearch(req);
+    const whereClause = search
+      ? sql`${faultAssessmentsTable.accidentId}::text ILIKE ${`%${search}%`}`
+      : undefined;
 
     const data = await db
       .select({
@@ -154,13 +254,15 @@ router.get("/assessments", async (req, res) => {
       })
       .from(faultAssessmentsTable)
       .innerJoin(accidentsTable, eq(faultAssessmentsTable.accidentId, accidentsTable.id))
+      .where(whereClause)
       .orderBy(desc(faultAssessmentsTable.assessedAt))
       .limit(limit)
       .offset(offset);
 
     const totalResult = await db
       .select({ count: sql<number>`cast(count(${faultAssessmentsTable.id}) as int)` })
-      .from(faultAssessmentsTable);
+      .from(faultAssessmentsTable)
+      .where(whereClause);
 
     const averageResult = await db
       .select({ avg: sql<number>`avg(${faultAssessmentsTable.liabilityDifference})` })
@@ -227,6 +329,11 @@ router.get("/false-alarms", async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    const search = getSearch(req);
+    // البحث بالجهاز أو السبب (join خارجي مع الحوادث للحصول على معرف الجهاز)
+    const whereClause = search
+      ? sql`(${accidentsTable.deviceId} ILIKE ${`%${search}%`} OR ${falseAlarmsTable.reason} ILIKE ${`%${search}%`})`
+      : undefined;
 
     const data = await db
       .select({
@@ -241,13 +348,16 @@ router.get("/false-alarms", async (req, res) => {
       })
       .from(falseAlarmsTable)
       .leftJoin(accidentsTable, eq(falseAlarmsTable.accidentId, accidentsTable.id))
+      .where(whereClause)
       .orderBy(desc(falseAlarmsTable.createdAt))
       .limit(limit)
       .offset(offset);
 
     const totalResult = await db
       .select({ count: sql<number>`cast(count(${falseAlarmsTable.id}) as int)` })
-      .from(falseAlarmsTable);
+      .from(falseAlarmsTable)
+      .leftJoin(accidentsTable, eq(falseAlarmsTable.accidentId, accidentsTable.id))
+      .where(whereClause);
 
     res.json({
       data,
@@ -266,6 +376,10 @@ router.get("/leads", async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    const search = getSearch(req);
+    const whereClause = search
+      ? sql`(${leadsTable.fullName} ILIKE ${`%${search}%`} OR ${leadsTable.mobile} ILIKE ${`%${search}%`} OR ${leadsTable.email} ILIKE ${`%${search}%`})`
+      : undefined;
 
     const data = await db
       .select({
@@ -276,13 +390,15 @@ router.get("/leads", async (req, res) => {
         createdAt: leadsTable.createdAt,
       })
       .from(leadsTable)
+      .where(whereClause)
       .orderBy(desc(leadsTable.createdAt))
       .limit(limit)
       .offset(offset);
 
     const totalResult = await db
       .select({ count: sql<number>`cast(count(${leadsTable.id}) as int)` })
-      .from(leadsTable);
+      .from(leadsTable)
+      .where(whereClause);
 
     res.json({
       data,

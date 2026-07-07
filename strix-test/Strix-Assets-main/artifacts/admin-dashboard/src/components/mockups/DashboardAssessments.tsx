@@ -3,10 +3,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
-import { ChevronLeft, ChevronRight, Search, FileText, Download, Filter, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, FileText, Download, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { Input } from "../ui/input";
 import { dashboardApi } from "../../lib/dashboard-api";
+import { exportToCsv } from "../../lib/csv";
+import { useDebounce } from "../../hooks/use-debounce";
 import type { DashboardAssessment } from "../../types/dashboard";
+
+/** الانحراف الموقّع = مسؤولية النظام − مسؤولية نجم (موجب: النظام أعلى، سالب: النظام أقل). */
+function signedDeviation(row: DashboardAssessment): number | null {
+  if (row.najmLiabilityUser === null) return null;
+  return row.appLiabilityUser - row.najmLiabilityUser;
+}
 
 export default function DashboardAssessments({ compact }: { compact?: boolean }) {
   const [data, setData] = useState<DashboardAssessment[]>([]);
@@ -14,21 +22,50 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery);
   const limit = compact ? 5 : 10;
 
-  useEffect(() => { fetchData(); }, [page]);
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await dashboardApi.getAssessments(page, limit);
-      setData(res.data);
-      setTotal(res.total);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await dashboardApi.getAssessments(page, limit, { search: debouncedSearch });
+        if (!active) return;
+        setData(res.data);
+        setTotal(res.total);
+      } catch (err) { console.error(err); }
+      finally { if (active) setLoading(false); }
+    };
+    fetchData();
+    return () => { active = false; };
+  }, [page, limit, debouncedSearch]);
 
   const totalPages = Math.ceil(total / limit);
+
+  const handleExport = () => {
+    exportToCsv(
+      "assessments",
+      [
+        { key: "accidentId", header: "معرف الحادث" },
+        { key: "assessedAt", header: "تاريخ التقييم" },
+        { key: "appLiabilityUser", header: "مسؤولية النظام %" },
+        { key: "najmLiabilityUser", header: "مسؤولية نجم %" },
+        { key: "signed", header: "الانحراف الموقّع %" },
+        { key: "userDescription", header: "وصف المستخدم" },
+      ],
+      data.map((r) => ({
+        accidentId: r.accidentId,
+        assessedAt: r.assessedAt,
+        appLiabilityUser: r.appLiabilityUser,
+        najmLiabilityUser: r.najmLiabilityUser,
+        signed: signedDeviation(r),
+        userDescription: r.userDescription,
+      })),
+    );
+  };
 
   return (
     <div className={compact ? "" : "p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto space-y-6"}>
@@ -39,10 +76,7 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
             <p className="text-sm text-muted-foreground mt-0.5">سجل التقييمات ومقارنات المسؤولية</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Filter className="w-3.5 h-3.5" /> تصفية
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExport} disabled={data.length === 0}>
               <Download className="w-3.5 h-3.5" /> تصدير
             </Button>
           </div>
@@ -76,7 +110,7 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
                   <TableHead className="text-xs font-semibold py-3">معرف الحادث</TableHead>
                   <TableHead className="text-xs font-semibold py-3">مسؤولية النظام</TableHead>
                   <TableHead className="text-xs font-semibold py-3">مسؤولية نجم</TableHead>
-                  <TableHead className="text-xs font-semibold py-3">نسبة الانحراف</TableHead>
+                  <TableHead className="text-xs font-semibold py-3">الانحراف (± مقابل نجم)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -95,54 +129,53 @@ export default function DashboardAssessments({ compact }: { compact?: boolean })
                     <TableCell colSpan={5} className="h-32 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <FileText className="w-8 h-8 opacity-40" />
-                        <p className="text-sm">لا توجد تقييمات مسجلة</p>
+                        <p className="text-sm">لا توجد تقييمات مطابقة</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  data.map((row) => (
-                    <TableRow key={row.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="text-xs font-mono text-muted-foreground py-3 px-4">
-                        {new Date(row.assessedAt).toLocaleDateString("ar-EG", {
-                          day: "2-digit", month: "2-digit", year: "numeric", calendar: "gregory"
-                        })}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground py-3">
-                        <span className="bg-muted px-2 py-1 rounded select-all">{row.accidentId.slice(0, 8)}...</span>
-                      </TableCell>
-                      <TableCell className="py-3 text-sm font-semibold">
-                        {row.appLiabilityUser}%
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {row.najmLiabilityUser !== null ? (
-                          <span className="text-sm font-semibold text-primary">{row.najmLiabilityUser}%</span>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground">قيد الانتظار</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {row.liabilityDifference !== null ? (
-                          <div className="flex items-center gap-1.5">
-                            {row.liabilityDifference > 10 ? (
-                              <Badge variant="destructive" className="bg-destructive/10 text-destructive border-0 text-[10px] px-1.5 gap-1">
-                                <TrendingUp className="w-3 h-3" /> {row.liabilityDifference}%
-                              </Badge>
-                            ) : row.liabilityDifference > 0 ? (
-                              <Badge variant="secondary" className="bg-warning/10 text-warning-foreground border-0 text-[10px] px-1.5 gap-1">
-                                <TrendingUp className="w-3 h-3" /> {row.liabilityDifference}%
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px] px-1.5 gap-1">
-                                <Minus className="w-3 h-3" /> مطابق
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  data.map((row) => {
+                    const signed = signedDeviation(row);
+                    return (
+                      <TableRow key={row.id} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="text-xs font-mono text-muted-foreground py-3 px-4">
+                          {new Date(row.assessedAt).toLocaleDateString("ar-EG", {
+                            day: "2-digit", month: "2-digit", year: "numeric", calendar: "gregory"
+                          })}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground py-3">
+                          <span className="bg-muted px-2 py-1 rounded select-all">{row.accidentId.slice(0, 8)}...</span>
+                        </TableCell>
+                        <TableCell className="py-3 text-sm font-semibold">
+                          {row.appLiabilityUser}%
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {row.najmLiabilityUser !== null ? (
+                            <span className="text-sm font-semibold text-primary">{row.najmLiabilityUser}%</span>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">قيد الانتظار</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {signed === null ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : signed === 0 ? (
+                            <Badge variant="secondary" className="bg-success/10 text-success border-0 text-[10px] px-1.5 gap-1">
+                              <Minus className="w-3 h-3" /> مطابق
+                            </Badge>
+                          ) : signed > 0 ? (
+                            <Badge variant="secondary" className="bg-destructive/10 text-destructive border-0 text-[10px] px-1.5 gap-1" title="النظام قدّر مسؤولية أعلى من نجم">
+                              <TrendingUp className="w-3 h-3" /> +{signed}%
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-chart-4/10 text-chart-4 border-0 text-[10px] px-1.5 gap-1" title="النظام قدّر مسؤولية أقل من نجم">
+                              <TrendingDown className="w-3 h-3" /> {signed}%
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

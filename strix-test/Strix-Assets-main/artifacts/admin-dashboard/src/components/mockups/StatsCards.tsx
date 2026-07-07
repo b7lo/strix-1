@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { Activity, Shield, CheckCircle, FileText, AlertTriangle, Gauge, Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Activity, Shield, CheckCircle, FileText, AlertTriangle, Gauge, Users } from "lucide-react";
 import type { DashboardStats } from "../../types/dashboard";
 
 interface StatsCardsProps {
@@ -31,7 +31,6 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     {
       title: "العملاء المسجّلون",
       value: Number(stats.totalLeads ?? 0).toLocaleString("ar-SA"),
-      trend: { value: 0, direction: "neutral" as const },
       icon: Users,
       iconBg: "bg-success/10",
       iconColor: "text-success",
@@ -39,7 +38,6 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     {
       title: "إجمالي الحوادث",
       value: stats.totalAccidents,
-      trend: { value: 12.5, direction: "up" as const },
       icon: Activity,
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
@@ -47,7 +45,6 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     {
       title: "الإنذارات الكاذبة",
       value: stats.totalFalseAlarms,
-      trend: { value: 2.1, direction: "down" as const },
       icon: Shield,
       iconBg: "bg-destructive/8",
       iconColor: "text-destructive",
@@ -55,7 +52,6 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     {
       title: "حوادث مشتركة",
       value: stats.totalMatchedAccidents,
-      trend: { value: 4.3, direction: "up" as const },
       icon: CheckCircle,
       iconBg: "bg-success/10",
       iconColor: "text-success",
@@ -63,7 +59,6 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     {
       title: "تقييمات نجم",
       value: stats.totalAssessments,
-      trend: { value: 18.2, direction: "up" as const },
       icon: FileText,
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
@@ -71,7 +66,6 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     {
       title: "متوسط الانحراف",
       value: stats.averageNajmDifference !== null ? `${Number(stats.averageNajmDifference).toFixed(1)}%` : "—",
-      trend: { value: 1.1, direction: "down" as const },
       icon: AlertTriangle,
       iconBg: "bg-warning/10",
       iconColor: "text-warning",
@@ -79,7 +73,6 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
     {
       title: "متوسط القوة",
       value: `${Number(stats.averageGForce).toFixed(2)} G`,
-      trend: { value: 0, direction: "neutral" as const },
       icon: Gauge,
       iconBg: "bg-chart-4/10",
       iconColor: "text-chart-4",
@@ -102,28 +95,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
                   <Icon className={`w-[18px] h-[18px] ${card.iconColor}`} />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-foreground tracking-tight leading-none mb-2">{card.value}</p>
-              <div className="flex items-center gap-1.5">
-                {card.trend.direction === "up" && (
-                  <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-success">
-                    <TrendingUp className="w-3 h-3" />
-                    +{card.trend.value}%
-                  </span>
-                )}
-                {card.trend.direction === "down" && (
-                  <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-destructive">
-                    <TrendingDown className="w-3 h-3" />
-                    -{card.trend.value}%
-                  </span>
-                )}
-                {card.trend.direction === "neutral" && (
-                  <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-muted-foreground">
-                    <Minus className="w-3 h-3" />
-                    ثابت
-                  </span>
-                )}
-                <span className="text-[11px] text-muted-foreground">من الشهر السابق</span>
-              </div>
+              <p className="text-2xl font-bold text-foreground tracking-tight leading-none">{card.value}</p>
             </CardContent>
           </Card>
         );

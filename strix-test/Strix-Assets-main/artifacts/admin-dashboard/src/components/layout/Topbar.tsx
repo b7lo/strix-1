@@ -1,5 +1,4 @@
 import {
-  Search,
   Bell,
   Sun,
   Moon,
@@ -7,15 +6,12 @@ import {
   User,
   ChevronDown,
   LogOut,
-  Settings,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import type { Page } from "./Sidebar";
@@ -83,35 +79,20 @@ export default function Topbar({ currentPage, theme, onToggleTheme, onOpenMobile
 
         {/* Left side: Actions */}
         <div className="flex items-center gap-1.5">
-          {/* Search */}
-          <Button variant="ghost" size="icon" className="w-9 h-9 text-muted-foreground hover:text-foreground">
-            <Search className="w-[18px] h-[18px]" />
-          </Button>
-
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="w-9 h-9 text-muted-foreground hover:text-foreground relative">
                 <Bell className="w-[18px] h-[18px]" />
-                <span className="absolute top-1.5 left-1.5 w-2 h-2 bg-destructive rounded-full" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-72">
               <div className="px-3 py-2 border-b">
                 <p className="text-sm font-semibold">الإشعارات</p>
               </div>
-              <DropdownMenuItem className="flex flex-col items-start gap-1 py-3 cursor-pointer">
-                <p className="text-sm">تم رصد حادث جديد</p>
-                <p className="text-xs text-muted-foreground">منذ 5 دقائق</p>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start gap-1 py-3 cursor-pointer">
-                <p className="text-sm">تم تحديث تقييم نجم</p>
-                <p className="text-xs text-muted-foreground">منذ ساعة</p>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="justify-center text-primary text-xs font-medium cursor-pointer">
-                عرض جميع الإشعارات
-              </DropdownMenuItem>
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                لا توجد إشعارات جديدة
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -146,13 +127,8 @@ export default function Topbar({ currentPage, theme, onToggleTheme, onOpenMobile
             <DropdownMenuContent align="start" className="w-48">
               <div className="px-3 py-2 border-b">
                 <p className="text-sm font-semibold">المشرف العام</p>
-                <p className="text-xs text-muted-foreground">admin@strix.sa</p>
+                <p className="text-xs text-muted-foreground">admin@strixsa.com</p>
               </div>
-              <DropdownMenuItem className="gap-2 cursor-pointer">
-                <Settings className="w-4 h-4" />
-                الإعدادات
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-destructive cursor-pointer" onClick={onLogout}>
                 <LogOut className="w-4 h-4" />
                 تسجيل الخروج
