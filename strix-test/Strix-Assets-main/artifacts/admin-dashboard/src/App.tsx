@@ -54,13 +54,14 @@ export default function App() {
     setMobileSidebarOpen(false);
   }, []);
 
-  if (!authed) {
-    return <Login onSuccess={() => setAuthed(true)} />;
-  }
-
   const toggleTheme = useCallback(() => {
     setTheme(resolvedTheme === "light" ? "dark" : "light");
   }, [resolvedTheme, setTheme]);
+
+  // ملاحظة: يجب أن تُستدعى كل الـ hooks قبل أي return شرطي (قواعد React Hooks).
+  if (!authed) {
+    return <Login onSuccess={() => setAuthed(true)} />;
+  }
 
   const pageComponents: Record<Page, React.ReactNode> = {
     home: <DashboardHome />,
