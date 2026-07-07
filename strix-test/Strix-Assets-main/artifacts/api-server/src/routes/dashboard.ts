@@ -170,8 +170,22 @@ router.get("/accidents/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
+    // نختار الأعمدة اللازمة فقط (نتفادى أي عمود قد يكون ناقصًا في القاعدة الفعلية).
     const accidentRows = await db
-      .select()
+      .select({
+        id: accidentsTable.id,
+        deviceId: accidentsTable.deviceId,
+        timestamp: accidentsTable.timestamp,
+        latitude: accidentsTable.latitude,
+        longitude: accidentsTable.longitude,
+        peakGForce: accidentsTable.peakGForce,
+        impactZone: accidentsTable.impactZone,
+        impactDirection: accidentsTable.impactDirection,
+        speedKmh: accidentsTable.speedKmh,
+        severity: accidentsTable.severity,
+        matchedAccidentId: accidentsTable.matchedAccidentId,
+        matchConfidence: accidentsTable.matchConfidence,
+      })
       .from(accidentsTable)
       .where(eq(accidentsTable.id, id))
       .limit(1);
@@ -182,53 +196,102 @@ router.get("/accidents/:id", async (req, res) => {
       return;
     }
 
-    const assessmentRows = await db
-      .select()
-      .from(faultAssessmentsTable)
-      .where(eq(faultAssessmentsTable.accidentId, id))
-      .limit(1);
+    // الاستعلامات الفرعية معزولة: فشل أيٍّ منها (مثلاً جدول غير موجود)
+    // لا يُسقط الطلب كله، بل يُسجّل ويُرجَّع null مع سببه في warnings.
+    const warnings: string[] = [];
+    const safe = async <T>(label: string, fn: () => Promise<T>): Promise<T | null> => {
+      try {
+        return await fn();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`accident-detail: ${label} failed`, msg);
+        warnings.push(`${label}: ${msg}`);
+        return null;
+      }
+    };
 
-    const falseAlarmRows = await db
-      .select()
-      .from(falseAlarmsTable)
-      .where(eq(falseAlarmsTable.accidentId, id))
-      .limit(1);
-
-    // المطابقة: نبحث في تحليلات التحقق المتقاطع عن أي سجل يضم هذا الحادث
-    const matchedRows = await db
-      .select()
-      .from(crossVerifiedAnalysesTable)
-      .where(
-        or(
-          eq(crossVerifiedAnalysesTable.accidentAId, id),
-          eq(crossVerifiedAnalysesTable.accidentBId, id),
-        ),
-      )
-      .limit(1);
-
-    // بيانات الحادث الشريك (إن وُجد matchedAccidentId)
-    let partner: typeof accidentRows[number] | null = null;
-    if (accident.matchedAccidentId) {
-      const partnerRows = await db
-        .select()
-        .from(accidentsTable)
-        .where(eq(accidentsTable.id, accident.matchedAccidentId))
+    const assessment = await safe("assessment", async () => {
+      const rows = await db
+        .select({
+          id: faultAssessmentsTable.id,
+          appLiabilityUser: faultAssessmentsTable.appLiabilityUser,
+          appLiabilityOther: faultAssessmentsTable.appLiabilityOther,
+          najmLiabilityUser: faultAssessmentsTable.najmLiabilityUser,
+          najmLiabilityOther: faultAssessmentsTable.najmLiabilityOther,
+          liabilityDifference: faultAssessmentsTable.liabilityDifference,
+          userDescription: faultAssessmentsTable.userDescription,
+          assessedAt: faultAssessmentsTable.assessedAt,
+        })
+        .from(faultAssessmentsTable)
+        .where(eq(faultAssessmentsTable.accidentId, id))
         .limit(1);
-      partner = partnerRows[0] ?? null;
-    }
+      return rows[0] ?? null;
+    });
+
+    const falseAlarm = await safe("falseAlarm", async () => {
+      const rows = await db
+        .select({
+          id: falseAlarmsTable.id,
+          reason: falseAlarmsTable.reason,
+          details: falseAlarmsTable.details,
+          createdAt: falseAlarmsTable.createdAt,
+        })
+        .from(falseAlarmsTable)
+        .where(eq(falseAlarmsTable.accidentId, id))
+        .limit(1);
+      return rows[0] ?? null;
+    });
+
+    const matched = await safe("matched", async () => {
+      const rows = await db
+        .select({
+          id: crossVerifiedAnalysesTable.id,
+          accidentAId: crossVerifiedAnalysesTable.accidentAId,
+          accidentBId: crossVerifiedAnalysesTable.accidentBId,
+          consistencyStatus: crossVerifiedAnalysesTable.consistencyStatus,
+          liabilityAPercent: crossVerifiedAnalysesTable.liabilityAPercent,
+          liabilityBPercent: crossVerifiedAnalysesTable.liabilityBPercent,
+          firstContactParty: crossVerifiedAnalysesTable.firstContactParty,
+        })
+        .from(crossVerifiedAnalysesTable)
+        .where(
+          or(
+            eq(crossVerifiedAnalysesTable.accidentAId, id),
+            eq(crossVerifiedAnalysesTable.accidentBId, id),
+          ),
+        )
+        .limit(1);
+      return rows[0] ?? null;
+    });
+
+    const partner = accident.matchedAccidentId
+      ? await safe("partner", async () => {
+          const rows = await db
+            .select({
+              id: accidentsTable.id,
+              deviceId: accidentsTable.deviceId,
+              timestamp: accidentsTable.timestamp,
+              severity: accidentsTable.severity,
+              impactZone: accidentsTable.impactZone,
+            })
+            .from(accidentsTable)
+            .where(eq(accidentsTable.id, accident.matchedAccidentId as string))
+            .limit(1);
+          return rows[0] ?? null;
+        })
+      : null;
 
     res.json({
       accident,
-      assessment: assessmentRows[0] ?? null,
-      falseAlarm: falseAlarmRows[0] ?? null,
-      matched: matchedRows[0] ?? null,
+      assessment,
+      falseAlarm,
+      matched,
       partner,
+      ...(warnings.length ? { warnings } : {}),
     });
   } catch (error) {
     console.error("Failed to fetch accident detail", error);
-    // مؤقت للتشخيص: نكشف رسالة الخطأ للأدمن (خلف المصادقة) لتحديد السبب الجذري.
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ error: "Failed to fetch accident detail", detail: message });
+    res.status(500).json({ error: "Failed to fetch accident detail" });
   }
 });
 
