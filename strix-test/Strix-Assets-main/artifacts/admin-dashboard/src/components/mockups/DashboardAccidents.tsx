@@ -8,7 +8,7 @@ import {
   MapPin, Gauge, ShieldAlert, Download, Filter, Eye, Loader2, GitMerge,
   TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
@@ -280,6 +280,9 @@ export default function DashboardAccidents({ compact }: { compact?: boolean }) {
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden gap-0 max-h-[90vh] overflow-y-auto">
           <DialogHeader className="p-5 pb-4 border-b bg-muted/20 sticky top-0 z-10">
             <DialogTitle className="text-base font-bold">ملف الحالة الموحّد</DialogTitle>
+            <DialogDescription className="sr-only">
+              تفاصيل الحادث وتقييمه وحالته المشتركة والإنذار الكاذب المرتبط به
+            </DialogDescription>
           </DialogHeader>
 
           {detailLoading || !detail ? (

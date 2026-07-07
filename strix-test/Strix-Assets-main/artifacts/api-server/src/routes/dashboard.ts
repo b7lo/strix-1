@@ -7,7 +7,7 @@ import {
   faultAssessmentsTable,
   leadsTable,
 } from "@workspace/db/schema";
-import { desc, eq, isNotNull, sql, and, type SQL } from "drizzle-orm";
+import { desc, eq, isNotNull, sql, and, or, type SQL } from "drizzle-orm";
 
 const router = Router();
 
@@ -199,7 +199,10 @@ router.get("/accidents/:id", async (req, res) => {
       .select()
       .from(crossVerifiedAnalysesTable)
       .where(
-        sql`${crossVerifiedAnalysesTable.accidentAId} = ${id} OR ${crossVerifiedAnalysesTable.accidentBId} = ${id}`,
+        or(
+          eq(crossVerifiedAnalysesTable.accidentAId, id),
+          eq(crossVerifiedAnalysesTable.accidentBId, id),
+        ),
       )
       .limit(1);
 
