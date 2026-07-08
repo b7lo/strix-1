@@ -336,6 +336,11 @@ export default function AssessmentScreen() {
         >
           <Text style={styles.saveBtnText}>{t("assessment.save")}</Text>
         </TouchableOpacity>
+
+        {/* إخلاء مسؤولية: أغراض داخلية فقط ولا ارتباط بأي جهة رسمية */}
+        <Text style={[styles.disclaimer, { color: colors.mutedForeground, textAlign }]}>
+          {t("assessment.disclaimer")}
+        </Text>
       </ScrollView>
     </View>
   );
@@ -453,5 +458,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  disclaimer: {
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 4,
+    paddingHorizontal: 2,
   },
 });

@@ -713,6 +713,7 @@
     "notesLabel": "Additional Notes (Optional)",
     "notesPlaceholder": "Write additional details about the accident or reason for the difference...",
     "save": "Save Assessment",
+    "disclaimer": "The reporting-authority options shown above are for internal assessment and for comparing the app's estimates with official reports, in order to improve the algorithm's accuracy. Strix does not represent any official authority or insurance company, and does not claim any affiliation, partnership, or official endorsement with them. Entered data is the user's responsibility.",
     "alertMissingTitle": "Alert",
     "alertMissing": "Please select the fault percentage from the official report",
     "alertSuccessTitle": "Success",
