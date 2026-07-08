@@ -25,6 +25,7 @@ import { getSyncQueue, saveSyncQueue } from "./storage";
 
 // ─── Sync Config ───
 const STRIX_API_URL = process.env.EXPO_PUBLIC_STRIX_API_URL || "";
+const STRIX_INGEST_KEY = process.env.EXPO_PUBLIC_STRIX_INGEST_KEY || "";
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 let lastSyncBackend: "api" | "supabase" | null = null;
@@ -83,6 +84,10 @@ async function apiRequest(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+    }
+    // مفتاح استقبال البلاغات (يحمي /accidents من الحقن العام)
+    if (STRIX_INGEST_KEY) {
+      headers["x-strix-key"] = STRIX_INGEST_KEY;
     }
 
     const response = await fetch(apiUrl(path), {

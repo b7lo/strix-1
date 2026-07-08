@@ -42,3 +42,6 @@ export const apiRateLimit = createLimiter(60_000, 300, "Too many requests, slow 
 
 // حماية صارمة لتسجيل الدخول (ضد التخمين)
 export const loginRateLimit = createLimiter(15 * 60_000, 10, "Too many login attempts. Try again later.");
+
+// حماية صارمة لاستقبال البلاغات من التطبيق (ضد الحقن والإغراق)
+export const ingestRateLimit = createLimiter(60_000, 30, "Too many submissions, slow down.");
