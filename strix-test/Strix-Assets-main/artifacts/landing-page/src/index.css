@@ -3,6 +3,64 @@
    Primary: #1DB768  |  Background: #0A0D0A  |  Card: #111411
    ═══════════════════════════════════════════════════════ */
 
+/* ─── Thmanyah Typeface (خط ثمانية) ─── */
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('./assets/fonts/thmanyahsans-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('./assets/fonts/thmanyahsans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('./assets/fonts/thmanyahsans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('./assets/fonts/thmanyahsans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('./assets/fonts/thmanyahsans-Black.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('./assets/fonts/thmanyahserifdisplay-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('./assets/fonts/thmanyahserifdisplay-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('./assets/fonts/thmanyahserifdisplay-Black.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Strix Core Palette */
   --strix-green: #1DB768;
@@ -22,7 +80,8 @@
   --warning: #F59E0B;
 
   /* Typography */
-  --font-ar: 'IBM Plex Sans Arabic', sans-serif;
+  --font-ar: 'Thmanyah Sans', 'IBM Plex Sans Arabic', sans-serif;
+  --font-display: 'Thmanyah Serif Display', 'Thmanyah Sans', serif;
   --font-en: 'Inter', sans-serif;
 
   /* Spacing */
@@ -246,6 +305,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 
 .hero-title {
+  font-family: var(--font-display);
   font-size: clamp(2.6rem, 5vw, 4rem);
   font-weight: 800;
   line-height: 1.15;
@@ -667,6 +727,7 @@ section {
 }
 
 .section-title {
+  font-family: var(--font-display);
   font-size: clamp(1.75rem, 3.5vw, 2.5rem);
   font-weight: 800;
   color: var(--foreground);
@@ -1235,7 +1296,8 @@ footer {
 }
 
 .story-highlight-title {
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
   font-weight: 800;
   color: var(--strix-green);
   margin-bottom: 1rem;
@@ -1368,7 +1430,8 @@ footer {
 }
 
 .story-cta-title {
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
   font-weight: 800;
   color: var(--foreground);
 }
