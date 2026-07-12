@@ -13,86 +13,105 @@ const router = Router();
 
 // المصادقة مفروضة في routes/index.ts عبر requireAuth قبل الوصول لهذا الراوتر.
 
+// نوع نسخة قاعدة البيانات (drizzle). يُمكِّن حقن قاعدة اختبار في computeDashboardStats.
+type Database = typeof db;
+
 // أداة مساعدة: قراءة نص البحث من الاستعلام (منقّى ومحدود الطول).
 function getSearch(req: { query: Record<string, unknown> }): string {
   const raw = typeof req.query.search === "string" ? req.query.search : "";
   return raw.trim().slice(0, 120);
 }
 
+// منطق حساب إحصائيات اللوحة، مستخرَج في دالّة قابلة للحقن (dependency injection)
+// حتى يمكن تمريرها قاعدة بيانات اختبار في الاختبارات. السلوك مطابق تمامًا لمعالج
+// GET /stats (لا تغيير وظيفي). قيمة `database` الافتراضية هي القاعدة الإنتاجية.
+export async function computeDashboardStats(database: Database = db) {
+  // مُرشِّح استبعاد موحّد: يستبعد الحوادث المصنّفة كبلاغات كاذبة (لها صف مقابل في
+  // false_alarms) من كل الإحصائيات المشتقة من الحوادث، حتى لا تُحتسب مرّتين.
+  // البلاغات الكاذبة تبقى محتسَبة فقط ضمن totalFalseAlarms.
+  const notFalseAlarm = sql`NOT EXISTS (SELECT 1 FROM false_alarms fa WHERE fa.accident_id = ${accidentsTable.id})`;
+
+  const totalAccidentsResult = await database
+    .select({ count: sql<number>`cast(count(${accidentsTable.id}) as int)` })
+    .from(accidentsTable)
+    .where(notFalseAlarm);
+
+  const totalFalseAlarmsResult = await database
+    .select({ count: sql<number>`cast(count(${falseAlarmsTable.id}) as int)` })
+    .from(falseAlarmsTable);
+
+  const totalMatchedAccidentsResult = await database
+    .select({ count: sql<number>`cast(count(${accidentsTable.id}) as int)` })
+    .from(accidentsTable)
+    .where(and(isNotNull(accidentsTable.matchedAccidentId), notFalseAlarm));
+
+  const totalAssessmentsResult = await database
+    .select({ count: sql<number>`cast(count(${faultAssessmentsTable.id}) as int)` })
+    .from(faultAssessmentsTable);
+
+  const averageNajmDifferenceResult = await database
+    .select({ avg: sql<number>`avg(${faultAssessmentsTable.liabilityDifference})` })
+    .from(faultAssessmentsTable);
+
+  const averageGForceResult = await database
+    .select({ avg: sql<number>`avg(${accidentsTable.peakGForce})` })
+    .from(accidentsTable)
+    .where(notFalseAlarm);
+
+  // عدد العملاء المسجّلين (Leads) من صفحة الهبوط
+  const totalLeadsResult = await database
+    .select({ count: sql<number>`cast(count(${leadsTable.id}) as int)` })
+    .from(leadsTable);
+
+  // Group by severity
+  const severityGroups = await database
+    .select({
+      severity: accidentsTable.severity,
+      count: sql<number>`cast(count(${accidentsTable.id}) as int)`,
+    })
+    .from(accidentsTable)
+    .where(notFalseAlarm)
+    .groupBy(accidentsTable.severity);
+
+  // Group by impact zone
+  const zoneGroups = await database
+    .select({
+      zone: accidentsTable.impactZone,
+      count: sql<number>`cast(count(${accidentsTable.id}) as int)`,
+    })
+    .from(accidentsTable)
+    .where(notFalseAlarm)
+    .groupBy(accidentsTable.impactZone);
+
+  // الحوادث حسب اليوم لآخر 30 يومًا (بيانات فعلية لرسم الاتجاه الزمني)
+  const byDay = await database
+    .select({
+      date: sql<string>`to_char(date_trunc('day', ${accidentsTable.timestamp}), 'YYYY-MM-DD')`,
+      count: sql<number>`cast(count(${accidentsTable.id}) as int)`,
+    })
+    .from(accidentsTable)
+    .where(and(sql`${accidentsTable.timestamp} >= now() - interval '30 days'`, notFalseAlarm))
+    .groupBy(sql`date_trunc('day', ${accidentsTable.timestamp})`)
+    .orderBy(sql`date_trunc('day', ${accidentsTable.timestamp})`);
+
+  return {
+    totalAccidents: totalAccidentsResult[0]?.count || 0,
+    totalFalseAlarms: totalFalseAlarmsResult[0]?.count || 0,
+    totalMatchedAccidents: totalMatchedAccidentsResult[0]?.count || 0,
+    totalAssessments: totalAssessmentsResult[0]?.count || 0,
+    totalLeads: totalLeadsResult[0]?.count || 0,
+    averageNajmDifference: averageNajmDifferenceResult[0]?.avg || null,
+    averageGForce: averageGForceResult[0]?.avg || 0,
+    accidentsBySeverity: severityGroups,
+    accidentsByImpactZone: zoneGroups,
+    accidentsByDay: byDay,
+  };
+}
+
 // GET /api/dashboard/stats
 router.get("/stats", async (req, res) => {
   try {
-    const totalAccidentsResult = await db
-      .select({ count: sql<number>`cast(count(${accidentsTable.id}) as int)` })
-      .from(accidentsTable);
-
-    const totalFalseAlarmsResult = await db
-      .select({ count: sql<number>`cast(count(${falseAlarmsTable.id}) as int)` })
-      .from(falseAlarmsTable);
-
-    const totalMatchedAccidentsResult = await db
-      .select({ count: sql<number>`cast(count(${accidentsTable.id}) as int)` })
-      .from(accidentsTable)
-      .where(isNotNull(accidentsTable.matchedAccidentId));
-
-    const totalAssessmentsResult = await db
-      .select({ count: sql<number>`cast(count(${faultAssessmentsTable.id}) as int)` })
-      .from(faultAssessmentsTable);
-
-    const averageNajmDifferenceResult = await db
-      .select({ avg: sql<number>`avg(${faultAssessmentsTable.liabilityDifference})` })
-      .from(faultAssessmentsTable);
-
-    const averageGForceResult = await db
-      .select({ avg: sql<number>`avg(${accidentsTable.peakGForce})` })
-      .from(accidentsTable);
-
-    // عدد العملاء المسجّلين (Leads) من صفحة الهبوط
-    const totalLeadsResult = await db
-      .select({ count: sql<number>`cast(count(${leadsTable.id}) as int)` })
-      .from(leadsTable);
-
-    // Group by severity
-    const severityGroups = await db
-      .select({
-        severity: accidentsTable.severity,
-        count: sql<number>`cast(count(${accidentsTable.id}) as int)`,
-      })
-      .from(accidentsTable)
-      .groupBy(accidentsTable.severity);
-
-    // Group by impact zone
-    const zoneGroups = await db
-      .select({
-        zone: accidentsTable.impactZone,
-        count: sql<number>`cast(count(${accidentsTable.id}) as int)`,
-      })
-      .from(accidentsTable)
-      .groupBy(accidentsTable.impactZone);
-
-    // الحوادث حسب اليوم لآخر 30 يومًا (بيانات فعلية لرسم الاتجاه الزمني)
-    const byDay = await db
-      .select({
-        date: sql<string>`to_char(date_trunc('day', ${accidentsTable.timestamp}), 'YYYY-MM-DD')`,
-        count: sql<number>`cast(count(${accidentsTable.id}) as int)`,
-      })
-      .from(accidentsTable)
-      .where(sql`${accidentsTable.timestamp} >= now() - interval '30 days'`)
-      .groupBy(sql`date_trunc('day', ${accidentsTable.timestamp})`)
-      .orderBy(sql`date_trunc('day', ${accidentsTable.timestamp})`);
-
-    res.json({
-      totalAccidents: totalAccidentsResult[0]?.count || 0,
-      totalFalseAlarms: totalFalseAlarmsResult[0]?.count || 0,
-      totalMatchedAccidents: totalMatchedAccidentsResult[0]?.count || 0,
-      totalAssessments: totalAssessmentsResult[0]?.count || 0,
-      totalLeads: totalLeadsResult[0]?.count || 0,
-      averageNajmDifference: averageNajmDifferenceResult[0]?.avg || null,
-      averageGForce: averageGForceResult[0]?.avg || 0,
-      accidentsBySeverity: severityGroups,
-      accidentsByImpactZone: zoneGroups,
-      accidentsByDay: byDay,
-    });
+    res.json(await computeDashboardStats());
   } catch (error) {
     console.error("Failed to fetch stats", error);
     res.status(500).json({ error: "Failed to fetch stats" });
