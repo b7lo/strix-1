@@ -41,7 +41,7 @@ export default function Features() {
         <span className="section-eyebrow reveal">الميزات</span>
         <h2 className="section-title reveal reveal-delay-1">توثيق ما يترك<br />مجال للشك</h2>
         <p className="section-sub reveal reveal-delay-2">
-          ورا ستركس تقنيات قوية: فلترة إشارة بخوارزميات Kalman، وتحليل لتردد الاهتزاز، ونموذج ذكاء اصطناعي يصنّف الحوادث بدقة عالية.
+          ورا ستركس تقنيات قوية: فلترة إشارة بخوارزميات Kalman، وتحليل لتردد الاهتزاز لتصنيف الحوادث بدقة عالية.
         </p>
       </div>
 

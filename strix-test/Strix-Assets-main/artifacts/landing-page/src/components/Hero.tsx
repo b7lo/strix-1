@@ -13,17 +13,17 @@ export default function Hero({ icon }: HeroProps) {
         {/* Left: Text Content */}
         <div>
           <h1 className="hero-title reveal">
-            حوّل سيارتك<br />
+            حوّل هاتفك<br />
             إلى <span className="accent">منقذ</span>
           </h1>
 
           <p className="hero-subtitle reveal reveal-delay-1">
-            ستركس يحوّل جوالك إلى شاهد ذكي ما ينام: يمسك الحادث لحظة ما يصير بدقة توصل <strong>99%</strong>، ويحلّل الموقف ويعطيك نسبة المسؤولية بدقة بين <strong>85% و90%</strong> — كل هذا قبل لا تلتقط نفسك.
+            ستركس يحوّل جوالك إلى شاهد ذكي ما ينام: يمسك الحادث لحظة ما يصير بدقة توصل <strong>99%</strong>، ويحلّل الموقف ويعطيك نسبة المسؤولية بدقة بين <strong>85% و90%</strong> — كل هذا بثواني.
           </p>
 
           <div className="hero-actions reveal reveal-delay-2">
             <a href="#join" className="btn-primary">
-              سجّل مبكراً — مجاناً
+              سجّل مبكراً
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7"/>
               </svg>

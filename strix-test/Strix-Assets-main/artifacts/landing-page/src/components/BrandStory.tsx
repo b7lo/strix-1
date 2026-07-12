@@ -19,10 +19,6 @@ const reasons = [
     title: 'ما نقول لك صدّقنا…',
     desc: 'خلّ البيانات تتكلم. ستركس ما يختار طرف، ولا يكتب قصة. هو بس يسجّل اللي صار ويحوّله إلى معلومات واضحة بين يديك.',
   },
-  {
-    title: 'ليه الناس متحمسين له؟',
-    desc: 'لأن أغلبنا يسوق كل يوم، وكلنا نتمنى ما نحتاجه. لكن إذا احتجناه… نبي شيء يكون جاهز قبل لا نفكر فيه.',
-  },
 ];
 
 export default function BrandStory() {
@@ -89,10 +85,10 @@ export default function BrandStory() {
         <div className="story-cta reveal">
           <h3 className="story-cta-title">سجّل من الآن</h3>
           <p className="story-cta-text">
-            التسجيل المبكر مجاني، وإذا أطلقنا ستركس بتكون من أول الناس اللي يجربونه.
+            سجّل مبكراً، وإذا أطلقنا ستركس بتكون من أول الناس اللي يجربونه.
           </p>
           <a href="#join" className="btn-primary">
-            سجّل مجاناً
+            سجّل مبكراً
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
