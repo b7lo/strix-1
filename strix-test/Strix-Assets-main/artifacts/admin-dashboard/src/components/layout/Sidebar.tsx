@@ -15,7 +15,7 @@ import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { ScrollArea } from "../ui/scroll-area";
 
-export type Page = "home" | "accidents" | "assessments" | "matched" | "false-alarms" | "leads";
+export type Page = "home" | "accidents" | "assessments" | "matched" | "false-alarms" | "leads" | "settings";
 
 interface SidebarProps {
   currentPage: Page;
@@ -133,16 +133,26 @@ export default function Sidebar({ currentPage, onNavigate, collapsed, onToggleCo
         <div className={`border-t border-sidebar-border py-2 space-y-0.5 ${collapsed ? "px-2" : "px-3"}`}>
           {bottomItems.map((item) => {
             const Icon = item.icon;
+            const isSettingsOrHelp = item.id === "settings" || item.id === "help";
             const btn = (
               <button
                 key={item.id}
+                onClick={() => {
+                  if (item.id === "settings") {
+                    onNavigate("settings" as Page);
+                  }
+                  // Help button can be extended later
+                }}
                 className={`
                   w-full flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all duration-150
-                  text-sidebar-foreground/50 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground
+                  ${isSettingsOrHelp && item.id === "settings" && currentPage === "settings"
+                    ? "bg-sidebar-accent text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/50 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                  }
                   ${collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5"}
                 `}
               >
-                <Icon className="w-[18px] h-[18px] shrink-0" />
+                <Icon className={`w-[18px] h-[18px] shrink-0 ${isSettingsOrHelp && item.id === "settings" && currentPage === "settings" ? "text-sidebar-primary" : ""}`} />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </button>
             );

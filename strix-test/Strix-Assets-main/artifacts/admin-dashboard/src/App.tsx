@@ -9,6 +9,7 @@ import DashboardAssessments from "./components/mockups/DashboardAssessments";
 import DashboardMatched from "./components/mockups/DashboardMatched";
 import DashboardFalseAlarms from "./components/mockups/DashboardFalseAlarms";
 import DashboardLeads from "./components/mockups/DashboardLeads";
+import DashboardSettings from "./components/mockups/DashboardSettings";
 import { useTheme } from "./hooks/use-theme";
 import { ScrollArea } from "./components/ui/scroll-area";
 import {
@@ -70,6 +71,7 @@ export default function App() {
     matched: <DashboardMatched />,
     "false-alarms": <DashboardFalseAlarms />,
     leads: <DashboardLeads />,
+    settings: <DashboardSettings />,
   };
 
   return (

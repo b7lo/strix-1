@@ -31,6 +31,7 @@ const pageLabels: Record<Page, string> = {
   matched: "الحوادث المشتركة",
   "false-alarms": "الإنذارات الكاذبة",
   leads: "العملاء المسجّلون",
+  settings: "الإعدادات",
 };
 
 function formatGregorianDate(): string {
