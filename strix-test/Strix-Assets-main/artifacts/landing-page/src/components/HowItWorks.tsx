@@ -5,20 +5,20 @@ const steps = [
   {
     number: '01',
     icon: <Smartphone size={32} />,
-    title: 'شغّل تطبيق ستركس',
-    desc: 'ابدأ جلسة المراقبة قبل القيادة. ستركس يرافقك بكل كفاءة لضمان سلامتك على الطريق.',
+    title: 'شغّل ستركس',
+    desc: 'قبل ما تسوق، ابدأ جلسة المراقبة، وخلّ ستركس يرافقك ويطمّنك طول الطريق.',
   },
   {
     number: '02',
     icon: <Zap size={32} />,
-    title: 'كشف فوري للحادث',
-    desc: 'لحظة وقوع الاصطدام، يكتشف ستركس الحادث خلال أجزاء من الثانية ويبدأ التحليل فوراً.',
+    title: 'يمسك الحادث لحظته',
+    desc: 'أول ما يصير التصادم، ستركس يكتشفه في أجزاء من الثانية ويبدأ التحليل على طول.',
   },
   {
     number: '03',
     icon: <FileCheck size={32} />,
-    title: 'احصل على تقريرك',
-    desc: 'تقرير فني شامل بالسرعة، واتجاه الاصطدام، وقوة التأثير، وكروكي توضيحي جاهز للتقديم.',
+    title: 'خذ تقريرك',
+    desc: 'تقرير كامل بالسرعة واتجاه الصدمة وقوتها، مع كروكي توضيحي جاهز تقدّمه.',
   },
 ];
 
@@ -26,10 +26,10 @@ export default function HowItWorks() {
   return (
     <section className="how-section" id="how-it-works">
       <div className="section-header">
-        <span className="section-eyebrow reveal">كيف يعمل</span>
-        <h2 className="section-title reveal reveal-delay-1">ثلاث خطوات فقط</h2>
+        <span className="section-eyebrow reveal">كيف يشتغل</span>
+        <h2 className="section-title reveal reveal-delay-1">ثلاث خطوات وبس</h2>
         <p className="section-sub reveal reveal-delay-2">
-          خطوات واضحة وبسيطة لضمان حقوقك وتوثيق الحادث بدقة.
+          خطوات بسيطة وواضحة تضمن حقّك وتوثّق الحادث بدقة.
         </p>
       </div>
 

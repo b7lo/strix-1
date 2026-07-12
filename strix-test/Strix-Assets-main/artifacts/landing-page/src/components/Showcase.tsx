@@ -6,18 +6,18 @@ import shot3 from '../assets/screenshots/app-3.jpeg';
 const shots = [
   {
     src: shot1,
-    title: 'رصد لحظي للحادث',
-    desc: 'ستركس يلتقط الاصطدام في أجزاء من الثانية ويبدأ التوثيق فوراً.',
+    title: 'سجل حوادثك محفوظ',
+    desc: 'كل حادث تعرّضت له موثّق ومحفوظ عندك في مكان واحد، ترجع له وقت ما تحتاجه بضغطة.',
   },
   {
     src: shot2,
-    title: 'تحليل بصري دقيق',
-    desc: 'قوة الاصطدام واتجاهه وسرعة المركبة، معروضة بوضوح لحظة بلحظة.',
+    title: 'كروكي دقيق للحادث',
+    desc: 'كروكي يبيّن مكان الصدمة وقوّتها، مع إحداثيات الموقع بالضبط لحظة الحادث.',
   },
   {
     src: shot3,
-    title: 'تقرير جاهز للتقديم',
-    desc: 'كروكي احترافي وتقدير لنسبة المسؤولية في تقرير واحد قابل للمشاركة.',
+    title: 'تحليل يوصلك للحقيقة',
+    desc: 'مؤشر يبيّن تغيّر سرعتك في آخر 10 ثواني، مع نسبة المسؤولية والسيناريو المتوقّع للحادث.',
   },
 ];
 
@@ -25,10 +25,10 @@ export default function Showcase() {
   return (
     <section className="showcase-section" id="showcase">
       <div className="section-header">
-        <span className="section-eyebrow reveal">من داخل التطبيق</span>
-        <h2 className="section-title reveal reveal-delay-1">شاهد ستركس وهو يعمل</h2>
+        <span className="section-eyebrow reveal">من جوّا التطبيق</span>
+        <h2 className="section-title reveal reveal-delay-1">شوف ستركس وهو يشتغل</h2>
         <p className="section-sub reveal reveal-delay-2">
-          تجربة صُممت لتكون واضحة في أصعب اللحظات — كل شاشة تخبرك بما تحتاج معرفته، دون تعقيد.
+          صمّمناه يكون واضح في أصعب اللحظات — كل شاشة تعطيك اللي تحتاجه بدون لف ودوران.
         </p>
       </div>
 
