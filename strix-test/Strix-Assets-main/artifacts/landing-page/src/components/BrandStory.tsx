@@ -85,6 +85,20 @@ export default function BrandStory() {
           ))}
         </div>
 
+        {/* CTA */}
+        <div className="story-cta reveal">
+          <h3 className="story-cta-title">سجّل من الآن</h3>
+          <p className="story-cta-text">
+            التسجيل المبكر مجاني، وإذا أطلقنا ستركس بتكون من أول الناس اللي يجربونه.
+          </p>
+          <a href="#join" className="btn-primary">
+            سجّل مجاناً
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </div>
+
         {/* Disclaimer */}
         <div className="story-note reveal">
           <span className="story-note-eyebrow">قبل ما تسجّل…</span>
