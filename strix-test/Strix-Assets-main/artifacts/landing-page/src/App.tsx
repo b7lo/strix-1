@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 import strixIcon from './assets/icon.png';
 import Hero from './components/Hero.tsx';
+import BrandStory from './components/BrandStory.tsx';
 import Features from './components/Features.tsx';
+import Showcase from './components/Showcase.tsx';
 import HowItWorks from './components/HowItWorks.tsx';
 import LeadForm from './components/LeadForm.tsx';
 import { Moon, Sun } from 'lucide-react';
@@ -39,7 +41,9 @@ function Navbar() {
         </div>
 
         <nav className="navbar-nav">
+          <a href="#story">قصتنا</a>
           <a href="#features">الميزات</a>
+          <a href="#showcase">التطبيق</a>
           <a href="#how-it-works">كيف يعمل</a>
           <a href="#join">سجل الآن</a>
         </nav>
@@ -124,7 +128,9 @@ export default function App() {
       <Navbar />
       <main>
         <Hero icon={strixIcon} />
+        <BrandStory />
         <Features />
+        <Showcase />
         <HowItWorks />
         <LeadForm icon={strixIcon} />
       </main>

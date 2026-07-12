@@ -1155,3 +1155,172 @@ footer {
   color: var(--foreground);
   opacity: 0.85;
 }
+
+/* ─── Brand Story ─── */
+.story-section {
+  background: var(--surface);
+  border-top: 1px solid var(--border-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+.story-section::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(29, 183, 104, 0.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.story-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 4rem;
+  align-items: center;
+  position: relative;
+}
+
+.story-lead .section-eyebrow { margin-bottom: 1rem; }
+
+.story-lead .section-title {
+  text-align: right;
+  margin-bottom: 1.5rem;
+}
+
+.story-lead .section-title .accent { color: var(--strix-green); }
+
+.story-paragraph {
+  font-size: 1.02rem;
+  color: var(--foreground-muted);
+  line-height: 1.9;
+  margin-bottom: 1.1rem;
+}
+
+.story-paragraph strong { color: var(--strix-green); font-weight: 700; }
+
+.story-pillars {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.story-pillar {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  background: var(--background);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 1.35rem;
+  transition: all 0.3s ease;
+}
+
+.story-pillar:hover {
+  border-color: rgba(29, 183, 104, 0.25);
+  transform: translateX(-4px);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.12);
+}
+
+.story-pillar-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: var(--strix-green-glow);
+  border: 1px solid rgba(29, 183, 104, 0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--strix-green);
+}
+
+.story-pillar-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 0.35rem;
+}
+
+.story-pillar-desc {
+  font-size: 0.88rem;
+  color: var(--foreground-muted);
+  line-height: 1.75;
+}
+
+/* ─── Showcase (App Screenshots) ─── */
+.showcase-section { background: var(--background); }
+
+.showcase-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.showcase-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.showcase-frame {
+  width: 100%;
+  max-width: 300px;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(29,183,104,0.05);
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.showcase-frame:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 40px 70px rgba(0,0,0,0.45), 0 0 0 1px rgba(29,183,104,0.15);
+}
+
+.showcase-frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.showcase-caption {
+  margin-top: 1.5rem;
+  max-width: 300px;
+}
+
+.showcase-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 0.4rem;
+}
+
+.showcase-desc {
+  font-size: 0.875rem;
+  color: var(--foreground-muted);
+  line-height: 1.7;
+}
+
+/* ─── Story & Showcase Responsive ─── */
+@media (max-width: 900px) {
+  .story-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+  .story-lead .section-title { text-align: center; }
+  .story-lead { text-align: center; }
+  .story-lead .section-eyebrow { display: inline-block; }
+  .showcase-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 600px) {
+  .showcase-grid { grid-template-columns: 1fr; justify-items: center; }
+  .story-paragraph { text-align: right; }
+}

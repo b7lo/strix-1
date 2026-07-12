@@ -18,7 +18,7 @@ export default function Hero({ icon }: HeroProps) {
           </h1>
 
           <p className="hero-subtitle reveal reveal-delay-1">
-            ستركس يحوّل هاتفك إلى نظام ذكي لرصد الحوادث آلياً وتوثيقها بدقة عالية باستخدام المستشعرات، لتوثيق وقائع الحادث بثقة وشفافية.
+            ستركس يحوّل هاتفك إلى شاهدٍ ذكي لا ينام: يرصد الحادث لحظة وقوعه بدقة تصل إلى <strong>99%</strong>، ويحلّل المشهد ليمنحك تقديراً لنسبة المسؤولية بدقة تتراوح بين <strong>85% و90%</strong> — كل ذلك قبل أن تلتقط أنفاسك.
           </p>
 
           <div className="hero-actions reveal reveal-delay-2">
@@ -37,12 +37,12 @@ export default function Hero({ icon }: HeroProps) {
 
           <div className="hero-stats reveal reveal-delay-3">
             <div>
-              <div className="hero-stat-value">90%</div>
-              <div className="hero-stat-label">دقة رصد نقطة التصادم</div>
+              <div className="hero-stat-value">99%</div>
+              <div className="hero-stat-label">دقة كشف الحادث</div>
             </div>
             <div>
-              <div className="hero-stat-value">10s</div>
-              <div className="hero-stat-label">تحليل ما قبل الاصطدام</div>
+              <div className="hero-stat-value">85–90%</div>
+              <div className="hero-stat-label">دقة تحديد المسؤولية</div>
             </div>
             <div>
               <div className="hero-stat-value">16</div>
