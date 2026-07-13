@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import {
   Select,
@@ -10,29 +9,72 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Switch } from "../ui/switch";
-import { Bell, Lock, Palette, Database } from "lucide-react";
+import { Bell, Lock, Palette, Database, Check } from "lucide-react";
+import { useTheme } from "../../hooks/use-theme";
+
+const SETTINGS_STORAGE_KEY = "strix-dashboard-settings";
+
+interface DashboardPreferences {
+  notificationsEmail: boolean;
+  notificationsSMS: boolean;
+  reportFrequency: string;
+  dataRetention: string;
+  language: string;
+}
+
+const DEFAULT_PREFERENCES: DashboardPreferences = {
+  notificationsEmail: true,
+  notificationsSMS: false,
+  reportFrequency: "daily",
+  dataRetention: "12",
+  language: "ar",
+};
+
+function loadPreferences(): DashboardPreferences {
+  if (typeof window === "undefined") return DEFAULT_PREFERENCES;
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return DEFAULT_PREFERENCES;
+    return { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_PREFERENCES;
+  }
+}
 
 export default function DashboardSettings() {
-  const [settings, setSettings] = useState({
-    notificationsEmail: true,
-    notificationsSMS: false,
-    reportFrequency: "daily",
-    dataRetention: "12",
-    darkMode: false,
-    language: "ar",
-  });
+  const { resolvedTheme, setTheme } = useTheme();
+  const [settings, setSettings] = useState<DashboardPreferences>(loadPreferences);
+  const [saved, setSaved] = useState(false);
 
-  const handleSwitchChange = (key: keyof typeof settings, value: boolean) => {
+  // إخفاء رسالة التأكيد تلقائياً بعد لحظات.
+  useEffect(() => {
+    if (!saved) return;
+    const t = window.setTimeout(() => setSaved(false), 2500);
+    return () => window.clearTimeout(t);
+  }, [saved]);
+
+  const handleSwitchChange = (key: keyof DashboardPreferences, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+    setSaved(false);
   };
 
-  const handleSelectChange = (key: keyof typeof settings, value: string) => {
+  const handleSelectChange = (key: keyof DashboardPreferences, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+    setSaved(false);
   };
 
   const handleSave = () => {
-    console.log("Settings saved:", settings);
-    // Here you would typically make an API call to save settings
+    try {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      setSaved(true);
+    } catch (e) {
+      console.error("تعذّر حفظ الإعدادات", e);
+    }
+  };
+
+  const handleReset = () => {
+    setSettings(loadPreferences());
+    setSaved(false);
   };
 
   return (
@@ -138,8 +180,8 @@ export default function DashboardSettings() {
             <div className="flex items-center justify-between">
               <Label className="font-medium text-sm">الوضع الليلي</Label>
               <Switch
-                checked={settings.darkMode}
-                onCheckedChange={(value) => handleSwitchChange("darkMode", value)}
+                checked={resolvedTheme === "dark"}
+                onCheckedChange={(value) => setTheme(value ? "dark" : "light")}
               />
             </div>
 
@@ -182,13 +224,19 @@ export default function DashboardSettings() {
       </div>
 
       {/* Save Button */}
-      <div className="flex gap-3 max-w-4xl">
+      <div className="flex items-center gap-3 max-w-4xl">
         <Button onClick={handleSave} className="px-8">
           حفظ التغييرات
         </Button>
-        <Button variant="outline" className="px-8">
+        <Button variant="outline" className="px-8" onClick={handleReset}>
           إلغاء
         </Button>
+        {saved && (
+          <span className="flex items-center gap-1.5 text-sm text-primary font-medium">
+            <Check className="w-4 h-4" />
+            تم حفظ الإعدادات
+          </span>
+        )}
       </div>
     </div>
   );
