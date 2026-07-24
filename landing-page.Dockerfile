@@ -6,6 +6,9 @@ WORKDIR /app
 # Copy workspace configuration
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 
+# Copy dependency patches referenced by pnpm-workspace.yaml (patchedDependencies)
+COPY patches ./patches
+
 # Copy shared libraries and the landing-page application
 COPY lib ./lib
 COPY artifacts/landing-page ./artifacts/landing-page

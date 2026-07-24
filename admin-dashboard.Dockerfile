@@ -9,6 +9,9 @@ ENV VITE_API_URL=${VITE_API_URL:-https://api.strixsa.com/api/dashboard}
 # Copy workspace configuration
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 
+# Copy dependency patches referenced by pnpm-workspace.yaml (patchedDependencies)
+COPY patches ./patches
+
 # Copy shared libraries and the dashboard application
 COPY lib ./lib
 COPY artifacts/admin-dashboard ./artifacts/admin-dashboard
