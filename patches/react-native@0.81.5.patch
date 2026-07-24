@@ -1,0 +1,23 @@
+diff --git a/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+index 2a677974ca8a929849109f294bddcb239bb202d0..ee9f76c857c80e71fbc618db1480a9d6f5d41508 100644
+--- a/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
++++ b/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+@@ -435,7 +435,17 @@ void ObjCTurboModule::performVoidMethodInvocation(
+     @try {
+       [inv invokeWithTarget:strongModule];
+     } @catch (NSException *exception) {
+-      throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
++      // PATCH: For async void methods, the throw below propagates on a dispatch
++      // queue where nothing can catch it, causing std::terminate() -> SIGABRT
++      // (facebook/react-native#54859, reactwg/react-native-new-architecture#276).
++      // Only rethrow when executing synchronously (a JS caller can catch it);
++      // otherwise log and swallow so a throwing native module can't crash launch.
++      if (shouldVoidMethodsExecuteSync_) {
++        throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
++      } else {
++        NSLog(@"[Strix] Swallowed NSException from async void TurboModule %s.%s: %@",
++              moduleName, methodNameStr.c_str(), exception);
++      }
+     } @finally {
+       [retainedObjectsForInvocation removeAllObjects];
+     }

@@ -1,0 +1,2 @@
+930:  scenarioTitle: {
+935:  scenarioDesc: { fontSize: 14, lineHeight: 24 },

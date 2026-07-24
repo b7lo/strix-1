@@ -1,0 +1,70 @@
+Build a production-ready iOS MVP app using Swift and SwiftUI that analyzes motion sensor data to detect potential crash events and generate a simple report.
+
+Requirements:
+
+1. Platform & Architecture:
+- Target iOS 16 or later
+- Use Swift 5.9+
+- Use SwiftUI (no UIKit unless necessary)
+- Use MVVM architecture
+- Ensure compatibility with ARM64 only (do NOT include armv7)
+
+2. Sensors & Data:
+- Use CoreMotion to capture accelerometer and gyroscope data
+- Use CoreLocation (WhenInUse only) for speed and movement context
+- Implement real-time motion monitoring during a user-initiated session (no always-on background tracking)
+
+3. Crash Detection:
+- Implement threshold-based detection (e.g. sudden acceleration spike)
+- Detect direction of impact (front / rear / side)
+- Store timestamp and motion vectors
+
+4. Analysis Engine (MVP level):
+- Implement a rule-based system (no ML required)
+- Estimate a "responsibility score" based on motion patterns
+- Clearly mark results as "estimated" and not definitive
+
+5. Sketch (Accident Diagram):
+- Render a simple 2D diagram using SwiftUI Canvas or CoreGraphics
+- Draw vehicle direction, impact point, and final position
+- No complex physics simulation required
+
+6. Storage:
+- Store sessions locally using CoreData or SQLite
+- Each session includes motion data summary, location, and result
+
+7. Feedback System:
+- Add user feedback (Correct / Incorrect)
+- Store feedback locally for future improvements
+
+8. Permissions:
+- NSMotionUsageDescription (required)
+- NSLocationWhenInUseUsageDescription (only)
+- Do NOT request Always location
+- Request permissions only after user interaction
+
+9. Background Behavior:
+- App may continue tracking only during active session
+- Do NOT implement continuous background tracking outside session
+
+10. UI/UX:
+- Simple flow: Start Session → Detect → Analyze → Show Report
+- Include disclaimer: "This analysis is for informational purposes only"
+
+11. Performance:
+- Avoid high battery usage
+- Use efficient sampling rate for motion data
+
+12. Build & Deployment:
+- Must run on a real iPhone via Xcode
+- No App Store requirements needed
+- Ensure signing works with a free Apple developer account
+
+13. Security & Privacy:
+- Do not upload any data to server (local only for MVP)
+- No tracking outside active session
+
+Output:
+- Clean Swift project structure
+- Modular code
+- Comments explaining logic

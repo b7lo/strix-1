@@ -1,0 +1,2 @@
+/home/b7lo/strix-test/Strix-Assets-main/node_modules/.pnpm/expo-apple-authentication@8.0.8_expo@54.0.34_react-native@0.81.5_@babel+core@7.29.0_@types+react@19.1.17_react@19.1.0_/node_modules/expo-apple-authentication
+/home/b7lo/strix-test/Strix-Assets-main/node_modules/.pnpm/@supabase+supabase-js@2.110.7/node_modules/@supabase/supabase-js

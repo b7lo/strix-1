@@ -1,0 +1,19 @@
+uploads = []
+
+[[generated]]
+id = "3EalcHSqCY6Ph5IGETsqk"
+uri = "file://artifacts/strix/assets/images/icon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6F4aDbc03sPh9lptmKhPL"
+uri = "file://artifacts/strix/assets/images/splash.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "2MwZR_NwZ0G9WWS9SiZhr"
+uri = "file://strix-swift.zip"
+type = "unspecified"
+title = "Strix — مشروع Swift الكامل"

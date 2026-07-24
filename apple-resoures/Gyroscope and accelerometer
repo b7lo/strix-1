@@ -1,0 +1,565 @@
+On-device gyroscopes and accelerometers can supply data about a device’s movement in the physical world.
+A sketch of a gyroscope, suggesting movement. The image is overlaid with rectangular and circular grid lines and is tinted purple to subtly reflect the purple in the original six-color Apple logo.
+
+You can use accelerometer and gyroscope data to provide experiences based on real-time, motion-based information in apps and games that run in iOS, iPadOS, and watchOS. tvOS apps can use gyroscope data from the Siri Remote. For developer guidance, see Core Motion.
+
+Best practices
+Use motion data only to offer a tangible benefit to people. For example, a fitness app might use the data to provide feedback about people’s activity and general health, and a game might use the data to enhance gameplay. Avoid gathering data simply to have the data.
+
+Important
+
+If your experience needs to access motion data from a device, you must provide copy that explains why. The first time your app or game tries to access this type of data, the system includes your copy in a permission request, where people can grant or deny access.
+
+Outside of active gameplay, avoid using accelerometers or gyroscopes for the direct manipulation of your interface. Some motion-based gestures may be difficult to replicate precisely, may be physically challenging for some people to perform, and may affect battery usage.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Framework
+Core Motion
+Process accelerometer, gyroscope, pedometer, and environment-related events.
+iOS 4.0+
+iPadOS 4.0+
+Mac Catalyst 13.0+
+macOS 10.15+
+visionOS 1.0+
+watchOS 2.0+
+Overview
+Core Motion reports motion- and environment-related data from the available onboard hardware of iOS, iPadOS, watchOS, and visionOS devices. This hardware includes the device’s accelerometers and gyroscopes, and, when available, the pedometer, magnetometer, and barometer. Use this data in your app as input for user interactions, fitness tracking, health-related matters, and more. For example, a game might use accelerometer and gyroscope input to control onscreen game behavior.
+
+The services of this framework provide access to motion data either as raw or processed values, and many services provide both types of values. Raw values reflect the unmodified data from the hardware, while processed values eliminate forms of bias that might adversely affect your usage of the data. For example, a processed accelerometer value reflects only the acceleration caused by the user and not the acceleration caused by gravity.
+
+Not all services are available on all devices, and some services might be unavailable even on devices with the required hardware. For example, many Core Motion services are available to visionOS apps, but those services aren’t available to compatible iPad and iPhone apps running in visionOS. Before you try to use any motion-related services, check the availability of those services using a CMMotionManager object.
+
+Important
+
+An iOS app must include usage description keys in its Info.plist file for the types of data it needs. If these keys aren’t present, the app crashes when you try to access the corresponding service. To access motion and fitness data, include NSMotionUsageDescription. To access the fall-detection service, include NSFallDetectionUsageDescription.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Class
+CMMotionManager
+The object for starting and managing motion services.
+iOS 4.0+
+iPadOS 4.0+
+Mac Catalyst 13.1+
+visionOS 1.0+
+watchOS 2.0+
+class CMMotionManager
+Mentioned in
+Getting raw accelerometer events
+Getting raw gyroscope events
+Getting processed device-motion data
+Overview
+Use a CMMotionManager object to start the services that report movement detected by the device’s onboard sensors. Use this object to receive four types of motion data:
+
+Accelerometer data, indicating the instantaneous acceleration of the device in three dimensional space.
+
+Gyroscope data, indicating the instantaneous rotation around the device’s three primary axes.
+
+Magnetometer data, indicating the device’s orientation relative to Earth’s magnetic field.
+
+Device-motion data, indicating key motion-related attributes such as the device’s user-initiated acceleration, its attitude, rotation rates, orientation relative to calibrated magnetic fields, and orientation relative to gravity. Core Motion’s sensor fusion algorithms provide this data.
+
+The processed device-motion data gives the device’s attitude, rotation rate, calibrated magnetic fields, the direction of gravity, and the amount of acceleration the user contributes to the device.
+
+Important
+
+Create only one CMMotionManager object for your app. Multiple instances of this class can affect the rate at which the system receives data from the accelerometer and gyroscope.
+
+You can receive live sensor data at a specified update interval, or you can let the sensors collect data and store it for retrieval later. With both of these approaches, call the appropriate stop method (stopAccelerometerUpdates(), stopGyroUpdates(), stopMagnetometerUpdates(), and stopDeviceMotionUpdates()) when you no longer need the data.
+
+Receive regular motion updates
+To receive motion data at specific intervals, the app calls a start method that takes an operation queue (instance of OperationQueue) and a block handler of a specific type for processing those updates. The motion data is passed into the block handler. The frequency of updates is determined by the value of an interval property.
+
+Accelerometer. Set the accelerometerUpdateInterval property to specify an update interval. Call the startAccelerometerUpdates(to:withHandler:) method, passing in a block of type CMAccelerometerHandler. Accelerometer data is passed into the block as CMAccelerometerData objects.
+
+Gyroscope. Set the gyroUpdateInterval property to specify an update interval. Call the startGyroUpdates(to:withHandler:) method, passing in a block of type CMGyroHandler. Rotation-rate data is passed into the block as CMGyroData objects.
+
+Magnetometer. Set the magnetometerUpdateInterval property to specify an update interval. Call the startMagnetometerUpdates(to:withHandler:) method, passing a block of type CMMagnetometerHandler. Magnetic-field data is passed into the block as CMMagnetometerData objects.
+
+Device motion. Set the deviceMotionUpdateInterval property to specify an update interval. Call the startDeviceMotionUpdates(using:)or startDeviceMotionUpdates(using:to:withHandler:) or startDeviceMotionUpdates(to:withHandler:) method, passing in a block of type CMDeviceMotionHandler. With the former method, you can specify a reference frame to be used for the attitude estimates. Rotation-rate data is passed into the block as CMDeviceMotion objects.
+
+Sample motion data periodically
+To sample motion data periodically, start a motion service using a method that takes no parameters and periodically access the properties of the CMMotionManager. This approach is the recommended approach for apps such as games. Handling accelerometer data in a block introduces additional overhead, and most game apps are only interested in the latest sample of motion data when they render a frame.
+
+Accelerometer. Call startAccelerometerUpdates() to begin updates and periodically access CMAccelerometerData objects by reading the accelerometerData property.
+
+Gyroscope. Call startGyroUpdates() to begin updates and periodically access CMGyroData objects by reading the gyroData property.
+
+Magnetometer. Call startMagnetometerUpdates() to begin updates and periodically access CMMagnetometerData objects by reading the magnetometerData property.
+
+Device motion. Call the startDeviceMotionUpdates(using:) or startDeviceMotionUpdates() method to begin updates and periodically access CMDeviceMotion objects by reading the deviceMotion property. The startDeviceMotionUpdates(using:) method lets you specify a reference frame for the attitude estimates.
+
+Determine hardware availability and state
+If a hardware feature (for example, a gyroscope) is not available on a device, calling a start method related to that feature has no effect. You can find out whether a hardware feature is available or active by checking the appropriate property; for example, for gyroscope data, you can check the value of the isGyroAvailable or isGyroActive properties.
+
+Identify the coordinate axes of the device
+To interpret accelerometer, gyroscope, or attitude information, you need to know the orientation of the device’s coordinate axes. The following illustration shows the positive x-axis, positive y-axis, and positive z-axis for motion-capable Apple devices.
+
+An illustration showing iPhone, iPad, Apple Watch, and Apple Vision Pro with labels representing the positive x-axis, positive y-axis, and positive z-axis on each device.
+
+Topics
+Determining the Availability of Services
+var isDeviceMotionAvailable: Bool
+A Boolean value that indicates whether the device-motion service is available on the device.
+var isAccelerometerAvailable: Bool
+A Boolean value that indicates whether an accelerometer is available on the device.
+var isGyroAvailable: Bool
+A Boolean value that indicates whether a gyroscope is available on the device.
+var isMagnetometerAvailable: Bool
+A Boolean value that indicates whether a magnetometer is available on the device.
+Determining Which Services Are Active
+var isDeviceMotionActive: Bool
+A Boolean value that determines whether the app is receiving updates from the device-motion service.
+var isAccelerometerActive: Bool
+A Boolean value that indicates whether accelerometer updates are currently happening.
+var isGyroActive: Bool
+A Boolean value that determines whether gyroscope updates are currently happening.
+var isMagnetometerActive: Bool
+A Boolean value that determines whether magnetometer updates are currently happening.
+Managing Device Motion Updates
+var showsDeviceMovementDisplay: Bool
+Controls whether the device-movement display is shown.
+var deviceMotionUpdateInterval: TimeInterval
+The interval, in seconds, for providing device-motion updates to the block handler.
+func startDeviceMotionUpdates(using: CMAttitudeReferenceFrame, to: OperationQueue, withHandler: CMDeviceMotionHandler)
+Starts device-motion updates on an operation queue and using a specified reference frame and block handler.
+func startDeviceMotionUpdates(to: OperationQueue, withHandler: CMDeviceMotionHandler)
+Starts device-motion updates on an operation queue and using a specified block handler.
+func startDeviceMotionUpdates(using: CMAttitudeReferenceFrame)
+Starts device-motion updates using a reference frame but without a block handler.
+func startDeviceMotionUpdates()
+Starts device-motion updates without a block handler.
+func stopDeviceMotionUpdates()
+Stops device-motion updates.
+var deviceMotion: CMDeviceMotion?
+The latest sample of device-motion data.
+typealias CMDeviceMotionHandler
+The type of block callback for handling device-motion data.
+Managing Accelerometer Updates
+var accelerometerUpdateInterval: TimeInterval
+The interval, in seconds, for providing accelerometer updates to the block handler.
+func startAccelerometerUpdates(to: OperationQueue, withHandler: CMAccelerometerHandler)
+Starts accelerometer updates on an operation queue and with a specified handler.
+func startAccelerometerUpdates()
+Starts accelerometer updates without a handler.
+func stopAccelerometerUpdates()
+Stops accelerometer updates.
+var accelerometerData: CMAccelerometerData?
+The latest sample of accelerometer data.
+typealias CMAccelerometerHandler
+The type of block callback for handling accelerometer data.
+Managing Gyroscope Updates
+var gyroUpdateInterval: TimeInterval
+The interval, in seconds, for providing gyroscope updates to the block handler.
+func startGyroUpdates(to: OperationQueue, withHandler: CMGyroHandler)
+Starts gyroscope updates on an operation queue and with a specified handler.
+func startGyroUpdates()
+Starts gyroscope updates without a handler.
+func stopGyroUpdates()
+Stops gyroscope updates.
+var gyroData: CMGyroData?
+The latest sample of gyroscope data.
+typealias CMGyroHandler
+The type of block callback for handling gyroscope data.
+Managing Magnetometer Updates
+var magnetometerUpdateInterval: TimeInterval
+The interval, in seconds, at which the system delivers magnetometer data to the block handler.
+func startMagnetometerUpdates(to: OperationQueue, withHandler: CMMagnetometerHandler)
+Starts magnetometer updates on an operation queue and with a specified handler.
+func startMagnetometerUpdates()
+Starts magnetometer updates without a block handler.
+func stopMagnetometerUpdates()
+Stops magnetometer updates.
+var magnetometerData: CMMagnetometerData?
+The latest sample of magnetometer data.
+typealias CMMagnetometerHandler
+The type of block callback for handling magnetometer data.
+Accessing Attitude Reference Frames
+var attitudeReferenceFrame: CMAttitudeReferenceFrame
+Returns either the reference frame currently being used or the default attitude reference frame.
+class func availableAttitudeReferenceFrames() -> CMAttitudeReferenceFrame
+Returns a bitmask of the available reference frames for reporting the attitude of the current device.
+Understanding Errors
+let CMErrorDomain: String
+The error domain for Core Motion.
+struct CMError
+Defines motion errors.
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Article
+Getting processed device-motion data
+Retrieve motion data that the system processed to remove environmental bias, such as the effects of gravity.
+Overview
+The Core Motion framework gives you access to the raw data from many different types of hardware sensors, including accelerometers, gyroscopes, and magnetometers. While the raw data is useful, it sometimes contains additional information you don’t need. For example, the raw accelerometer data contains both the acceleration caused by gravity and by the device’s motion. To get only the device-specific acceleration, you must remove the gravitational acceleration from the raw data values. The removal of this data requires additional information and extra processing time.
+
+To make it easier to get the data you want, the device-motion service processes the raw data and makes the following values available:
+
+The device’s attitude (or orientation) in three-dimensional space
+
+The unbiased rotation rate of the device
+
+The current gravity vector
+
+The device-specific acceleration (without gravity)
+
+The current magnetic field vector
+
+The device-motion service combines information from multiple sensors to provide the listed results. Device-motion services are available from CMMotionManager, CMHeadphoneMotionManager, and CMBatchedSensorManager. If your app can’t function without accelerometer or gyroscope data, update your app’s list of required device capabilities to include that hardware. For more information about specifying required device capabilities, see UIRequiredDeviceCapabilities.
+
+Check for the availability of motion data
+Device-motion data might be unavailable for a variety of reasons, so verify that the service is available before you try to start it. Check the value of the isDeviceMotionAvailable property of CMMotionManager and make sure it’s true. If it’s false, starting the service doesn’t deliver any data to your app.
+
+Important
+
+In visionOS, device-motion data is available only when your app has an open immersive space. For more information, see ImmersiveSpace.
+
+Choose a frame of reference for interpreting attitude data
+The attitude of a device refers to the amount of rotation around each of the device’s axes. The device-motion service reports attitude values relative to a known orientation of the device, also known as the device’s frame of reference. When you start the device-motion service, you specify which frame of reference you want Core Motion to use.
+
+The default frame of reference is xArbitraryZVertical, which places the z-axis perpendicular to the ground and matches the x- and y-axes to the device’s current orientation in space. Use this option or the xArbitraryCorrectedZVertical option to measure changes relative to the device’s initial starting position. For example, a golf swing analysis app might use this frame of reference to measure a person’s golf swing. For compass or navigation apps, choose the xMagneticNorthZVertical or xTrueNorthZVertical frames of reference, which report the device’s orientation relative to specific magnetic and true north, respectively.
+
+Specify the reference frame you want when you start the device-motion service. The CMMotionManager object stores your chosen frame of reference in its attitudeReferenceFrame property, and makes it the default choice.
+
+When a device’s orientation matches the frame of reference’s orientation, the roll, pitch, and yaw rotation values of a reported CMAttitude contain the value 0. As a person rotates the device, the roll, pitch, and yaw values reflect the amount of rotation (in radians) relative to the frame of reference. The following figure shows how to interpret these values around each axis. Rotation values are in the range -π to π.
+
+Gyroscopes measure the rotation rate around the x, y, and z axes
+
+For information about the coordinate axes of different device types, see CMMotionManager or CMHeadphoneMotionManager.
+
+Start device-motion updates
+To start collecting device-motion data, create a CMMotionManager object and call one of the appropriate methods. Core Motion offers two options for processing device-motion updates:
+
+Process a steady stream of updates using a closure.
+
+Process updates when you want them.
+
+Both options require you to specify the frequency of updates from the system using the deviceMotionUpdateInterval property of your CMMotionManager type. The maximum update frequency is hardware dependent, but is usually at least 100 Hz. If you specify an update frequency greater than what the hardware supports, Core Motion uses the maximum frequency instead.
+
+The following example configures the device-motion service to deliver updates 50 times per second, and to deliver attitude data relative to magnetic north. When starting device motion without a closure, it’s your responsibility to check the deviceMotion property of your CMMotionManager at regular intervals. This example sets up a timer to check the value of the property and apply the latest data to the app’s content:
+
+func startDeviceMotion() {
+    if motion.isDeviceMotionAvailable {
+        self.motion.deviceMotionUpdateInterval = 1.0 / 50.0
+        self.motion.showsDeviceMovementDisplay = true
+        self.motion.startDeviceMotionUpdates(using: .xMagneticNorthZVertical)
+        
+        // Configure a timer to fetch the motion data.
+        self.timer = Timer(fire: Date(), interval: (1.0 / 50.0), repeats: true,
+                           block: { (timer) in
+                            if let data = self.motion.deviceMotion {
+                                // Get the attitude relative to the magnetic north reference frame.
+                                let x = data.attitude.pitch
+                                let y = data.attitude.roll
+                                let z = data.attitude.yaw
+                                
+                                // Use the motion data in your app.
+                            }
+        })
+        
+        // Add the timer to the current run loop.
+        RunLoop.current.add(self.timer!, forMode: RunLoop.Mode.default)
+    }
+}
+To process a steady stream of events, start the device-motion services using an OperationQueue object and a closure of type CMDeviceMotionHandler. Each time Core Motion receives a new data value, it runs your closure on the operation queue. Each new data value comes with a timestamp value, which you can use to verify the timeliness of the data and discard data that’s older than a certain threshold. The following example uses an operation queue to process 60 updates per second:
+
+func startQueuedUpdates() {
+   if motion.isDeviceMotionAvailable {
+      self.motion.deviceMotionUpdateInterval = 1.0 / 60.0
+      self.motion.showsDeviceMovementDisplay = true
+      self.motion.startDeviceMotionUpdates(using: .xMagneticNorthZVertical, 
+               to: self.queue, withHandler: { (data, error) in
+         // Make sure the data is valid before accessing it.
+         if let validData = data {
+            // Get the attitude relative to the magnetic north reference frame. 
+            let roll = validData.attitude.roll
+            let pitch = validData.attitude.pitch
+            let yaw = validData.attitude.yaw
+
+
+            // Use the motion data in your app.
+         }
+      })
+   }
+}
+
+
+Stop device-motion updates
+To minimize the impact on a device’s battery life, always call the stopDeviceMotionUpdates() method of your CMMotionManager object when you no longer need motion data. The device-motion service captures motion data using special hardware, and running this hardware consumes additional power. In particular, stop services:
+
+When your app deactivates or enters the background
+
+When the person stops interacting with the feature that requires motion data
+
+As soon as your app has all the motion data it needs
+
+If your app doesn’t require constant motion updates, start the device-motion service, fetch the data you need, and stop the service immediately. Don’t leave the service running any longer than necessary.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+Structure
+CMAttitudeReferenceFrame
+Constants that indicate the frame of reference for attitude-related motion data.
+iOS 4.0+
+iPadOS 4.0+
+Mac Catalyst 13.0+
+macOS 10.15+
+visionOS 1.0+
+watchOS 2.0+
+struct CMAttitudeReferenceFrame
+Overview
+When you start a service that reports the device’s attitude in three-dimensional space, Core Motion establishes a frame of reference for reporting pitch, roll, and yaw values. All subsequent data values specify the device attitude relative to this frame of reference. To get a list of the currently available reference frames for the current device, call the availableAttitudeReferenceFrames() class method.
+
+When starting services, it’s your responsibility to specify a reference frame that’s available on the current device. Services that don’t let you specify a reference frame explicitly rely on the value in the attitudeReferenceFrame property of CMMotionManager.
+
+Topics
+Getting the reference frames
+static var xArbitraryZVertical: CMAttitudeReferenceFrame
+A reference frame where the Z axis is vertical and the X axis points in an arbitrary direction in the horizontal plane.
+static var xArbitraryCorrectedZVertical: CMAttitudeReferenceFrame
+A reference frame where the Z axis is vertical and has improved rotation accuracy, and the X axis points in an arbitrary direction in the horizontal plane.
+static var xMagneticNorthZVertical: CMAttitudeReferenceFrame
+A reference frame where the Z axis is vertical and the X axis points to the magnetic north pole.
+static var xTrueNorthZVertical: CMAttitudeReferenceFrame
+A reference frame where the Z axis is vertical and the X axis points to the geographic north pole.
+Initializers
+init(rawValue: UInt)Instance Property
+sensorLocation
+The location of the sensors that compute the device-motion data.
+iOS 14.0+
+iPadOS 14.0+
+Mac Catalyst 14.0+
+macOS 10.15+
+visionOS 1.0+
+watchOS 7.0+
+var sensorLocation: CMDeviceMotion.SensorLocation { get }
+
+
+
+Enumeration
+CMDeviceMotion.SensorLocation
+Defines the device’s sensor locations.
+iOS 4.0+
+iPadOS 4.0+
+Mac Catalyst 13.0+
+macOS 10.15+
+visionOS 1.0+
+watchOS 2.0+
+enum SensorLocation
+
+
+Framework
+DataDetection
+Access and utilize common types of data that the data detection system matches.
+iOS 15.0+
+iPadOS 15.0+
+Mac Catalyst 15.0+
+macOS 12.0+
+tvOS 15.0+
+visionOS 1.0+
+watchOS 8.0+
+Overview
+Data detection methods in other frameworks detect common types of data represented in text, and return DataDetection framework classes that provide semantic meaning for matches. Get relevant, domain-specific information from matches of the following types:
+
+Calendar events
+
+Email addresses
+
+Flight numbers
+
+Web links
+
+Amounts of money, with currencies
+
+Phone numbers
+
+Postal addresses
+
+Shipment tracking numbers
+
+Use functions, such as those in UIPasteboard, to detect the types of data that you specify in a particular context. For example, find email addresses in a pasteboard using detectValues(for:completionHandler:) as this example shows:
+
+UIPasteboard.general.detectValues(for: [\.emailAddresses]) { [self] result in
+    switch result {
+    case .success(let detectedValues):
+        guard let firstEmailAddressMatch = detectedValues.emailAddresses.first else {
+            return
+        }
+        let newEmailAddress = firstEmailAddressMatch.emailAddress
+        let newLabel = firstEmailAddressMatch.label
+        addNewEmail(for: contact, address: newEmailAddress, label: newLabel)
+    case .failure(let error):
+        print("Error detecting email addresses: \(error.localizedDescription)")
+    }
+}
+Then, inspect and use the data from objects that the data detection system returns.
+
+
+
+
+
+Article
+Getting raw gyroscope events
+Retrieve data from the onboard gyroscopes.
+Overview
+A gyroscope measures the rate at which a device rotates around a spatial axis. Many iOS devices have a three-axis gyroscope, which delivers rotation values in each of the three axes shown in the next illustration. Rotation values are measured in radians per second around the given axis. Rotation values may be positive or negative depending on the direction of rotation.
+
+Gyroscopes measure the rotation rate around the x, y, and z axes
+
+You access the raw gyroscope data using the classes of the Core Motion framework. Specifically, the CMMotionManager class provides the interfaces for enabling the gyroscope hardware. When enabling the hardware, choose the interfaces that are best suited for your app. You can pull the gyroscope data only when you need it, or you can ask the framework to push updates to your app at regular intervals. Each technique involves different configuration steps and has a different use case.
+
+Important
+
+If your app relies on the presence of gyroscope hardware, configure the UIRequiredDeviceCapabilities key of its Info.plist file with the gyroscope value. For more information about the meaning of this key, see Information Property List Key Reference.
+
+The raw rotation rate data delivered by the gyroscope interfaces may be biased by other factors such as temperature. If your app requires unbiased rotation values, use the device-motion interfaces instead. The device-motion interfaces use special algorithms to remove any bias and deliver more precise rotation values. For more information, see Getting processed device-motion data.
+
+For information about the coordinate axes of different device types, see CMMotionManager.
+
+Check for the availability of gyroscope data
+Gyroscope data might be unavailable for a variety of reasons, so verify that the data is available before you try to obtain it. Check the value of the isGyroAvailable property of CMMotionManager and make sure it’s true. If it’s false, starting updates doesn’t deliver any data to your app.
+
+Important
+
+In visionOS, gyroscope data is available only when your app has an open immersive space. For more information, see ImmersiveSpace.
+
+Get gyroscope data only when you need it
+For apps that process gyroscope data on their own schedule, such as games, use the startGyroUpdates() method of CMMotionManager to start the delivery of rotation data. When you call this method, the system enables the gyroscope hardware and begins updating the gyroData property of your CMMotionManager object. However, the system does not notify you when it updates that property. You must explicitly check the value of the property when you need the rotation data.
+
+Before you start the delivery of gyroscope updates, specify an update frequency by assigning a value to the gyroUpdateInterval property. The maximum frequency at which you can request updates is hardware-dependent but is usually at least 100 Hz. If you request a frequency that is greater than what the hardware supports, Core Motion uses the supported maximum instead.
+
+The next example shows a method that configures gyroscope updates to occur 50 times per second. The method then configures a timer to fetch those updates at the same frequency and do something with the data. You could configure the timer to fire at a lower frequency, but doing so would waste power by causing the hardware to generate more updates than were actually used.
+
+func startGyros() {
+   if motion.isGyroAvailable {
+      self.motion.gyroUpdateInterval = 1.0 / 50.0
+      self.motion.startGyroUpdates()
+
+
+      // Configure a timer to fetch the accelerometer data.
+      self.timer = Timer(fire: Date(), interval: (1.0/50.0), 
+             repeats: true, block: { (timer) in
+         // Get the gyro data.
+         if let data = self.motion.gyroData {
+            let x = data.rotationRate.x
+            let y = data.rotationRate.y
+            let z = data.rotationRate.z
+
+
+            // Use the gyroscope data in your app. 
+         }
+      })
+
+
+      // Add the timer to the current run loop.
+      RunLoop.current.add(self.timer!, forMode: .defaultRunLoopMode)
+   }
+}
+
+
+func stopGyros() {
+   if self.timer != nil {
+      self.timer?.invalidate()
+      self.timer = nil
+
+
+      self.motion.stopGyroUpdates()
+   }
+}
+Process a steady stream of gyroscope updates
+When you want to capture all of the gyroscope data, perhaps so you can analyze it for movement patterns, use the startGyroUpdates(to:withHandler:) method of CMMotionManager. This method pushes each new set of rotation values to your app by executing your handler block on the specified queue. The queueing of these blocks ensures that your app receives all of the gyroscope data, even if your app becomes busy and is unable to process updates for a brief period of time.
+
+Before you start the delivery of gyroscope updates, specify an update frequency by assigning a value to the gyroUpdateInterval property. The maximum frequency at which you can request updates is hardware-dependent but is usually at least 100 Hz. If you request a frequency that is greater than what the hardware supports, Core Motion uses the supported maximum instead.
+
+The next example shows a method from the MotionGraphs sample code project, which you can examine for more context. The app displays a real-time graph of rotation data from the onboard gyroscopes. The user configures the update frequency for the gyroscopes using a slider, the changing of which results in a call to the startUpdatesWithSliderValue: method shown in the example. This method restarts the gyroscope updates with the new frequency. Each time a new sample is received, the specified block is queued on the main thread. That block updates the app’s graph view and labels with the new rotation values.
+
+static const NSTimeInterval gyroMin = 0.01;
+- (void)startUpdatesWithSliderValue:(int)sliderValue {
+   // Determine the update interval
+   NSTimeInterval delta = 0.005;
+   NSTimeInterval updateInterval = gyroMin + delta * sliderValue;
+
+
+   // Create a CMMotionManager
+   CMMotionManager *mManager = [(APLAppDelegate *)
+            [[UIApplication sharedApplication] delegate] sharedManager];
+   APLGyroGraphViewController * __weak weakSelf = self;
+
+
+   // Check whether the gyroscope is available
+   if ([mManager isGyroAvailable] == YES) {
+      // Assign the update interval to the motion manager
+      [mManager setGyroUpdateInterval:updateInterval];
+      [mManager startGyroUpdatesToQueue:[NSOperationQueue mainQueue] 
+               withHandler:^(CMGyroData *gyroData, NSError *error) {
+         [weakSelf.graphView addX:gyroData.rotationRate.x 
+                  y:gyroData.rotationRate.y 
+                  z:gyroData.rotationRate.z];
+         [weakSelf setLabelValueX:gyroData.rotationRate.x 
+                  y:gyroData.rotationRate.y 
+                  z:gyroData.rotationRate.z];
+      }];
+   }
+   self.updateIntervalLabel.text = [NSString stringWithFormat:@"%f", updateInterval];
+}
+- (void)stopUpdates{
+   CMMotionManager *mManager = [(APLAppDelegate *)
+            [[UIApplication sharedApplication] delegate] sharedManager];
+   if ([mManager isGyroActive] == YES) {
+      [mManager stopGyroUpdates];
+   }
+}
+
+
+CMGyroData
+A single measurement of the device’s rotation rate.
+iOS 4.0+
+iPadOS 4.0+
+Mac Catalyst 13.1+
+macOS 10.15+
+visionOS 1.0+
+watchOS 2.0+
+class CMGyroData
+
+
+
+Instance Property
+rotationRate
+The rotation rate as measured by the device’s gyroscope.
+iOS 4.0+
+iPadOS 4.0+
+Mac Catalyst 13.1+
+macOS 10.15+
+visionOS 1.0+
+watchOS 2.0+
+var rotationRate: CMRotationRate { get }
+Discussion
+This property yields a measurement of the device’s rate of rotation around three axes. Whereas this property gives the raw data from the gyroscope, the identically named property of CMDeviceMotion gives a CMRotationRate structure measuring gyroscope data whose bias has been removed by Core Motion algorithms.
+
+
+
+
+
+
+Class
+CMRotationRateData
+A data object that contains a single rotation-rate measurement.
+iOS 14.0+
+iPadOS 14.0+
+Mac Catalyst 14.0+
+macOS 10.15+
+visionOS 1.0+
+watchOS 7.0+
+class CMRotationRateData
+Topics
+Accessing Rotation Data
+var rotationRate: CMRotationRate
+The rotation rate measured by the gyroscope.
+
+
+

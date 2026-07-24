@@ -1,0 +1,3 @@
+FOUND(local): @supabase/supabase-js
+FOUND(local): expo-apple-authentication
+FOUND(local): expo-secure-store

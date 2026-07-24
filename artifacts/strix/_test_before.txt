@@ -1,0 +1,55 @@
+
+> @workspace/strix@0.0.0 test
+> jest
+
+PASS lib/__tests__/crossVerification.test.ts
+PASS lib/__tests__/sensorFusion.test.ts
+PASS lib/__tests__/sensorEngine.test.ts
+PASS lib/__tests__/improvementDemo.test.ts
+  ● Console
+
+    console.log
+      
+      [A-2] صدمة حقيقية = 5g صافية
+
+      at Object.log (lib/__tests__/improvementDemo.test.ts:62:13)
+
+    console.log
+            peakG القديم (Kalman) = 2.85g  ← مقصوص
+
+      at Object.log (lib/__tests__/improvementDemo.test.ts:63:13)
+
+    console.log
+            peakG الجديد (خام صادق) = 4.75g  ← صادق
+
+      at Object.log (lib/__tests__/improvementDemo.test.ts:64:13)
+
+    console.log
+            التحسّن = 66% أقرب للحقيقة
+
+      at Object.log (lib/__tests__/improvementDemo.test.ts:65:13)
+
+    console.log
+      
+      [A-5] انحراف حقيقي = 49 deg/s
+
+      at Object.log (lib/__tests__/improvementDemo.test.ts:84:13)
+
+    console.log
+            القديم: yawRate=0.85 (rad/s) > 45 ؟ false  ← لا يتحقق أبداً
+
+      at Object.log (lib/__tests__/improvementDemo.test.ts:85:13)
+
+    console.log
+            الجديد: yawRate=49 (deg/s) > 45 ؟ true  ← يعمل
+
+      at Object.log (lib/__tests__/improvementDemo.test.ts:86:13)
+
+PASS lib/__tests__/liabilityEngine.test.ts
+PASS lib/__tests__/liabilityConfidence.test.ts
+
+Test Suites: 6 passed, 6 total
+Tests:       48 passed, 48 total
+Snapshots:   0 total
+Time:        3.854 s
+Ran all test suites.

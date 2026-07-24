@@ -1,0 +1,12 @@
+# Supabase CLI configuration — الميزة: المصادقة وملف المستخدم
+# ملف الحد الأدنى ليصبح المشروع جاهزاً لأوامر Supabase CLI (db diff/pull، migration، gen types).
+# project_id هو مرجع مشروع Supabase المستضاف (project ref) المستخدم عند الربط (supabase link).
+project_id = "qdfgdevinilqxbdmnees"
+
+[db]
+# نسخة Postgres المطابقة للمشروع المستضاف strix_db (تم التحقق عبر MCP).
+major_version = 17
+
+[auth]
+# المصادقة مفعّلة (بريد + Apple) — الضبط التفصيلي يتم من لوحة Supabase (المهمة 8.1).
+enabled = true
