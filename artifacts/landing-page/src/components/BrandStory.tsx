@@ -7,7 +7,7 @@ const recorded = [
   { icon: <Hand size={18} />, label: 'الفرملة' },
   { icon: <Navigation size={18} />, label: 'اتجاه الحركة' },
   { icon: <Crosshair size={18} />, label: 'نقطة الاصطدام' },
-  { icon: <ListChecks size={18} />, label: 'تفاصيل ثانية تفهم اللي صار' },
+  { icon: <ListChecks size={18} />, label: 'تفاصيل أخرى تفهم اللي صار' },
 ];
 
 const reasons = [
@@ -85,7 +85,7 @@ export default function BrandStory() {
         <div className="story-cta reveal">
           <h3 className="story-cta-title">سجّل من الآن</h3>
           <p className="story-cta-text">
-            سجّل مبكراً، وإذا أطلقنا ستركس بتكون من أول الناس اللي يجربونه.
+            سجّل مبكراً، وبمجرد إطلاق ستركس بتكون من أول الناس اللي يجربونه.
           </p>
           <a href="#join" className="btn-primary">
             سجّل مبكراً
