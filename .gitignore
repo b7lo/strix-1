@@ -53,3 +53,13 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# temporary / scratch dev files
+*.log
+_*.txt
+cruch.txt
+crach1.txt
+tcout.txt
+_tmp_ws.txt
+**/_*.txt
+**/*.log

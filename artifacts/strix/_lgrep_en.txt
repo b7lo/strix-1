@@ -1,2 +1,0 @@
-324:    "faultVerdict100": "The driver bears full responsibility",
-327:    "descriptionFormat": "{{dir}} collision at {{g}}g while traveling at {{speed}} km/h. Severity: {{severity}}.{{jerkNote}}{{brakingNote}} {{faultVerdict}} ({{fault}}% on driver)."

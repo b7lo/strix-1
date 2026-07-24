@@ -1,5 +1,0 @@
-
-> @workspace/strix@0.0.0 typecheck
-> tsc -p tsconfig.json --noEmit
-
-EXIT: 0
