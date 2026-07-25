@@ -97,7 +97,8 @@
       "generic": "Something went wrong, please try again.",
       "appleUnavailable": "Sign in with Apple is available on iOS only.",
       "appleSignInFailed": "Sign in with Apple failed. Please try again or use email.",
-      "invalidCode": "The code is invalid or has expired."
+      "invalidCode": "The code is invalid or has expired.",
+      "network": "Couldn't reach the server. Check your internet connection and try again."
     },
     "success": {
       "profileSaved": "Profile saved."

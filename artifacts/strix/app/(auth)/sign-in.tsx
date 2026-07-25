@@ -82,6 +82,17 @@ export default function SignInScreen() {
 /** يحوّل خطأ Supabase إلى رسالة عربية عامة (دون كشف أي الحقلين خاطئ — المتطلب 2.2). */
 export function mapAuthError(err: unknown, t: (k: string) => string): string {
   const message = (err as { message?: string })?.message?.toLowerCase() ?? "";
+  // انقطاع الشبكة (دون إنترنت / تعذّر الوصول للخادم) — رسالة أوضح من العامة.
+  if (
+    message.includes("network request failed") ||
+    message.includes("failed to fetch") ||
+    message.includes("network error") ||
+    message.includes("fetch failed") ||
+    message.includes("timeout") ||
+    message.includes("timed out")
+  ) {
+    return t("auth.errors.network");
+  }
   if (message.includes("already registered") || message.includes("already been registered")) {
     return t("auth.errors.emailInUse");
   }

@@ -16,12 +16,22 @@
       "ios": {
         "simulator": false,
         "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://qdfgdevinilqxbdmnees.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZmdkZXZpbmlscXhiZG1uZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTUxNDcsImV4cCI6MjA5OTYzMTE0N30.WMMD97-zG3tJaTyVgxzTEcbdXPBvAIJTQcOyGkqRgsY",
+        "EXPO_PUBLIC_STRIX_API_URL": "https://api.strixsa.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "ios": {
         "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://qdfgdevinilqxbdmnees.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZmdkZXZpbmlscXhiZG1uZWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTUxNDcsImV4cCI6MjA5OTYzMTE0N30.WMMD97-zG3tJaTyVgxzTEcbdXPBvAIJTQcOyGkqRgsY",
+        "EXPO_PUBLIC_STRIX_API_URL": "https://api.strixsa.com"
       }
     }
   },

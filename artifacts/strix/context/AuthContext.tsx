@@ -27,8 +27,43 @@ import React, {
   useState,
 } from "react";
 import { Platform } from "react-native";
+import * as SecureStore from "expo-secure-store";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+
+/** مفتاح تخزين نسخة محلية من الملف الشخصي (للعمل دون إنترنت). */
+const PROFILE_CACHE_KEY = "strix.profile.cache";
+
+/** يقرأ الملف الشخصي المخزّن محلياً (يُستخدم عند فشل الشبكة). */
+async function readCachedProfile(userId: string): Promise<Profile | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Profile;
+    // نتأكد أن الكاش يخصّ نفس المستخدم الحالي.
+    return parsed?.id === userId ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** يخزّن الملف الشخصي محلياً بعد تحميله بنجاح. */
+async function writeCachedProfile(profile: Profile): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(PROFILE_CACHE_KEY, JSON.stringify(profile));
+  } catch {
+    /* تجاهل — الكاش أفضل جهد (best-effort). */
+  }
+}
+
+/** يمسح نسخة الكاش (عند الخروج/الحذف). */
+async function clearCachedProfile(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(PROFILE_CACHE_KEY);
+  } catch {
+    /* تجاهل */
+  }
+}
 
 /** بيانات الملف الشخصي كما في جدول `profiles`. */
 export interface Profile {
@@ -134,7 +169,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // نتفادى تحديث الحالة بعد إلغاء التركيب (unmount).
   const mounted = useRef(true);
 
-  /** يجلب الملف الشخصي للمستخدم من `profiles` (RLS يضمن أنه صفّه فقط). */
+  /**
+   * يجلب الملف الشخصي للمستخدم من `profiles` (RLS يضمن أنه صفّه فقط).
+   * عند فشل الشبكة (دون إنترنت) يرجع النسخة المخزّنة محلياً بدل `null` حتى لا
+   * يُعامَل المستخدم المصادَق كملف ناقص فيُحوَّل خطأً لإكمال الملف.
+   */
   const loadProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from("profiles")
@@ -143,11 +182,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .maybeSingle();
 
     if (error) {
-      console.warn("[Strix Auth] Failed to load profile:", error.message);
-      return null;
+      // غالباً انقطاع شبكة — نرجع الكاش المحلي إن وُجد (تجربة أوفلاين سليمة).
+      console.warn("[Strix Auth] Failed to load profile, using cache:", error.message);
+      return readCachedProfile(userId);
     }
-    return (data as Profile) ?? null;
+    const loaded = (data as Profile) ?? null;
+    if (loaded) void writeCachedProfile(loaded);
+    return loaded;
   }, []);
+
+  /**
+   * يعبّئ الحقول الناقصة في الملف من `user_metadata` (المخزَّنة وقت التسجيل بالبريد).
+   * يُرجِع الملف المحدَّث عند نجاح التعبئة، أو `null` إن لم تتوفّر بيانات كافية.
+   */
+  const backfillProfileFromMetadata = useCallback(
+    async (u: User, current: Profile): Promise<Profile | null> => {
+      const meta = (u.user_metadata ?? {}) as Record<string, unknown>;
+      const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+      const payload: Record<string, string> = {};
+
+      if (!current.full_name?.trim() && str(meta.full_name)) payload.full_name = str(meta.full_name);
+      if (!current.city?.trim() && str(meta.city)) payload.city = str(meta.city);
+      if (!current.phone?.trim() && str(meta.phone)) payload.phone = str(meta.phone);
+      // تاريخ الميلاد الافتراضي من الـ trigger هو 1900-01-01؛ نستبدله بقيمة الـ metadata.
+      const metaBirth = str(meta.birth_date);
+      if ((!current.birth_date || current.birth_date === "1900-01-01") && metaBirth) {
+        payload.birth_date = metaBirth;
+      }
+
+      if (Object.keys(payload).length === 0) return null;
+
+      const { error } = await supabase.from("profiles").update(payload).eq("id", u.id);
+      if (error) {
+        console.warn("[Strix Auth] Profile backfill failed:", error.message);
+        return null;
+      }
+      return loadProfile(u.id);
+    },
+    [loadProfile]
+  );
 
   const applySession = useCallback(
     async (nextSession: Session | null) => {
@@ -156,13 +229,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(nextSession?.user ?? null);
 
       if (nextSession?.user) {
-        const p = await loadProfile(nextSession.user.id);
+        let p = await loadProfile(nextSession.user.id);
+        // تعبئة تلقائية: عند التسجيل بالبريد تُخزَّن بيانات الملف في user_metadata،
+        // لكن الـ trigger يُنشئ صفاً بحقول فارغة. فور توفّر الجلسة (بعد تأكيد البريد)
+        // نعبّئ الحقول الناقصة من الـ metadata حتى لا يُطلب من المستخدم إدخالها ثانيةً.
+        if (p && !isProfileComplete(p)) {
+          const filled = await backfillProfileFromMetadata(nextSession.user, p);
+          if (filled) p = filled;
+        }
         if (mounted.current) setProfile(p);
       } else if (mounted.current) {
         setProfile(null);
       }
     },
-    [loadProfile]
+    [loadProfile, backfillProfileFromMetadata]
   );
 
   // تهيئة الجلسة الأولية + الاستماع للتغيّرات.
@@ -307,6 +387,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadProfile]);
 
   const signOut = useCallback(async () => {
+    await clearCachedProfile();
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }, []);
@@ -394,7 +475,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(message);
     }
 
-    // نجاح: نمسح الجلسة محلياً (المتطلب 5.4).
+    // نجاح: نمسح الكاش والجلسة محلياً (المتطلب 5.4).
+    await clearCachedProfile();
     await supabase.auth.signOut().catch(() => {});
   }, [session]);
 

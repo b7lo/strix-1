@@ -73,7 +73,7 @@ function RootLayoutNav() {
  *  ─ المسجّل مكتمل الملف يُوجَّه بعيداً عن شاشات (auth) للرئيسية.
  */
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, profileComplete, loading } = useAuth();
+  const { session, profile, profileComplete, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const [onboardingSeen, setOnboardingSeen] = useState<boolean | null>(null);
@@ -104,14 +104,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     // مسجّل لكن ملفه ناقص → إجبار إكمال الملف.
-    if (!profileComplete) {
+    // شرط `profile` مهم: لو تعذّر تحميل الملف (مثلاً دون إنترنت) يكون `profile === null`
+    // فلا نحبس المستخدم في شاشة الإكمال؛ نتركه يدخل التطبيق (المراقبة تعمل دون إنترنت).
+    if (profile && !profileComplete) {
       if (!onCompleteProfile) router.replace("/(auth)/complete-profile");
       return;
     }
 
     // مسجّل ومكتمل → لا يبقى في شاشات (auth).
     if (inAuthGroup) router.replace("/(tabs)");
-  }, [session, profileComplete, loading, segments, router]);
+  }, [session, profile, profileComplete, loading, segments, router]);
 
   return <>{children}</>;
 }

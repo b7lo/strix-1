@@ -8,7 +8,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Platform,
   type TextInputProps,
@@ -20,6 +19,7 @@ import { Text } from "@/components/Text";
 import { useColors } from "@/hooks/useColors";
 import { useLanguage } from "@/context/LanguageContext";
 import { flipIconName } from "@/lib/rtl";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 
 /** غلاف شاشة مصادقة: رأس بعنوان + زر رجوع اختياري + محتوى قابل للتمرير. */
 export function AuthScreen({
@@ -56,10 +56,11 @@ export function AuthScreen({
         <View style={styles.navBtn} />
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollViewCompat
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 32 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bottomOffset={24}
       >
         <Text style={[styles.title, { color: colors.foreground, textAlign: rtl.textAlign }]} weight="800">
           {title}
@@ -70,7 +71,7 @@ export function AuthScreen({
           </Text>
         ) : null}
         <View style={styles.body}>{children}</View>
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
     </View>
   );
 }
