@@ -37,7 +37,10 @@ function Navbar() {
           <div className="navbar-logo">
             <img src={strixIcon} alt="Strix Logo" />
           </div>
-          <span className="navbar-name">Strix</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+            <span className="navbar-name">Strix</span>
+            <span style={{ fontSize: '0.75rem', opacity: 0.8, fontWeight: 500 }}>حوّل جوالك لمنقذ</span>
+          </div>
         </div>
 
         <nav className="navbar-nav">
@@ -80,7 +83,7 @@ function Footer() {
               <img src={strixIcon} alt="Strix" />
               <span className="footer-brand-name">Strix</span>
             </div>
-            <p className="footer-tagline">حوّل سيارتك إلى منقذ</p>
+            <p className="footer-tagline">حوّل جوالك لمنقذ</p>
           </div>
 
           <div className="footer-links">
