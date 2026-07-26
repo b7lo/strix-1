@@ -38,7 +38,8 @@ export default function Hero({ icon }: HeroProps) {
         </div>
 
         {/* Right: Phone Mockup */}
-        <div className="phone-wrap reveal reveal-delay-2" style={{ position: 'relative' }}>
+        <div>
+          <div className="phone-wrap reveal reveal-delay-2" style={{ position: 'relative' }}>
           <div className="phone-glow" />
 
           {/* Floating Elements */}
@@ -65,17 +66,18 @@ export default function Hero({ icon }: HeroProps) {
           <div className="phone phone-shot">
             <img src={heroShot} alt="لقطة من تطبيق ستركس" />
           </div>
+        </div>
 
-          <div className="hero-stats reveal reveal-delay-3">
-            <div>
-              <div className="hero-stat-value">85–90%</div>
-              <div className="hero-stat-label">دقة تحديد المسؤولية</div>
-            </div>
-            <div>
-              <div className="hero-stat-value">16</div>
-              <div className="hero-stat-label">منطقة رصد بالمركبة</div>
-            </div>
+        <div className="hero-stats reveal reveal-delay-3">
+          <div>
+            <div className="hero-stat-value">85–90%</div>
+            <div className="hero-stat-label">دقة تحديد المسؤولية</div>
           </div>
+          <div>
+            <div className="hero-stat-value">16</div>
+            <div className="hero-stat-label">منطقة رصد بالمركبة</div>
+          </div>
+        </div>
         </div>
       </div>
     </section>
