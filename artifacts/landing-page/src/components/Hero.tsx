@@ -35,17 +35,6 @@ export default function Hero({ icon }: HeroProps) {
           </div>
 
           <LeadCounter className="hero-lead-counter reveal reveal-delay-3" />
-
-          <div className="hero-stats reveal reveal-delay-3">
-            <div>
-              <div className="hero-stat-value">85–90%</div>
-              <div className="hero-stat-label">دقة تحديد المسؤولية</div>
-            </div>
-            <div>
-              <div className="hero-stat-value">16</div>
-              <div className="hero-stat-label">منطقة رصد بالمركبة</div>
-            </div>
-          </div>
         </div>
 
         {/* Right: Phone Mockup */}
@@ -75,6 +64,17 @@ export default function Hero({ icon }: HeroProps) {
 
           <div className="phone phone-shot">
             <img src={heroShot} alt="لقطة من تطبيق ستركس" />
+          </div>
+
+          <div className="hero-stats reveal reveal-delay-3">
+            <div>
+              <div className="hero-stat-value">85–90%</div>
+              <div className="hero-stat-label">دقة تحديد المسؤولية</div>
+            </div>
+            <div>
+              <div className="hero-stat-value">16</div>
+              <div className="hero-stat-label">منطقة رصد بالمركبة</div>
+            </div>
           </div>
         </div>
       </div>

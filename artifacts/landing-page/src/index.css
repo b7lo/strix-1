@@ -443,10 +443,8 @@ button { cursor: pointer; font-family: inherit; }
   padding-top: 2rem;
   margin-top: 2rem;
   border-top: 1px solid var(--border-subtle);
-  justify-content: flex-start;
-  margin-right: auto;
-  margin-left: auto;
-  max-width: fit-content;
+  justify-content: center;
+  width: 100%;
 }
 
 .hero-stats > div {
