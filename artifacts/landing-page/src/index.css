@@ -440,9 +440,9 @@ button { cursor: pointer; font-family: inherit; }
 .hero-stats {
   display: flex;
   gap: 2.5rem;
-  padding-top: 2rem;
-  margin-top: 2rem;
-  border-top: 1px solid var(--border-subtle);
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-subtle);
   justify-content: flex-start;
 }
 
