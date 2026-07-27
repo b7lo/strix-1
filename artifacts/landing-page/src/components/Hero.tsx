@@ -80,7 +80,6 @@ export default function Hero({ icon }: HeroProps) {
         </div>
         </div>
       </div>
-      </div>
     </section>
   );
 }
