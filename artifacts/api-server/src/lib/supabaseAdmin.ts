@@ -52,6 +52,8 @@ export function getSupabaseAdmin(): SupabaseClient {
   if (!cached) {
     cached = createClient(url, key, {
       auth: { autoRefreshToken: false, persistSession: false },
+      // تعطيل Realtime لأننا لا نحتاجه لحذف الحساب، ويمنع خطأ WebSocket في Node.js 20
+      realtime: { enabled: false },
     });
   }
   return cached;
