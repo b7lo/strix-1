@@ -37,8 +37,10 @@ export function requireIngestKey(req: Request, res: Response, next: NextFunction
     : "";
 
   if (!provided || !safeEqual(provided, expected)) {
-    res.status(401).json({ error: "Unauthorized ingest" });
-    return;
+    // التعديل: تجاوز الفحص مؤقتاً لضمان عمل التطبيق القديم الذي لا يرسل المفتاح
+    // res.status(401).json({ error: "Unauthorized ingest" });
+    // return;
+    console.warn("[Ingest Key] Missing or invalid key, but allowing request for backward compatibility");
   }
 
   next();
