@@ -4,7 +4,7 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 # Copy workspace configuration
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
+COPY .npmrc pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 
 # Copy dependency patches referenced by pnpm-workspace.yaml (patchedDependencies)
 COPY patches ./patches
@@ -14,7 +14,7 @@ COPY lib ./lib
 COPY artifacts/api-server ./artifacts/api-server
 
 # Install dependencies and build
-RUN pnpm install --config.ignore-scripts=false --filter @workspace/api-server...
+RUN pnpm install --filter @workspace/api-server...
 RUN pnpm --filter @workspace/api-server run build
 
 EXPOSE 3000
