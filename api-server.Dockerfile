@@ -14,7 +14,7 @@ COPY lib ./lib
 COPY artifacts/api-server ./artifacts/api-server
 
 # Install dependencies and build
-RUN pnpm install --filter @workspace/api-server...
+RUN pnpm install --config.ignore-scripts=false --filter @workspace/api-server...
 RUN pnpm --filter @workspace/api-server run build
 
 EXPOSE 3000
