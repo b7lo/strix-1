@@ -215,7 +215,7 @@ export async function uploadAccident(report: AccidentReport): Promise<string | n
   // نربط الحادث بالمستخدم المصادَق (المتطلبات 5.3، 7.1) عند توفّر جلسة.
   const { userId } = await getSyncAuthContext();
 
-  const apiResult = await apiRequest("/accidents", "POST", withUserId(apiRecord, userId));
+  const apiResult = await apiRequest("/api/accidents", "POST", withUserId(apiRecord, userId));
   if (isRecord(apiResult) && typeof apiResult.id === "string") {
     lastSyncBackend = "api";
     return apiResult.id;
@@ -493,7 +493,7 @@ export async function findMatchingAccident(
 
   if (lastSyncBackend === "api") {
     const result = await apiRequest(
-      `/accidents/${encodeURIComponent(ownAccidentId)}/match`,
+      `/api/accidents/${encodeURIComponent(ownAccidentId)}/match`,
       "POST",
       {
         deviceId: getDeviceId(),
