@@ -1,5 +1,5 @@
 /**
- * عميل Supabase Auth بصلاحية الخدمة (service role) — لعمليات الخادم الحسّاسة فقط
+ * عميل Supabase بصلاحية الخدمة (service role) — لعمليات الخادم الحسّاسة فقط
  * (حذف حساب المستخدم من `auth.users`). لا يُستخدم مفتاح service role إطلاقاً في
  * التطبيق (المتطلب 5.5 / خاصية الأمان 4).
  *
@@ -7,7 +7,8 @@
  *   SUPABASE_URL              — عنوان مشروع Supabase.
  *   SUPABASE_SERVICE_ROLE_KEY — مفتاح service role (سرّي، الخادم فقط).
  */
-import { GoTrueClient } from "@supabase/auth-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import WebSocket from "ws";
 
 /**
  * الواجهة الدنيا التي يحتاجها مسار حذف الحساب من عميل Supabase.
@@ -30,7 +31,7 @@ export interface SupabaseAdminLike {
   };
 }
 
-let cached: GoTrueClient | null = null;
+let cached: SupabaseClient | null = null;
 
 /** هل عميل الخدمة مُهيّأ (متغيّرات البيئة مضبوطة)؟ */
 export function isSupabaseAdminConfigured(): boolean {
@@ -38,13 +39,10 @@ export function isSupabaseAdminConfigured(): boolean {
 }
 
 /**
- * يُنشئ/يُعيد عميل GoTrue بصلاحية الخدمة. يرمي إن لم تُضبط متغيّرات البيئة
+ * يُنشئ/يُعيد عميل Supabase بصلاحية الخدمة. يرمي إن لم تُضبط متغيّرات البيئة
  * (نمنع تشغيلاً غير آمن أو صامتاً).
- * 
- * ملاحظة: نستخدم GoTrueClient مباشرة بدل SupabaseClient لتجنب مشكلة Realtime
- * التي تحتاج WebSocket في Node.js 20.
  */
-export function getSupabaseAdmin(): SupabaseAdminLike {
+export function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
@@ -53,22 +51,13 @@ export function getSupabaseAdmin(): SupabaseAdminLike {
     );
   }
   if (!cached) {
-    // إنشاء GoTrueClient مباشرة - يتجاوز مشكلة WebSocket في Realtime
-    const authUrl = url.replace(/\/$/, "");
-    cached = new GoTrueClient({
-      url: `${authUrl}/auth/v1`,
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
+    cached = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      // توفير WebSocket polyfill لـ Node.js 20 (Realtime يحتاجه)
+      realtime: {
+        transport: WebSocket as unknown as typeof globalThis.WebSocket,
       },
     });
   }
-  return {
-    auth: {
-      getUser: (jwt: string) => cached!.getUser(jwt),
-      admin: {
-        deleteUser: (id: string) => cached!.admin.deleteUser(id),
-      },
-    },
-  };
+  return cached;
 }
