@@ -8,28 +8,7 @@
  *   SUPABASE_SERVICE_ROLE_KEY — مفتاح service role (سرّي، الخادم فقط).
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import WebSocket from "ws";
-
-/**
- * الواجهة الدنيا التي يحتاجها مسار حذف الحساب من عميل Supabase.
- * تُسهّل الاختبار عبر حقن عميل وهمي دون شبكة.
- */
-export interface SupabaseAdminLike {
-  auth: {
-    /** يتحقّق من توكن المستخدم ويُعيد بياناته. */
-    getUser(jwt: string): Promise<{
-      data: { user: { id: string } | null };
-      error: { message: string } | null;
-    }>;
-    admin: {
-      /** يحذف المستخدم من `auth.users` (يُشغّل الحذف التسلسلي). */
-      deleteUser(id: string): Promise<{
-        data: unknown;
-        error: { message: string } | null;
-      }>;
-    };
-  };
-}
+import type WebSocket from "ws";
 
 let cached: SupabaseClient | null = null;
 
@@ -51,12 +30,19 @@ export function getSupabaseAdmin(): SupabaseClient {
     );
   }
   if (!cached) {
+    // استيراد ديناميكي لتجنب خطأ في البيئات التي لا تدعم WebSocket
+    let transport: typeof globalThis.WebSocket | undefined;
+    try {
+      const ws = require("ws") as typeof WebSocket;
+      transport = ws as unknown as typeof globalThis.WebSocket;
+    } catch {
+      // WebSocket غير متوفر - Realtime لن يعمل لكن Auth سيعمل
+    }
+    
     cached = createClient(url, key, {
       auth: { autoRefreshToken: false, persistSession: false },
       // توفير WebSocket polyfill لـ Node.js 20 (Realtime يحتاجه)
-      realtime: {
-        transport: WebSocket as unknown as typeof globalThis.WebSocket,
-      },
+      realtime: transport ? { transport } : undefined,
     });
   }
   return cached;
