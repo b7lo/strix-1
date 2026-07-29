@@ -99,6 +99,10 @@ app.get("/", (_req: Request, res: Response) => {
 // محدّد معدّل عام لكل الـ API
 app.use("/api", apiRateLimit, router);
 
+// توافق عكسي: التطبيق القديم يرسل إلى /accidents بدون /api
+// نركّب نفس الراوتر على الجذر حتى تعمل النسخ القديمة
+app.use("/", apiRateLimit, router);
+
 // أي مسار غير معروف: رد JSON موحّد (بدل رسالة Express الخام)
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Not found" });
