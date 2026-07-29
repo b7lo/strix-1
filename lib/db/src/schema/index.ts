@@ -59,6 +59,7 @@ export const accidentsTable = pgTable(
     approachAngle: doublePrecision("approach_angle").notNull().default(0),
     severity: severityEnum("severity").notNull(),
     reportJson: jsonb("report_json").notNull(),
+    localId: varchar("local_id", { length: 100 }),
     matchedAccidentId: uuid("matched_accident_id"),
     matchConfidence: integer("match_confidence"),
     createdAt: timestamp("created_at", { withTimezone: true })

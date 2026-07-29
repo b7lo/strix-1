@@ -62,6 +62,7 @@ type CreateAccidentBody = {
   approachAngle: number;
   severity: AccidentSeverity;
   reportJson: Record<string, unknown>;
+  localId?: string;
 };
 
 type MatchAccidentBody = {
@@ -125,6 +126,7 @@ function parseCreateAccidentBody(body: unknown): CreateAccidentBody | null {
     approachAngle,
     severity: severity as AccidentSeverity,
     reportJson,
+    localId: typeof reportJson.id === "string" ? reportJson.id : undefined,
   };
 }
 
@@ -204,6 +206,7 @@ router.post("/accidents", async (req, res, next) => {
         approachAngle: parsed.approachAngle,
         severity: parsed.severity,
         reportJson: parsed.reportJson,
+        localId: parsed.localId,
       })
       .returning({ id: accidentsTable.id });
 
