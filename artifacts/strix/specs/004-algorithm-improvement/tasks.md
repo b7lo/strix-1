@@ -43,17 +43,17 @@
 **الاستقلالية:** هذه المرحلة لا تغير قرارات المحرك.  
 **بوابة الخروج:** تقرير baseline محفوظ، وجميع أوامر التحقق تعمل من أمر واحد.
 
-- [ ] T001 إنشاء فرع `chore/algorithm-baseline` من tag `backup-engine-2026-08-16`
-- [ ] T002 توثيق أوامر التحقق الحالية في `artifacts/strix/specs/004-algorithm-improvement/quickstart.md`
-- [ ] T003 تعريف مقاييس `recall` و`precision` و`falseAlarmsPerHour` و`zoneAccuracy` و`ECE` في `artifacts/strix/lib/evaluation/types.ts`
-- [ ] T004 [P] إنشاء fixtures اصطناعية للحوادث الحالية في `artifacts/strix/lib/__fixtures__/algorithm-baseline/positive/`
-- [ ] T005 [P] إنشاء fixtures اصطناعية للمطبات والفرملة وسقوط الهاتف في `artifacts/strix/lib/__fixtures__/algorithm-baseline/negative/`
-- [ ] T006 إنشاء أداة حساب baseline من fixtures في `artifacts/strix/scripts/evaluate-algorithm.ts`
-- [ ] T007 إضافة script باسم `evaluate:algorithm` إلى `artifacts/strix/package.json`
-- [ ] T008 إضافة اختبارات صحة حساب المقاييس في `artifacts/strix/lib/__tests__/algorithmEvaluation.test.ts`
-- [ ] T009 تشغيل التقييم وحفظ النتيجة الأولى في `artifacts/strix/specs/004-algorithm-improvement/baselines/current.json`
-- [ ] T010 توثيق نوع الجهاز ومعدل العينات ومصدر كل fixture في `artifacts/strix/specs/004-algorithm-improvement/baselines/README.md`
-- [ ] T011 تشغيل `pnpm --filter @workspace/strix run typecheck` وجميع اختبارات Jest و`git diff --check`
+- [x] T001 إنشاء فرع `chore/algorithm-baseline` من tag `backup-engine-2026-08-16`
+- [x] T002 توثيق أوامر التحقق الحالية في `artifacts/strix/specs/004-algorithm-improvement/quickstart.md`
+- [x] T003 تعريف مقاييس `recall` و`precision` و`falseAlarmsPerHour` و`zoneAccuracy` و`ECE` في `artifacts/strix/lib/evaluation/types.ts`
+- [x] T004 [P] إنشاء fixtures اصطناعية للحوادث الحالية في `artifacts/strix/lib/__fixtures__/algorithm-baseline/positive/`
+- [x] T005 [P] إنشاء fixtures اصطناعية للمطبات والفرملة وسقوط الهاتف في `artifacts/strix/lib/__fixtures__/algorithm-baseline/negative/`
+- [x] T006 إنشاء أداة حساب baseline من fixtures في `artifacts/strix/scripts/evaluate-algorithm.ts`
+- [x] T007 إضافة script باسم `evaluate:algorithm` إلى `artifacts/strix/package.json`
+- [x] T008 إضافة اختبارات صحة حساب المقاييس في `artifacts/strix/lib/__tests__/algorithmEvaluation.test.ts`
+- [x] T009 تشغيل التقييم وحفظ النتيجة الأولى في `artifacts/strix/specs/004-algorithm-improvement/baselines/current.json`
+- [x] T010 توثيق نوع الجهاز ومعدل العينات ومصدر كل fixture في `artifacts/strix/specs/004-algorithm-improvement/baselines/README.md`
+- [x] T011 تشغيل `pnpm --filter @workspace/strix run typecheck` وجميع اختبارات Jest و`git diff --check`
 - [ ] T012 دمج المرحلة في `main` وإنشاء tag باسم `algorithm-p0-baseline`
 
 ### بوابة Phase 0

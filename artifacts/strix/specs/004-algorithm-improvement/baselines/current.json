@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "strix-sensor-engine-v7.3-baseline",
+  "metrics": {
+    "fixtureCount": 7,
+    "positiveCount": 3,
+    "negativeCount": 4,
+    "confusionMatrix": {
+      "truePositive": 3,
+      "trueNegative": 4,
+      "falsePositive": 0,
+      "falseNegative": 0
+    },
+    "precision": 1,
+    "recall": 1,
+    "falseAlarmsPerHour": 0,
+    "zoneAccuracy": 1,
+    "ece": null
+  },
+  "predictions": [
+    {
+      "fixtureId": "synthetic-front-crash-50hz",
+      "detectedCrash": true,
+      "predictedZone": "front",
+      "confidence": 98
+    },
+    {
+      "fixtureId": "synthetic-rear-crash-50hz",
+      "detectedCrash": true,
+      "predictedZone": "rear",
+      "confidence": 98
+    },
+    {
+      "fixtureId": "synthetic-side-right-crash-50hz",
+      "detectedCrash": true,
+      "predictedZone": "side-right",
+      "confidence": 98
+    },
+    {
+      "fixtureId": "synthetic-smooth-drive-50hz",
+      "detectedCrash": false,
+      "predictedZone": "unknown",
+      "confidence": 0
+    },
+    {
+      "fixtureId": "synthetic-hard-braking-50hz",
+      "detectedCrash": false,
+      "predictedZone": "unknown",
+      "confidence": 0
+    },
+    {
+      "fixtureId": "synthetic-single-pothole-50hz",
+      "detectedCrash": false,
+      "predictedZone": "unknown",
+      "confidence": 0
+    },
+    {
+      "fixtureId": "synthetic-phone-drop-50hz",
+      "detectedCrash": false,
+      "predictedZone": "unknown",
+      "confidence": 0
+    }
+  ]
+}
