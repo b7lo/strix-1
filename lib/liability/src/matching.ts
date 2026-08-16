@@ -21,7 +21,9 @@ import type { MatchInput, MatchScore } from "./types";
 export function scoreMatch(a: MatchInput, b: MatchInput): MatchScore {
   const timeDiffMs = Math.abs(a.timestamp - b.timestamp);
 
-  const hasGPS = Boolean(a.latitude && a.longitude && b.latitude && b.longitude);
+  const hasGPS = [a.latitude, a.longitude, b.latitude, b.longitude].every(
+    (value) => typeof value === "number" && Number.isFinite(value),
+  );
   let distanceMeters = 0;
   if (hasGPS) {
     distanceMeters = haversineDistance(

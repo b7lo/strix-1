@@ -218,7 +218,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const impactCount = recordImpact();
     const baselineG = getBaselineG();
     const direction = zoneToDirection(zone);
-    const preCrashBufferCaptured = getPreCrashBuffer(5);
+    const preCrashBufferCaptured = getPreCrashBuffer(5, crashTimestamp);
 
     // ─── 3. نافذة تحليل ما بعد الصدمة (2500ms) ───
     // ننتظر الآن لجمع بيانات الانحراف والاستقرار والصدمات الثانوية
@@ -253,6 +253,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       preCrashBuffer: preCrashBufferCaptured,
       postCrashBuffer: getPostCrashBuffer(crashTimestamp, 2500),
       postCrashGyro: getPostCrashGyro(crashTimestamp, 2500),
+      sampleRateHz: getSampleRate(),
       crashTimestamp, // v7.1 FIX: تمرير اللحظة الفعلية لتجنب إزاحة 250ms
     });
 

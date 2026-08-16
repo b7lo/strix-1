@@ -426,6 +426,7 @@ function classifyNewScenario(
   if (
     !!gyro && gyro.dominantAxis === "yaw" &&
     gyro.yawRate >= THRESHOLDS.U_TURN_YAW_RATE &&
+    (gyro.yawSustainedDurationMs ?? 0) >= THRESHOLDS.U_TURN_MIN_DURATION_MS &&
     speed >= THRESHOLDS.MIN_SPEED_LANE_CHANGE
   ) {
     return {

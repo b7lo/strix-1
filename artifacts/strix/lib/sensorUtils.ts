@@ -26,6 +26,7 @@
 import type { ImpactZone, ImpactDirection, GyroscopeSnapshot, BrakingAnalysis } from "./types";
 import { zoneToDirection } from "./types";
 import { KalmanFilter3D, AdaptiveBaseline, FrequencySeparator } from "./kalmanFilter";
+import { THRESHOLDS } from "./thresholds";
 
 // ─── ثوابت ───
 const BUFFER_DURATION_SEC = 5;       // موسّع من 3 إلى 5
@@ -44,11 +45,14 @@ const IMPULSE_CLOSE_FRACTION = 0.4; // أغلق إذا هبط دون 40% من ا
 const DOMINANT_AXIS_MIN_DEG_S = 28.6;
 // A-2: عدد العيّنات المتتالية فوق العتبة لتأكيد الحادث (رفض السبايك المفرد الكاذب)
 const CRASH_CONFIRM_SAMPLES = 2;
+// نستبعد هذه المدة قبل لحظة التفعيل من تحليل "ما قبل الحادث" حتى لا تدخل
+// عينات بداية الصدمة نفسها في استنتاج الفرملة أو التسارع السابق.
+const PRE_CRASH_GUARD_MS = 100;
 // عيّنة واحدة تتجاوز (العتبة × هذا المعامل) تُفعّل الكشف فورًا بلا انتظار عيّنتين.
 // = 1.0 يعني أي عيّنة فوق العتبة تُفعّل من أول ضربة (النبضات القصيرة قد لا تكمل
 // عيّنتين متتاليتين). الإنذارات الكاذبة يعالجها المستخدم عبر خانة "بلاغ كاذب"،
 // كما يبقى validateCrashWithGyro كفلتر يرفض الاهتزاز المستمر غير اللحظي.
-const CRASH_INSTANT_MULTIPLIER = 1.0;
+const CRASH_INSTANT_MULTIPLIER = 1.5;
 
 // ─── محركات الفلترة الذكية (v6) ───
 // ─── حالة عامة ───
@@ -72,9 +76,20 @@ const GRAVITY_ALPHA = 0.05; // فلتر بطيء جداً لتقدير ثابت 
 export type PhoneOrientation = 'flat' | 'portrait' | 'landscape';
 
 function updateGravityEstimate(raw: { x: number; y: number; z: number }): void {
-  sensorEngine.gravityEstimate.x = GRAVITY_ALPHA * raw.x + (1 - GRAVITY_ALPHA) * sensorEngine.gravityEstimate.x;
-  sensorEngine.gravityEstimate.y = GRAVITY_ALPHA * raw.y + (1 - GRAVITY_ALPHA) * sensorEngine.gravityEstimate.y;
-  sensorEngine.gravityEstimate.z = GRAVITY_ALPHA * raw.z + (1 - GRAVITY_ALPHA) * sensorEngine.gravityEstimate.z;
+  const g = sensorEngine.gravityEstimate;
+  const dx = raw.x - g.x;
+  const dy = raw.y - g.y;
+  const dz = raw.z - g.z;
+  const innovationMag = Math.hypot(dx, dy, dz);
+
+  // لا نسمح لنبضة اصطدام كبيرة بأن تُسحب إلى تقدير الجاذبية. نقيّد متجه
+  // الابتكار بدلاً من تجاهله كلياً كي يبقى التقدير قادراً على التكيّف عند
+  // تغيير وضعية الهاتف بصورة تدريجية.
+  const maxInnovation = 0.25;
+  const scale = innovationMag > maxInnovation ? maxInnovation / innovationMag : 1;
+  g.x += GRAVITY_ALPHA * dx * scale;
+  g.y += GRAVITY_ALPHA * dy * scale;
+  g.z += GRAVITY_ALPHA * dz * scale;
 }
 
 export function getPhoneOrientation(): PhoneOrientation {
@@ -207,6 +222,11 @@ function gyroYawRateRad(g: { x: number; y: number; z: number }): number {
   return (g.x * grav.x + g.y * grav.y + g.z * grav.z) / m;
 }
 
+/** إسقاط الجيروسكوب على المحور الرأسي الحقيقي، بوحدة درجة/ثانية. */
+export function getGyroYawRateDegS(g: { x: number; y: number; z: number }): number {
+  return Math.abs(gyroYawRateRad(g)) * (180 / Math.PI);
+}
+
 
 class TimeWindowBuffer<T extends { ts: number }> {
   private buffer: T[];
@@ -250,6 +270,12 @@ class TimeWindowBuffer<T extends { ts: number }> {
   getLast(): T | undefined {
     if (this.length === 0) return undefined;
     return this.buffer[(this.tail + this.length - 1) % this.capacity];
+  }
+
+  clear(): void {
+    this.head = 0;
+    this.tail = 0;
+    this.length = 0;
   }
   
   // Get slice from the end
@@ -387,14 +413,15 @@ export function updateCurrentSpeed(speedKmh: number): void {
 export function applyHighPassFilter(raw: {
   x: number; y: number; z: number;
 }): FilteredReading {
-  // تحديث تقدير الجاذبية (EMA بطيء alpha=0.05) — لا يتأثر بالصدمات المفاجئة
-  updateGravityEstimate(raw);
-
-  return {
+  // احسب العينة الصافية من تقدير الجاذبية السابق أولاً؛ تحديث التقدير بالعينة
+  // الحالية قبل الطرح كان يخفض القمة فورياً بنسبة alpha حتى مع نبضة واحدة.
+  const filtered = {
     x: raw.x - sensorEngine.gravityEstimate.x,
     y: raw.y - sensorEngine.gravityEstimate.y,
     z: raw.z - sensorEngine.gravityEstimate.z,
   };
+  updateGravityEstimate(raw);
+  return filtered;
 }
 
 /**
@@ -435,7 +462,7 @@ export function resetFilter(): void {
   sensorEngine.lastGForceMag = 0;
   sensorEngine.lastSampleTs = 0;
   sensorEngine.jerkAccumPeak = 0;
-  sensorEngine.ringBuffer.length = 0;
+  sensorEngine.ringBuffer.clear();
   sensorEngine.crashCandidateStreak = 0;
   sensorEngine.peakRotationRate = 0;
   sensorEngine.peakYaw = 0;
@@ -450,7 +477,10 @@ export function resetFilter(): void {
   sensorEngine.lastFreqImpulsive = false;
   sensorEngine.currentSpeedKmh = 0;
   sensorEngine.gravityEstimate = { x: 0, y: -1, z: 0 };
-  // ملاحظة: لا نعيد ضبط phoneYawOffset هنا — المعايرة تبقى عبر الجلسات إن وُجدت
+  // اتجاه الهاتف قد يتغيّر بين جلستين؛ إبقاء المعايرة القديمة يعطي اتجاه صدمة
+  // خاطئاً مع ثقة عالية حتى تنضج المعايرة الجديدة.
+  sensorEngine.phoneYawOffset = 0;
+  sensorEngine.phoneYawCalibrated = false;
 }
 
 export function resetGyroPeaks(): void {
@@ -557,6 +587,9 @@ export function getGyroscopeSnapshot(): GyroscopeSnapshot {
   let maxYawDeg = 0;     // الدوران حول المحور الرأسي
   let maxHorizDeg = 0;   // الدوران الأفقي (pitch+roll مجتمعين — لا يمكن فصلهما بثقة)
   let highHorizCount = 0;
+  let yawRunStartTs = 0;
+  let lastYawRunTs = 0;
+  let maxYawRunDurationMs = 0;
 
   sensorEngine.gyroHistory.forEach(s => {
     const yawRad = gyroYawRateRad(s);
@@ -568,6 +601,17 @@ export function getGyroscopeSnapshot(): GyroscopeSnapshot {
     if (horizDeg > maxHorizDeg) maxHorizDeg = horizDeg;
     // ~2.0 rad/s (~115°/s) دوران أفقي مستدام = مؤشّر انقلاب واقعي
     if (horizRad > 2.0) highHorizCount++;
+
+    if (yawDeg >= THRESHOLDS.U_TURN_YAW_RATE) {
+      if (yawRunStartTs === 0 || (lastYawRunTs > 0 && s.ts - lastYawRunTs > 100)) {
+        yawRunStartTs = s.ts;
+      }
+      lastYawRunTs = s.ts;
+      maxYawRunDurationMs = Math.max(maxYawRunDurationMs, lastYawRunTs - yawRunStartTs);
+    } else {
+      yawRunStartTs = 0;
+      lastYawRunTs = 0;
+    }
   });
 
   // dominantAxis: نميّز فقط بين الرأسي (yaw) والأفقي (نمثّله كـ "roll").
@@ -589,6 +633,7 @@ export function getGyroscopeSnapshot(): GyroscopeSnapshot {
     pitchRate: 0,            // لا يمكن فصله بثقة — نتركه 0 بدل قيمة مضلّلة
     rollRate: maxHorizDeg,   // الدوران الأفقي الكلي (deg/s)
     yawRate: maxYawDeg,      // deg/s
+    yawSustainedDurationMs: maxYawRunDurationMs,
   };
 }
 
@@ -700,7 +745,15 @@ export function getLatestGyroYawRateDegS(): number {
  * يُستخدم في Module 4 (Micro-Kinematic) و Module 5 (Pre-Crash Events)
  * @param seconds عدد الثواني المطلوبة (حد أقصى BUFFER_DURATION_SEC)
  */
-export function getPreCrashBuffer(seconds: number = 5): readonly RingSample[] {
+export function getPreCrashBuffer(
+  seconds: number = 5,
+  crashTimestamp?: number,
+): readonly RingSample[] {
+  if (crashTimestamp !== undefined) {
+    const endTs = crashTimestamp - PRE_CRASH_GUARD_MS;
+    return sensorEngine.ringBuffer.sliceByTimeRange(endTs - seconds * 1000, endTs);
+  }
+
   const requestedSamples = Math.min(
     Math.ceil(seconds * sensorEngine.sampleRateHz),
     sensorEngine.ringBuffer.length

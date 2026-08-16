@@ -45,6 +45,8 @@ export interface GyroscopeSnapshot {
   dominantAxis: "yaw" | "pitch" | "roll" | "none";
   /** قيمة Yaw (الدوران الأفقي) — تُستخدم لتحديد منطقة الاصطدام */
   yawRate: number;
+  /** أطول مدة دوران رأسي متصل فوق عتبة U-turn (ملّي ثانية) */
+  yawSustainedDurationMs?: number;
   /** قيمة Pitch (الميلان أمامي/خلفي) */
   pitchRate: number;
   /** قيمة Roll (الميلان جانبي) */

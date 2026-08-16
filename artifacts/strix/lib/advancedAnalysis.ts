@@ -30,6 +30,7 @@ import type {
   ImpactDirection,
 } from "./types";
 import type { RingSample } from "./sensorUtils";
+import { getGyroYawRateDegS, mapToVehicleFrame } from "./sensorUtils";
 import i18n from "./i18n";
 
 // ─── ثوابت ───
@@ -84,7 +85,7 @@ function analyzeAngularStability(
   let consecutiveAboveThreshold = 0;
   let confirmedSuddenYaw = false;
   for (const sample of preCrashGyro) {
-    const yawDegS = Math.abs(sample.z) * (180 / Math.PI);
+    const yawDegS = getGyroYawRateDegS(sample);
     if (yawDegS > maxYawRate) maxYawRate = yawDegS;
     if (yawDegS > YAW_SUDDEN_THRESHOLD_DEG_S) {
       consecutiveAboveThreshold++;
@@ -124,8 +125,9 @@ function analyzeMultiVector(
   peakFiltered: { x: number; y: number; z: number },
   direction: ImpactDirection
 ): MultiVectorResult {
-  const lateralG = Math.abs(peakFiltered.x);
-  const longitudinalG = Math.abs(peakFiltered.y);
+  const vehicle = mapToVehicleFrame(peakFiltered);
+  const lateralG = Math.abs(vehicle.vX);
+  const longitudinalG = Math.abs(vehicle.vY);
   const totalG = lateralG + longitudinalG;
 
   let score = 0;
@@ -184,7 +186,7 @@ function analyzeRoadContext(
     let sustainedYawStartTs = 0;
 
     for (const sample of preCrashGyro) {
-      const yawDegS = Math.abs(sample.z) * (180 / Math.PI);
+      const yawDegS = getGyroYawRateDegS(sample);
       if (yawDegS > ROUNDABOUT_YAW_THRESHOLD) {
         if (sustainedYawCount === 0) sustainedYawStartTs = sample.ts;
         sustainedYawCount++;
@@ -246,7 +248,8 @@ function analyzeMicroKinematic(
   preCrashBuffer: readonly RingSample[],
   gyroHistory: readonly { x: number; y: number; z: number; ts: number }[],
   peakGForce: number,
-  crashTimestamp: number
+  crashTimestamp: number,
+  sampleRateHz: number,
 ): MicroKinematicResult {
   const result: MicroKinematicResult = {
     scrapeDetected: false,
@@ -259,7 +262,7 @@ function analyzeMicroKinematic(
   if (preCrashBuffer.length < 10) return result;
 
   // ─── 1. حساب التباين (Variance) في نوافذ 100ms ───
-  const windowSize = 5; // ~100ms عند 50Hz
+  const windowSize = Math.max(2, Math.round(sampleRateHz * 0.1));
   const windows: number[] = [];
 
   for (let i = 0; i <= preCrashBuffer.length - windowSize; i += windowSize) {
@@ -284,8 +287,7 @@ function analyzeMicroKinematic(
       highVarStreak = 0;
     }
   }
-  // كل نافذة = ~100ms
-  result.vibrationDurationMs = maxStreak * 100;
+  result.vibrationDurationMs = Math.round(maxStreak * windowSize / sampleRateHz * 1000);
 
   // ─── 3. كشف Jerk Spike ───
   let maxJerkInWindow = 0;
@@ -311,7 +313,7 @@ function analyzeMicroKinematic(
 
     if (nearGyro.length > 0) {
       const maxYawNear = Math.max(
-        ...nearGyro.map((g) => Math.abs(g.z) * (180 / Math.PI))
+        ...nearGyro.map(getGyroYawRateDegS)
       );
       // Jerk spike + Yaw shift في نفس اللحظة = تأكيد
       if (maxYawNear > 3 && maxJerkInWindow > 5) {
@@ -367,20 +369,16 @@ function analyzePreCrashEvents(
   if (preCrashBuffer.length < 20 || speedKmh < 10) return result;
 
   // ─── 1. البحث عن فرملة عنيفة ───
-  // v7.1 FIX: استخدام gForce delta بدل filtered.y مباشرة
-  // لأن filtered.y في إطار الجهاز (يعتمد على وضعية الجوال)
-  // بينما gForce delta هو frame-independent
+  // نستخدم المركبة الطولية ذات الإشارة في إطار السيارة. مقدار gForce وحده
+  // لا يميّز الفرملة من التسارع، وتناقصه يعني غالباً انتهاء اهتزاز لا فرملة.
   let brakingSamples = 0;
   let peakDecel = 0;
-  for (let i = 1; i < preCrashBuffer.length; i++) {
-    const dt = (preCrashBuffer[i].ts - preCrashBuffer[i - 1].ts) / 1000;
-    if (dt > 0 && dt < 0.5) {
-      // تباطؤ = gForce ينخفض بشكل مفاجئ (الصدمة تبطئ المركبة)
-      const decelRate = (preCrashBuffer[i - 1].gForce - preCrashBuffer[i].gForce) / dt;
-      if (decelRate > HARD_BRAKING_THRESHOLD_G * 10) { // معدل التباطؤ بال g/s
-        brakingSamples++;
-        if (decelRate > peakDecel) peakDecel = decelRate;
-      }
+  for (const sample of preCrashBuffer) {
+    const longitudinalG = mapToVehicleFrame(sample.filtered).vY;
+    const decelG = -longitudinalG;
+    if (decelG > HARD_BRAKING_THRESHOLD_G) {
+      brakingSamples++;
+      if (decelG > peakDecel) peakDecel = decelG;
     }
   }
   if (brakingSamples >= 10 || braking?.brakingDetected) {
@@ -388,15 +386,12 @@ function analyzePreCrashEvents(
   }
 
   // ─── 2. البحث عن تسارع مفاجئ ───
-  // v7.1 FIX: frame-independent — نستخدم ارتفاع gForce بدل filtered.y
+  // تسارع أمامي موجب في إطار السيارة.
   let accelSamples = 0;
-  for (let i = 1; i < preCrashBuffer.length; i++) {
-    const dt = (preCrashBuffer[i].ts - preCrashBuffer[i - 1].ts) / 1000;
-    if (dt > 0 && dt < 0.5) {
-      const accelRate = (preCrashBuffer[i].gForce - preCrashBuffer[i - 1].gForce) / dt;
-      if (accelRate > HARD_ACCEL_THRESHOLD_G * 10) {
-        accelSamples++;
-      }
+  for (const sample of preCrashBuffer) {
+    const longitudinalG = mapToVehicleFrame(sample.filtered).vY;
+    if (longitudinalG > HARD_ACCEL_THRESHOLD_G) {
+      accelSamples++;
     }
   }
   if (accelSamples >= 8) {
@@ -413,7 +408,7 @@ function analyzePreCrashEvents(
     (s) => s.ts >= windowStart && s.ts <= crashTimestamp
   );
   const avgYaw = preCrashYaw.length > 0
-    ? preCrashYaw.reduce((a, s) => a + Math.abs(s.z) * (180 / Math.PI), 0) / preCrashYaw.length
+    ? preCrashYaw.reduce((a, s) => a + getGyroYawRateDegS(s), 0) / preCrashYaw.length
     : 0;
 
   if (varianceG < STEADY_VARIANCE_THRESHOLD && avgYaw < STEADY_YAW_THRESHOLD) {
@@ -424,7 +419,7 @@ function analyzePreCrashEvents(
   if (result.hardBraking) {
     // هل يوجد انحراف Yaw أيضاً؟
     const maxYawPreCrash = preCrashYaw.length > 0
-      ? Math.max(...preCrashYaw.map((s) => Math.abs(s.z) * (180 / Math.PI)))
+      ? Math.max(...preCrashYaw.map(getGyroYawRateDegS))
       : 0;
     if (maxYawPreCrash > YAW_SUDDEN_THRESHOLD_DEG_S) {
       result.evasiveManeuver = true;
@@ -527,8 +522,9 @@ function analyzePostImpact(
   let avgX = 0;
   let avgY = 0;
   for (const s of postCrashBuffer) {
-    avgX += s.filtered.x;
-    avgY += s.filtered.y;
+    const vehicle = mapToVehicleFrame(s.filtered);
+    avgX += vehicle.vX;
+    avgY += vehicle.vY;
   }
   avgX /= postCrashBuffer.length;
   avgY /= postCrashBuffer.length;
@@ -546,7 +542,7 @@ function analyzePostImpact(
   // ─── 3. الدوران بعد الصدمة (Post-Impact Rotation) ───
   let maxYawRate = 0;
   for (const g of postCrashGyro) {
-    const yaw = Math.abs(g.z) * (180 / Math.PI);
+    const yaw = getGyroYawRateDegS(g);
     if (yaw > maxYawRate) maxYawRate = yaw;
   }
   result.postImpactYawRate = Math.round(maxYawRate);
@@ -607,6 +603,8 @@ export interface AdvancedAnalysisInput {
   postCrashGyro: readonly { x: number; y: number; z: number; ts: number }[];
   /** v7.1: لحظة الصدمة الفعلية (ليس Date.now()) */
   crashTimestamp?: number;
+  /** معدل العينات الفعلي لضبط النوافذ الزمنية بدل افتراض 50Hz */
+  sampleRateHz?: number;
 }
 
 /**
@@ -630,7 +628,11 @@ export function runAdvancedAnalysis(input: AdvancedAnalysisInput): AdvancedAnaly
   );
 
   const microKinematic = analyzeMicroKinematic(
-    input.preCrashBuffer, input.gyroHistory, input.peakGForce, crashTs
+    input.preCrashBuffer,
+    input.gyroHistory,
+    input.peakGForce,
+    crashTs,
+    input.sampleRateHz ?? 50,
   );
 
   const preCrashEvents = analyzePreCrashEvents(

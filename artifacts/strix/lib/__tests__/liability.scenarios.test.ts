@@ -18,8 +18,8 @@ const quietGyro: GyroscopeSnapshot = {
   yawRate: 0, pitchRate: 0, rollRate: 0, rolloverDetected: false,
 };
 
-const yawGyro = (yawRate: number): GyroscopeSnapshot => ({
-  ...quietGyro, dominantAxis: "yaw", yawRate, peakRotationRate: yawRate,
+const yawGyro = (yawRate: number, yawSustainedDurationMs = 0): GyroscopeSnapshot => ({
+  ...quietGyro, dominantAxis: "yaw", yawRate, yawSustainedDurationMs, peakRotationRate: yawRate,
 });
 
 const advanced = (over?: Partial<AdvancedAnalysisResult> & {
@@ -69,8 +69,13 @@ describe("Axis 3 — New Scenario Codes", () => {
   });
 
   it("U_TURN: sustained high yaw ⇒ U_TURN code", () => {
-    const r = calculateLiability("side-left", 2.5, 30, 18, null, yawGyro(70), 1, 0, "side-left", advanced());
+    const r = calculateLiability("side-left", 2.5, 30, 18, null, yawGyro(70, 900), 1, 0, "side-left", advanced());
     expect(r.scenarioCode).toBe("U_TURN");
+  });
+
+  it("U_TURN: قمة yaw قصيرة لا تكفي لتصنيف انعطاف كامل", () => {
+    const r = calculateLiability("side-left", 2.5, 30, 18, null, yawGyro(70, 100), 1, 0, "side-left", advanced());
+    expect(r.scenarioCode).not.toBe("U_TURN");
   });
 
   it("LANE_MERGE: confirmed lane change (yaw between merge & u-turn thresholds)", () => {

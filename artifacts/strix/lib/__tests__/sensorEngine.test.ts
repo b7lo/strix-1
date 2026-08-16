@@ -12,6 +12,9 @@ import {
   isDirectionCalibrated,
   registerThresholdCrossing,
   resetCrashStreak,
+  isInstantStrongCrash,
+  getRingBuffer,
+  getPreCrashBuffer,
 } from "../sensorUtils";
 
 /** يغذّي المحرك بقراءات جاذبية ثابتة حتى يتقارب تقدير الجاذبية لاتجاه معيّن */
@@ -46,6 +49,28 @@ describe("Strix Sensor Engine", () => {
       }
       expect(isEngineReady()).toBe(true);
     });
+
+    it("resetFilter يمسح المخزن الحلقي فعلياً بين الجلسات", () => {
+      recordSample(1, { x: 1, y: 0, z: 0 }, { x: 1, y: 0, z: 1 });
+      expect(getRingBuffer()).toHaveLength(1);
+      resetFilter();
+      expect(getRingBuffer()).toHaveLength(0);
+      recordSample(2, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1 });
+      expect(getRingBuffer()).toHaveLength(1);
+      expect(getRingBuffer()[0].gForce).toBe(2);
+    });
+
+    it("نافذة ما قبل الحادث تستبعد عينات بداية الصدمة", () => {
+      const nowSpy = jest.spyOn(Date, "now");
+      nowSpy.mockReturnValueOnce(1_000);
+      recordSample(0.1, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+      nowSpy.mockReturnValueOnce(1_950);
+      recordSample(3, { x: 0, y: -3, z: 0 }, { x: 0, y: -3, z: 1 });
+      nowSpy.mockRestore();
+
+      const preCrash = getPreCrashBuffer(5, 2_000);
+      expect(preCrash.map((s) => s.gForce)).toEqual([0.1]);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -63,7 +88,7 @@ describe("Strix Sensor Engine", () => {
       // نمط متذبذب: عالٍ معزول بين قيم منخفضة — كان median يقتله
       applyHighPassFilter({ x: 0, y: 0, z: 1 });
       const spike = applyHighPassFilter({ x: 0, y: 0, z: 9 });
-      expect(mag(spike)).toBeGreaterThan(5.0); // القيمة الحقيقية محفوظة
+      expect(mag(spike)).toBeGreaterThan(7.9); // ~8g صافية بلا سحب فوري للجاذبية
     });
 
     it("الجوال الثابت يقرأ ~0g بعد نزع الجاذبية", () => {
@@ -85,6 +110,11 @@ describe("Strix Sensor Engine", () => {
       expect(registerThresholdCrossing(true)).toBe(false); // سبايك مفرد
       expect(registerThresholdCrossing(false)).toBe(false); // عاد طبيعي → صفر
       expect(registerThresholdCrossing(true)).toBe(false); // واحدة فقط مجدداً
+    });
+
+    it("المسار الفوري لا يلغي debounce عند تجاوز حدّي فقط", () => {
+      expect(isInstantStrongCrash(2.1, 2.0)).toBe(false);
+      expect(isInstantStrongCrash(3.0, 2.0)).toBe(true);
     });
   });
 
@@ -146,6 +176,13 @@ describe("Strix Sensor Engine", () => {
       expect(isDirectionCalibrated()).toBe(true);
       const zone = detectImpactZone({ x: 2, y: 0, z: 0 });
       expect(["front", "rear"]).toContain(zone);
+    });
+
+    it("بدء جلسة جديدة يمسح معايرة الجلسة السابقة", () => {
+      setPhoneYawOffset(Math.PI / 3);
+      expect(isDirectionCalibrated()).toBe(true);
+      resetFilter();
+      expect(isDirectionCalibrated()).toBe(false);
     });
   });
 });

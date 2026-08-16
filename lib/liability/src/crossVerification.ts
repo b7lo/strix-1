@@ -57,11 +57,18 @@ function checkZoneConsistency(zoneA: ImpactZone, zoneB: ImpactZone): string[] {
   return flags;
 }
 
+function hasCoordinates(
+  report: CrossReport,
+): report is CrossReport & { latitude: number; longitude: number } {
+  return typeof report.latitude === "number" && Number.isFinite(report.latitude) &&
+    typeof report.longitude === "number" && Number.isFinite(report.longitude);
+}
+
 /** يتحقّق من الوقت والمسافة بين تقريرين ويعيد أعلام التعارض. */
 function checkTimeAndDistance(reportA: CrossReport, reportB: CrossReport): string[] {
   const flags: string[] = [];
 
-  if (reportA.latitude && reportA.longitude && reportB.latitude && reportB.longitude) {
+  if (hasCoordinates(reportA) && hasCoordinates(reportB)) {
     const dist = haversineDistance(
       reportA.latitude,
       reportA.longitude,
@@ -146,8 +153,8 @@ function calculateCrossLiability(
       break;
   }
 
-  const speedA = reportA.preCrashSpeedKmh || reportA.speedKmh || 0;
-  const speedB = reportB.preCrashSpeedKmh || reportB.speedKmh || 0;
+  const speedA = reportA.preCrashSpeedKmh ?? reportA.speedKmh ?? 0;
+  const speedB = reportB.preCrashSpeedKmh ?? reportB.speedKmh ?? 0;
 
   if (speedA + speedB > 0) {
     const speedRatio = speedA / (speedA + speedB);
@@ -197,7 +204,7 @@ export function generateCrossVerifiedAnalysis(
   let status: "VERIFIED" | "INCONSISTENT" | "PARTIAL" = "VERIFIED";
   if (flags.length > 0) {
     status = "INCONSISTENT";
-  } else if (!reportA.latitude || !reportB.latitude) {
+  } else if (!hasCoordinates(reportA) || !hasCoordinates(reportB)) {
     status = "PARTIAL";
   }
 
@@ -208,8 +215,8 @@ export function generateCrossVerifiedAnalysis(
     firstContact = timeDelta > 0 ? "A" : "B"; // الأقدم زمنيًا هو أول تماس
   }
 
-  const speedA = reportA.preCrashSpeedKmh || reportA.speedKmh || 0;
-  const speedB = reportB.preCrashSpeedKmh || reportB.speedKmh || 0;
+  const speedA = reportA.preCrashSpeedKmh ?? reportA.speedKmh ?? 0;
+  const speedB = reportB.preCrashSpeedKmh ?? reportB.speedKmh ?? 0;
 
   const { liabilityA, liabilityB } = calculateCrossLiability(reportA, reportB);
 
