@@ -38,7 +38,7 @@ function runFixture(fixture: AlgorithmEvaluationFixture): AlgorithmPrediction {
 
     for (let index = 0; index < warmupSamples; index++) {
       clockMs = FIXED_CLOCK_START_MS + index * sampleIntervalMs;
-      recordSample(0, { x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
+      recordSample(0, { x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }, clockMs);
       registerThresholdCrossing(false);
     }
 
@@ -52,12 +52,13 @@ function runFixture(fixture: AlgorithmEvaluationFixture): AlgorithmPrediction {
 
     for (const sample of fixture.samples) {
       clockMs = eventStartMs + sample.atMs;
-      if (sample.gyro) recordGyroscopeSample(sample.gyro);
+      if (sample.gyro) recordGyroscopeSample(sample.gyro, clockMs);
 
       recordSample(
         sample.gForce,
         sample.filtered,
         sample.raw ?? { x: sample.filtered.x, y: sample.filtered.y - 1, z: sample.filtered.z },
+        clockMs,
       );
 
       const adjustedThreshold = getAdjustedThreshold(fixture.baseCrashThreshold);

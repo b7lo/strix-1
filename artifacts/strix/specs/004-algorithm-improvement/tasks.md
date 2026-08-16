@@ -118,31 +118,31 @@
 
 ## 2A — طبقة الزمن والجودة
 
-- [ ] T036 [P] [US2] تعريف `TimingQuality` و`SampleTiming` في `artifacts/strix/lib/timing/types.ts`
-- [ ] T037 [P] [US2] إضافة fixtures لمعدلات `20/25/50/100Hz` وفجوات زمنية في `artifacts/strix/lib/__fixtures__/timing/`
-- [ ] T038 [US2] تنفيذ حساب `dt` المحمي من الصفر والقيم السالبة في `artifacts/strix/lib/timing/sampleClock.ts`
-- [ ] T039 [US2] تنفيذ median rate وjitter وgap detection في `artifacts/strix/lib/timing/rateEstimator.ts`
-- [ ] T040 [US2] إضافة اختبارات timestamps مكررة وغير مرتبة في `artifacts/strix/lib/__tests__/sampleClock.test.ts`
-- [ ] T041 [US2] دمج جودة الزمن داخل `artifacts/strix/lib/dataQuality.ts`
-- [ ] T042 [US2] تخفيض جودة البيانات عند الفجوات والمعدل المنخفض في `artifacts/strix/lib/dataQuality.ts`
+- [x] T036 [P] [US2] تعريف `TimingQuality` و`SampleTiming` في `artifacts/strix/lib/timing/types.ts`
+- [x] T037 [P] [US2] إضافة fixtures لمعدلات `20/25/50/100Hz` وفجوات زمنية في `artifacts/strix/lib/__fixtures__/timing/`
+- [x] T038 [US2] تنفيذ حساب `dt` المحمي من الصفر والقيم السالبة في `artifacts/strix/lib/timing/sampleClock.ts`
+- [x] T039 [US2] تنفيذ median rate وjitter وgap detection في `artifacts/strix/lib/timing/rateEstimator.ts`
+- [x] T040 [US2] إضافة اختبارات timestamps مكررة وغير مرتبة في `artifacts/strix/lib/__tests__/sampleClock.test.ts`
+- [x] T041 [US2] دمج جودة الزمن داخل `artifacts/strix/lib/dataQuality.ts`
+- [x] T042 [US2] تخفيض جودة البيانات عند الفجوات والمعدل المنخفض في `artifacts/strix/lib/dataQuality.ts`
 
 ## 2B — إزالة الاعتماد على عدد العينات
 
-- [ ] T043 [US2] استبدال شروط الفرملة المبنية على sample count بمدة زمنية في `artifacts/strix/lib/sensorUtils.ts`
-- [ ] T044 [US2] استبدال شروط التسارع والانحراف المبنية على sample count بمدة زمنية في `artifacts/strix/lib/advancedAnalysis.ts`
-- [ ] T045 [US2] تمرير `dt` الفعلي إلى Kalman وEMA في `artifacts/strix/lib/kalmanFilter.ts`
-- [ ] T046 [US2] حساب jerk من فرق الزمن الفعلي في `artifacts/strix/lib/sensorUtils.ts`
-- [ ] T047 [US2] تحويل نوافذ ما قبل/بعد الاصطدام إلى time windows في `artifacts/strix/context/SessionContext.tsx`
-- [ ] T048 [US2] تحديث ring buffers للاستعلام بالزمن في `artifacts/strix/lib/sensorUtils.ts`
+- [x] T043 [US2] استبدال شروط الفرملة المبنية على sample count بمدة زمنية في `artifacts/strix/lib/sensorUtils.ts`
+- [x] T044 [US2] استبدال شروط التسارع والانحراف المبنية على sample count بمدة زمنية في `artifacts/strix/lib/advancedAnalysis.ts`
+- [x] T045 [US2] تمرير `dt` الفعلي إلى Kalman وEMA في `artifacts/strix/lib/kalmanFilter.ts`
+- [x] T046 [US2] حساب jerk من فرق الزمن الفعلي في `artifacts/strix/lib/sensorUtils.ts`
+- [x] T047 [US2] تحويل نوافذ ما قبل/بعد الاصطدام إلى time windows في `artifacts/strix/context/SessionContext.tsx`
+- [x] T048 [US2] تحديث ring buffers للاستعلام بالزمن في `artifacts/strix/lib/sensorUtils.ts`
 
 ## 2C — إعادة أخذ العينات والتحقق
 
-- [ ] T049 [US2] تنفيذ resampler محدود الفجوات في `artifacts/strix/lib/timing/resampler.ts`
-- [ ] T050 [US2] منع interpolation عبر فجوة تتجاوز الحد الآمن في `artifacts/strix/lib/timing/resampler.ts`
-- [ ] T051 [US2] إضافة property tests لثبات التصنيف عبر معدلات العينات في `artifacts/strix/lib/__tests__/sampleRateInvariance.props.test.ts`
-- [ ] T052 [US2] إضافة اختبارات NaN وInfinity و`dt=0` في `artifacts/strix/lib/__tests__/sensorTimingSafety.test.ts`
-- [ ] T053 [US2] تشغيل Replay suite على `25/50/100Hz` وحفظ تقرير المقارنة في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-2.json`
-- [ ] T054 [US2] توثيق الحدود الزمنية المختارة وأساسها في `artifacts/strix/specs/004-algorithm-improvement/timing-decisions.md`
+- [x] T049 [US2] تنفيذ resampler محدود الفجوات في `artifacts/strix/lib/timing/resampler.ts`
+- [x] T050 [US2] منع interpolation عبر فجوة تتجاوز الحد الآمن في `artifacts/strix/lib/timing/resampler.ts`
+- [x] T051 [US2] إضافة property tests لثبات التصنيف عبر معدلات العينات في `artifacts/strix/lib/__tests__/sampleRateInvariance.props.test.ts`
+- [x] T052 [US2] إضافة اختبارات NaN وInfinity و`dt=0` في `artifacts/strix/lib/__tests__/sensorTimingSafety.test.ts`
+- [x] T053 [US2] تشغيل Replay suite على `25/50/100Hz` وحفظ تقرير المقارنة في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-2.json`
+- [x] T054 [US2] توثيق الحدود الزمنية المختارة وأساسها في `artifacts/strix/specs/004-algorithm-improvement/timing-decisions.md`
 - [ ] T055 [US2] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p2-time`
 
 ### بوابة Phase 2

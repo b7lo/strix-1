@@ -49,6 +49,8 @@ import {
   getGravityVector,
   getRoadType,
   getSampleRate,
+  getMeasuredSampleRate,
+  getTimingQuality,
 } from "@/lib/sensorUtils";
 import { VehicleFrameEstimator, tiltCompensatedHeadingRad } from "@/lib/vehicleFrameEstimator";
 import { assessDataQuality } from "@/lib/dataQuality";
@@ -291,7 +293,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       preCrashBuffer: preCrashBufferCaptured,
       postCrashBuffer: getPostCrashBuffer(crashTimestamp, 2500),
       postCrashGyro: getPostCrashGyro(crashTimestamp, 2500),
-      sampleRateHz: getSampleRate(),
+      sampleRateHz: getMeasuredSampleRate(),
       crashTimestamp, // v7.1 FIX: تمرير اللحظة الفعلية لتجنب إزاحة 250ms
     });
 
@@ -306,7 +308,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const vfEstimate = vehicleEstimator.current.getEstimate();
     const dataQuality = assessDataQuality({
       engineReady: isEngineReady(),
-      sampleRateHz: getSampleRate(),
+      sampleRateHz: getMeasuredSampleRate(),
+      timingQuality: getTimingQuality(),
       gyroscopeEnabled: gyroEnabledRef.current,
       hasGps: locationRef.current !== null,
       directionCalibrated: isDirectionCalibrated(),
@@ -601,10 +604,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     Accelerometer.setUpdateInterval(intervalMs);
     accelSub.current = Accelerometer.addListener((raw: { x: number; y: number; z: number }) => {
-      const filtered = applyHighPassFilter(raw);
-      const gForce = calculateGForce(filtered.x, filtered.y, filtered.z);
-      recordSample(gForce, filtered, raw);
       const now = Date.now();
+      const filtered = applyHighPassFilter(raw, now);
+      const gForce = calculateGForce(filtered.x, filtered.y, filtered.z);
+      recordSample(gForce, filtered, raw, now);
       const recorder = recorderRef.current;
       replayPipelineRef.current?.dispatch({
         kind: "accelerometer",
@@ -622,11 +625,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setCurrentGForce(gForce);
         // مؤشّر المعايرة: نشط طالما المحرك لم يجهز بعد (أول ~5 ثوانٍ)
         setIsCalibrating(!isEngineReady());
+        const timingQuality = getTimingQuality();
         replayPipelineRef.current?.dispatch({
           kind: "quality",
           tMs: recorder?.elapsedMs(now) ?? 0,
           engineReady: isEngineReady(),
-          sampleRateHz: getSampleRate(),
+          sampleRateHz: getMeasuredSampleRate(),
+          measuredSampleRateHz: timingQuality.measuredRateHz,
+          jitterMs: timingQuality.jitterMs,
+          gapCount: timingQuality.gapCount,
           roadType: getRoadType(),
         });
       }
@@ -669,11 +676,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (settings.gyroscopeEnabled && Gyroscope) {
       Gyroscope.setUpdateInterval(intervalMs);
       gyroSub.current = Gyroscope.addListener((data: { x: number; y: number; z: number }) => {
-        recordGyroscopeSample(data);
+        const now = Date.now();
+        recordGyroscopeSample(data, now);
         const recorder = recorderRef.current;
         replayPipelineRef.current?.dispatch({
           kind: "gyroscope",
-          tMs: recorder?.elapsedMs() ?? 0,
+          tMs: recorder?.elapsedMs(now) ?? 0,
           value: { ...data },
         });
       });

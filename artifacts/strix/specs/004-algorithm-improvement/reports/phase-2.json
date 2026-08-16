@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "rates": [
+    {
+      "rateHz": 25,
+      "detectedCrash": true,
+      "predictedZone": "front",
+      "confidence": 98
+    },
+    {
+      "rateHz": 50,
+      "detectedCrash": true,
+      "predictedZone": "front",
+      "confidence": 98
+    },
+    {
+      "rateHz": 100,
+      "detectedCrash": true,
+      "predictedZone": "front",
+      "confidence": 98
+    }
+  ],
+  "invariant": true
+}

@@ -45,6 +45,9 @@ export interface ReplayQualitySample extends ReplaySampleBase {
   kind: "quality";
   engineReady: boolean;
   sampleRateHz: number;
+  measuredSampleRateHz?: number;
+  jitterMs?: number;
+  gapCount?: number;
   roadType: "smooth" | "normal" | "rough";
 }
 

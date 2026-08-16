@@ -35,18 +35,53 @@ import i18n from "./i18n";
 
 // ─── ثوابت ───
 const YAW_SUDDEN_THRESHOLD_DEG_S = 45;   // عتبة الدوران المفاجئ (v7.3: رُفعت من 15 إلى 45 لتجنب الإيجابيات الكاذبة من تغيير الحارة العادي)
+const YAW_SUDDEN_MIN_DURATION_MS = 40;
 const REAR_PUSH_RATIO_THRESHOLD = 0.3;    // نسبة الدفع الخلفي
 const ROUNDABOUT_YAW_THRESHOLD = 5;       // Yaw مستمر = دوار (°/s)
 const ROUNDABOUT_MIN_DURATION_MS = 3000;  // مدة Yaw مستمر لتأكيد الدوار
 const SCRAPE_VARIANCE_THRESHOLD = 0.015;  // عتبة التباين للحكة
 const SCRAPE_MIN_DURATION_MS = 250;       // v7.1 FIX: مدة دنيا للحكة (موسّع من 100 إلى 250 لتجنب المطبات)
 const HARD_BRAKING_THRESHOLD_G = 0.4;     // عتبة الفرملة العنيفة
+const HARD_BRAKING_MIN_DURATION_MS = 200;
 const HARD_ACCEL_THRESHOLD_G = 0.3;       // عتبة التسارع المفاجئ
+const HARD_ACCEL_MIN_DURATION_MS = 160;
 const STEADY_VARIANCE_THRESHOLD = 0.02;   // عتبة القيادة المستقرة
 const STEADY_YAW_THRESHOLD = 3;           // °/s
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
+}
+
+function longestQualifiedDurationMs<T extends { ts: number }>(
+  samples: readonly T[],
+  predicate: (sample: T) => boolean,
+): number {
+  if (samples.length === 0) return 0;
+  const intervals = samples
+    .slice(1)
+    .map((sample, index) => sample.ts - samples[index].ts)
+    .filter((dt) => dt > 0 && dt <= 200)
+    .sort((a, b) => a - b);
+  const nominalInterval = intervals.length > 0
+    ? intervals[Math.floor(intervals.length / 2)]
+    : 20;
+
+  let runStart: number | null = null;
+  let runLast: number | null = null;
+  let best = 0;
+  for (const sample of samples) {
+    if (!predicate(sample)) {
+      runStart = null;
+      runLast = null;
+      continue;
+    }
+    if (runStart === null || (runLast !== null && sample.ts - runLast > Math.max(100, nominalInterval * 3))) {
+      runStart = sample.ts;
+    }
+    runLast = sample.ts;
+    best = Math.max(best, runLast - runStart + nominalInterval);
+  }
+  return best;
 }
 
 // ═══════════════════════════════════════════
@@ -68,7 +103,7 @@ function analyzeAngularStability(
 
   // v7.4 FIX: إذا كانت السرعة أقل من 10 كم/س، فهذا يعني أن السيارة شبه متوقفة.
   // أي دوران يتم رصده هنا هو نتيجة للصدمة نفسها أو اهتزاز الجهاز، وليس مناورة حقيقية.
-  if (gyroHistory.length < 3 || speedKmh < 10) return result;
+  if (gyroHistory.length < 2 || speedKmh < 10) return result;
 
   // تحليل الـ 2 ثانية قبل الصدمة
   const windowStart = crashTimestamp - 2000;
@@ -79,21 +114,17 @@ function analyzeAngularStability(
   if (preCrashGyro.length < 2) return result;
 
   // البحث عن أعلى معدل دوران Yaw (المحور Z)
-  // v7.3 FIX: نطلب عيّنتين متتاليتين فوق العتبة لتأكيد الدوران الحقيقي
-  //           وتجنب قراءات الجيروسكوب العشوائية (single-sample spikes)
+  // نطلب مدة فعلية فوق العتبة بدل عيّنتين ثابتتين لتثبيت السلوك بين الأجهزة.
   let maxYawRate = 0;
-  let consecutiveAboveThreshold = 0;
-  let confirmedSuddenYaw = false;
   for (const sample of preCrashGyro) {
     const yawDegS = getGyroYawRateDegS(sample);
     if (yawDegS > maxYawRate) maxYawRate = yawDegS;
-    if (yawDegS > YAW_SUDDEN_THRESHOLD_DEG_S) {
-      consecutiveAboveThreshold++;
-      if (consecutiveAboveThreshold >= 2) confirmedSuddenYaw = true;
-    } else {
-      consecutiveAboveThreshold = 0;
-    }
   }
+  const suddenYawDurationMs = longestQualifiedDurationMs(
+    preCrashGyro,
+    (sample) => getGyroYawRateDegS(sample) > YAW_SUDDEN_THRESHOLD_DEG_S,
+  );
+  const confirmedSuddenYaw = suddenYawDurationMs >= YAW_SUDDEN_MIN_DURATION_MS;
 
   result.maxYawRatePreCrash = Math.round(maxYawRate * 10) / 10;
 
@@ -249,7 +280,7 @@ function analyzeMicroKinematic(
   gyroHistory: readonly { x: number; y: number; z: number; ts: number }[],
   peakGForce: number,
   crashTimestamp: number,
-  sampleRateHz: number,
+  _sampleRateHz: number,
 ): MicroKinematicResult {
   const result: MicroKinematicResult = {
     scrapeDetected: false,
@@ -259,14 +290,22 @@ function analyzeMicroKinematic(
     score: 0,
   };
 
-  if (preCrashBuffer.length < 10) return result;
+  if (preCrashBuffer.length < 2) return result;
+  const signalDurationMs = preCrashBuffer.at(-1)!.ts - preCrashBuffer[0].ts;
+  if (signalDurationMs < 100) return result;
 
   // ─── 1. حساب التباين (Variance) في نوافذ 100ms ───
-  const windowSize = Math.max(2, Math.round(sampleRateHz * 0.1));
   const windows: number[] = [];
-
-  for (let i = 0; i <= preCrashBuffer.length - windowSize; i += windowSize) {
-    const slice = preCrashBuffer.slice(i, i + windowSize);
+  const windowStart = preCrashBuffer[0].ts;
+  const buckets = new Map<number, RingSample[]>();
+  for (const sample of preCrashBuffer) {
+    const bucket = Math.floor((sample.ts - windowStart) / 100);
+    const values = buckets.get(bucket) ?? [];
+    values.push(sample);
+    buckets.set(bucket, values);
+  }
+  for (const slice of buckets.values()) {
+    if (slice.length < 2) continue;
     const mean = slice.reduce((a, s) => a + s.gForce, 0) / slice.length;
     const variance = slice.reduce((a, s) => a + (s.gForce - mean) ** 2, 0) / slice.length;
     windows.push(variance);
@@ -287,7 +326,7 @@ function analyzeMicroKinematic(
       highVarStreak = 0;
     }
   }
-  result.vibrationDurationMs = Math.round(maxStreak * windowSize / sampleRateHz * 1000);
+  result.vibrationDurationMs = maxStreak * 100;
 
   // ─── 3. كشف Jerk Spike ───
   let maxJerkInWindow = 0;
@@ -366,35 +405,34 @@ function analyzePreCrashEvents(
   };
 
   // v7.5 FIX: إذا كانت السرعة أقل من 10 كم/س، المركبة شبه متوقفة، ولا يمكن أن تقوم بمناورة تفادي أو فرملة.
-  if (preCrashBuffer.length < 20 || speedKmh < 10) return result;
+  if (preCrashBuffer.length < 2 || speedKmh < 10) return result;
 
   // ─── 1. البحث عن فرملة عنيفة ───
   // نستخدم المركبة الطولية ذات الإشارة في إطار السيارة. مقدار gForce وحده
   // لا يميّز الفرملة من التسارع، وتناقصه يعني غالباً انتهاء اهتزاز لا فرملة.
-  let brakingSamples = 0;
   let peakDecel = 0;
   for (const sample of preCrashBuffer) {
     const longitudinalG = mapToVehicleFrame(sample.filtered).vY;
     const decelG = -longitudinalG;
     if (decelG > HARD_BRAKING_THRESHOLD_G) {
-      brakingSamples++;
       if (decelG > peakDecel) peakDecel = decelG;
     }
   }
-  if (brakingSamples >= 10 || braking?.brakingDetected) {
+  const brakingDurationMs = longestQualifiedDurationMs(
+    preCrashBuffer,
+    (sample) => -mapToVehicleFrame(sample.filtered).vY > HARD_BRAKING_THRESHOLD_G,
+  );
+  if (brakingDurationMs >= HARD_BRAKING_MIN_DURATION_MS || braking?.brakingDetected) {
     result.hardBraking = true;
   }
 
   // ─── 2. البحث عن تسارع مفاجئ ───
   // تسارع أمامي موجب في إطار السيارة.
-  let accelSamples = 0;
-  for (const sample of preCrashBuffer) {
-    const longitudinalG = mapToVehicleFrame(sample.filtered).vY;
-    if (longitudinalG > HARD_ACCEL_THRESHOLD_G) {
-      accelSamples++;
-    }
-  }
-  if (accelSamples >= 8) {
+  const accelerationDurationMs = longestQualifiedDurationMs(
+    preCrashBuffer,
+    (sample) => mapToVehicleFrame(sample.filtered).vY > HARD_ACCEL_THRESHOLD_G,
+  );
+  if (accelerationDurationMs >= HARD_ACCEL_MIN_DURATION_MS) {
     result.hardAcceleration = true;
   }
 
@@ -467,7 +505,7 @@ function analyzePostImpact(
     factorsAr: [],
   };
 
-  if (postCrashBuffer.length < 5) return result;
+  if (postCrashBuffer.length < 2) return result;
 
   // ─── 1. تحليل الاستقرار والصدمات الثانوية ───
   let stabilizedTs = 0;

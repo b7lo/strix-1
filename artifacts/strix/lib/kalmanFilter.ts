@@ -48,9 +48,12 @@ export class KalmanFilter1D {
    * تحديث الفلتر بقياس جديد
    * @returns القيمة المُنقّحة (filtered)
    */
-  update(measurement: number): number {
+  update(measurement: number, dtSec = 0.02): number {
     // Predict
-    this.p += this.q;
+    // q was historically tuned at 50Hz (20ms). Scale it by elapsed time so
+    // filter behaviour does not change merely because a device reports 25/100Hz.
+    const timeScale = Math.max(0.1, Math.min(10, dtSec / 0.02));
+    this.p += this.q * timeScale;
 
     // Update
     this.k = this.p / (this.p + this.r);
@@ -101,11 +104,11 @@ export class KalmanFilter3D {
     this.kz = new KalmanFilter1D(processNoise, measurementNoise);
   }
 
-  update(raw: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  update(raw: { x: number; y: number; z: number }, dtSec = 0.02): { x: number; y: number; z: number } {
     return {
-      x: this.kx.update(raw.x),
-      y: this.ky.update(raw.y),
-      z: this.kz.update(raw.z),
+      x: this.kx.update(raw.x, dtSec),
+      y: this.ky.update(raw.y, dtSec),
+      z: this.kz.update(raw.z, dtSec),
     };
   }
 
@@ -156,9 +159,10 @@ export class AdaptiveBaseline {
   private baseline = 0;
   private count = 0;
   private settled = false;
-  private readonly settleThreshold: number;
   private readonly decayFactor: number;
   private readonly maxDrift: number;
+  private settledDurationSec = 0;
+  private readonly settleSeconds: number;
 
   // تصنيف نوع الطريق
   private varianceAccum = 0;
@@ -167,11 +171,11 @@ export class AdaptiveBaseline {
 
   constructor(
     settleSeconds = 5,
-    sampleRateHz = 50,
+    _sampleRateHz = 50,
     decayFactor = 0.995,
     maxDrift = 0.15
   ) {
-    this.settleThreshold = settleSeconds * sampleRateHz;
+    this.settleSeconds = settleSeconds;
     this.decayFactor = decayFactor;
     this.maxDrift = maxDrift;
   }
@@ -180,12 +184,13 @@ export class AdaptiveBaseline {
    * إضافة عينة جديدة
    * @returns true إذا تم الاستقرار
    */
-  addSample(gForce: number): boolean {
+  addSample(gForce: number, dtSec = 1 / 50): boolean {
     if (!this.settled) {
       // مرحلة الاستقرار الأولى
       this.count++;
       this.baseline += (gForce - this.baseline) / this.count;
-      if (this.count >= this.settleThreshold) {
+      this.settledDurationSec += Math.max(0, Math.min(dtSec, 1));
+      if (this.settledDurationSec >= this.settleSeconds) {
         this.settled = true;
       }
       return this.settled;
@@ -237,6 +242,7 @@ export class AdaptiveBaseline {
     this.varianceAccum = 0;
     this.varianceCount = 0;
     this.roadType = "normal";
+    this.settledDurationSec = 0;
   }
 }
 
@@ -263,9 +269,12 @@ export class FrequencySeparator {
    * تحليل عينة جديدة
    * @returns كائن يحتوي المركبات المنفصلة
    */
-  analyze(gForce: number): FrequencyResult {
+  analyze(gForce: number, dtSec?: number): FrequencyResult {
+    const effectiveAlpha = dtSec && Number.isFinite(dtSec)
+      ? (2 * Math.PI * 5 * dtSec) / (2 * Math.PI * 5 * dtSec + 1)
+      : this.alpha;
     // فلتر تمرير منخفض (EMA) — يمرر الاهتزاز المستمر
-    this.ema = this.alpha * gForce + (1 - this.alpha) * this.ema;
+    this.ema = effectiveAlpha * gForce + (1 - effectiveAlpha) * this.ema;
 
     // المركبة العالية التردد = الإشارة الأصلية - المنخفضة
     const highFreq = gForce - this.ema;

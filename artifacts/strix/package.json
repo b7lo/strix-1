@@ -11,7 +11,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "test": "jest",
-    "evaluate:algorithm": "tsx scripts/evaluate-algorithm.ts"
+    "evaluate:algorithm": "tsx scripts/evaluate-algorithm.ts",
+    "evaluate:rates": "tsx scripts/evaluate-sample-rates.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

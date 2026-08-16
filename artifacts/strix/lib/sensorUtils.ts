@@ -27,15 +27,15 @@ import type { ImpactZone, ImpactDirection, GyroscopeSnapshot, BrakingAnalysis } 
 import { zoneToDirection } from "./types";
 import { KalmanFilter3D, AdaptiveBaseline, FrequencySeparator } from "./kalmanFilter";
 import { THRESHOLDS } from "./thresholds";
+import { SampleClock, SampleRateEstimator, type TimingQuality } from "./timing";
 
 // ─── ثوابت ───
 const BUFFER_DURATION_SEC = 5;       // موسّع من 3 إلى 5
 const BRAKING_DECEL_THRESHOLD = -0.3;
-const BRAKING_MIN_SAMPLES = 5;
+const BRAKING_MIN_DURATION_MS = 100;
 const MULTI_IMPACT_WINDOW_MS = 3000;
 const GYRO_SPIN_THRESHOLD = 150;
 // A-1: عدد العيّنات الدنيا للإحماء قبل تفعيل الكشف (تقارب الجاذبية)
-const WARMUP_SAMPLES = 60;
 // A-9: إغلاق الـ impulse — حد أقصى للمدة + إغلاق عند الهبوط النسبي عن القمة
 const IMPULSE_START_G = 1.5;
 const IMPULSE_END_G = 0.8;
@@ -75,7 +75,7 @@ const CRASH_INSTANT_MULTIPLIER = 1.5;
 const GRAVITY_ALPHA = 0.05; // فلتر بطيء جداً لتقدير ثابت للجاذبية
 export type PhoneOrientation = 'flat' | 'portrait' | 'landscape';
 
-function updateGravityEstimate(raw: { x: number; y: number; z: number }): void {
+function updateGravityEstimate(raw: { x: number; y: number; z: number }, dtSec: number): void {
   const g = sensorEngine.gravityEstimate;
   const dx = raw.x - g.x;
   const dy = raw.y - g.y;
@@ -87,9 +87,13 @@ function updateGravityEstimate(raw: { x: number; y: number; z: number }): void {
   // تغيير وضعية الهاتف بصورة تدريجية.
   const maxInnovation = 0.25;
   const scale = innovationMag > maxInnovation ? maxInnovation / innovationMag : 1;
-  g.x += GRAVITY_ALPHA * dx * scale;
-  g.y += GRAVITY_ALPHA * dy * scale;
-  g.z += GRAVITY_ALPHA * dz * scale;
+  // GRAVITY_ALPHA كان مضبوطاً عند 50Hz. نحوله إلى ثابت زمني ثم نشتق alpha
+  // من dt الفعلي حتى لا تتغير سرعة التكيف بين الأجهزة.
+  const tauSec = -(1 / 50) / Math.log(1 - GRAVITY_ALPHA);
+  const alpha = 1 - Math.exp(-Math.max(0.001, Math.min(dtSec, 1)) / tauSec);
+  g.x += alpha * dx * scale;
+  g.y += alpha * dy * scale;
+  g.z += alpha * dz * scale;
 }
 
 export function getPhoneOrientation(): PhoneOrientation {
@@ -321,10 +325,13 @@ export class SensorEngine {
 
   lastGForceMag = 0;
   lastSampleTs = 0;
+  lastGyroTs = 0;
   jerkAccumPeak = 0;
   sampleRateHz = 50;
   ringBufferSize = 5 * 50;
   currentSpeedKmh = 0;
+  sampleClock = new SampleClock({ fallbackRateHz: 50 });
+  rateEstimator = new SampleRateEstimator(50);
 
   gravityEstimate = { x: 0, y: -1, z: 0 };
 
@@ -378,20 +385,31 @@ export interface FilteredReading {
 // ─── تهيئة ───
 
 export function setSampleRate(hz: number): void {
-  sensorEngine.sampleRateHz = Math.max(10, Math.min(100, hz));
+  const finiteHz = Number.isFinite(hz) ? hz : 50;
+  sensorEngine.sampleRateHz = Math.max(10, Math.min(100, finiteHz));
   sensorEngine.ringBufferSize = BUFFER_DURATION_SEC * sensorEngine.sampleRateHz;
   // A-4: أعد بناء المحركات المعتمدة على المعدل بالمعدل الحقيقي
   // (FrequencySeparator: قطع التردد/alpha، AdaptiveBaseline: عتبة الاستقرار)
   sensorEngine.freqSeparator = new FrequencySeparator(sensorEngine.sampleRateHz);
   sensorEngine.adaptiveBaseline = new AdaptiveBaseline(5, sensorEngine.sampleRateHz);
+  sensorEngine.sampleClock.configure(sensorEngine.sampleRateHz);
+  sensorEngine.rateEstimator.configure(sensorEngine.sampleRateHz);
 }
 
 export function getSampleRate(): number {
   return sensorEngine.sampleRateHz;
 }
 
+export function getTimingQuality(): TimingQuality {
+  return sensorEngine.rateEstimator.getQuality();
+}
+
+export function getMeasuredSampleRate(): number {
+  return getTimingQuality().measuredRateHz;
+}
+
 export function updateCurrentSpeed(speedKmh: number): void {
-  sensorEngine.currentSpeedKmh = Math.max(0, speedKmh);
+  sensorEngine.currentSpeedKmh = Number.isFinite(speedKmh) ? Math.max(0, speedKmh) : 0;
 }
 
 // ─── فلتر الإشارة (A-2 مُصحّح: قمة صادقة بلا تنعيم) ───
@@ -412,7 +430,12 @@ export function updateCurrentSpeed(speedKmh: number): void {
  */
 export function applyHighPassFilter(raw: {
   x: number; y: number; z: number;
-}): FilteredReading {
+}, timestampMs = Date.now()): FilteredReading {
+  raw = {
+    x: Number.isFinite(raw.x) ? raw.x : sensorEngine.gravityEstimate.x,
+    y: Number.isFinite(raw.y) ? raw.y : sensorEngine.gravityEstimate.y,
+    z: Number.isFinite(raw.z) ? raw.z : sensorEngine.gravityEstimate.z,
+  };
   // احسب العينة الصافية من تقدير الجاذبية السابق أولاً؛ تحديث التقدير بالعينة
   // الحالية قبل الطرح كان يخفض القمة فورياً بنسبة alpha حتى مع نبضة واحدة.
   const filtered = {
@@ -420,7 +443,10 @@ export function applyHighPassFilter(raw: {
     y: raw.y - sensorEngine.gravityEstimate.y,
     z: raw.z - sensorEngine.gravityEstimate.z,
   };
-  updateGravityEstimate(raw);
+  const dtSec = sensorEngine.lastSampleTs > 0
+    ? Math.max(0.001, Math.min((timestampMs - sensorEngine.lastSampleTs) / 1000, 1))
+    : 1 / sensorEngine.sampleRateHz;
+  updateGravityEstimate(raw, dtSec);
   return filtered;
 }
 
@@ -461,6 +487,7 @@ export function resetFilter(): void {
   sensorEngine.freqSeparator.reset();
   sensorEngine.lastGForceMag = 0;
   sensorEngine.lastSampleTs = 0;
+  sensorEngine.lastGyroTs = 0;
   sensorEngine.jerkAccumPeak = 0;
   sensorEngine.ringBuffer.clear();
   sensorEngine.crashCandidateStreak = 0;
@@ -476,6 +503,8 @@ export function resetFilter(): void {
   sensorEngine.lastImpulseDurationMs = 0;
   sensorEngine.lastFreqImpulsive = false;
   sensorEngine.currentSpeedKmh = 0;
+  sensorEngine.sampleClock.reset();
+  sensorEngine.rateEstimator.reset();
   sensorEngine.gravityEstimate = { x: 0, y: -1, z: 0 };
   // اتجاه الهاتف قد يتغيّر بين جلستين؛ إبقاء المعايرة القديمة يعطي اتجاه صدمة
   // خاطئاً مع ثقة عالية حتى تنضج المعايرة الجديدة.
@@ -494,7 +523,8 @@ export function resetGyroPeaks(): void {
 // ─── حساب القوى ───
 
 export function calculateGForce(x: number, y: number, z: number): number {
-  return Math.sqrt(x * x + y * y + z * z);
+  const magnitude = Math.sqrt(x * x + y * y + z * z);
+  return Number.isFinite(magnitude) ? magnitude : 0;
 }
 
 // ─── تسجيل العينات (v6: محسّن) ───
@@ -502,10 +532,24 @@ export function calculateGForce(x: number, y: number, z: number): number {
 export function recordSample(
   gForce: number,
   filtered: FilteredReading,
-  raw: { x: number; y: number; z: number }
+  raw: { x: number; y: number; z: number },
+  timestampMs = Date.now(),
 ): void {
-  const now = Date.now();
-  const dt = sensorEngine.lastSampleTs > 0 ? (now - sensorEngine.lastSampleTs) / 1000 : 1 / sensorEngine.sampleRateHz;
+  gForce = Number.isFinite(gForce) ? Math.max(0, gForce) : 0;
+  filtered = {
+    x: Number.isFinite(filtered.x) ? filtered.x : 0,
+    y: Number.isFinite(filtered.y) ? filtered.y : 0,
+    z: Number.isFinite(filtered.z) ? filtered.z : 0,
+  };
+  raw = {
+    x: Number.isFinite(raw.x) ? raw.x : 0,
+    y: Number.isFinite(raw.y) ? raw.y : 0,
+    z: Number.isFinite(raw.z) ? raw.z : 0,
+  };
+  const timing = sensorEngine.sampleClock.observe(timestampMs);
+  sensorEngine.rateEstimator.add(timing);
+  const now = timing.timestampMs;
+  const dt = timing.dtSec;
 
   // Jerk calculation
   if (sensorEngine.lastSampleTs > 0 && dt > 0 && dt < 1.0) {
@@ -514,10 +558,10 @@ export function recordSample(
   }
 
   // v6: Adaptive Baseline
-  sensorEngine.adaptiveBaseline.addSample(gForce);
+  sensorEngine.adaptiveBaseline.addSample(gForce, dt);
 
   // v6: Frequency Analysis
-  const freq = sensorEngine.freqSeparator.analyze(gForce);
+  const freq = sensorEngine.freqSeparator.analyze(gForce, dt);
   sensorEngine.lastFreqImpulsive = freq.isImpulsive;
 
   // v6: Impulse Duration Tracking (A-9: إغلاق محسّن)
@@ -555,11 +599,21 @@ export function recordSample(
 
 // ─── الجيروسكوب (v6: Kalman filtered) ───
 
-export function recordGyroscopeSample(gyro: { x: number; y: number; z: number }): void {
-  const now = Date.now();
+export function recordGyroscopeSample(
+  gyro: { x: number; y: number; z: number },
+  timestampMs = Date.now(),
+): void {
+  const finiteTimestamp = Number.isFinite(timestampMs) ? timestampMs : Date.now();
+  const now = sensorEngine.lastGyroTs > 0 && finiteTimestamp <= sensorEngine.lastGyroTs
+    ? sensorEngine.lastGyroTs + 1000 / sensorEngine.sampleRateHz
+    : finiteTimestamp;
+  const dt = sensorEngine.lastGyroTs > 0
+    ? Math.max(0.001, Math.min((now - sensorEngine.lastGyroTs) / 1000, 1))
+    : 1 / sensorEngine.sampleRateHz;
+  sensorEngine.lastGyroTs = now;
 
   // v6: تنعيم الجيروسكوب بـ Kalman
-  const smoothed = sensorEngine.kalmanGyro.update(gyro);
+  const smoothed = sensorEngine.kalmanGyro.update(gyro, dt);
 
   const rate = Math.sqrt(smoothed.x * smoothed.x + smoothed.y * smoothed.y + smoothed.z * smoothed.z);
   const rateDegS = rate * (180 / Math.PI);
@@ -586,7 +640,9 @@ export function getGyroscopeSnapshot(): GyroscopeSnapshot {
   // (يصحّح خطأ وحدات سابق: كان يُخرج rad/s بينما محرك المسؤولية يتوقّع deg/s).
   let maxYawDeg = 0;     // الدوران حول المحور الرأسي
   let maxHorizDeg = 0;   // الدوران الأفقي (pitch+roll مجتمعين — لا يمكن فصلهما بثقة)
-  let highHorizCount = 0;
+  let highHorizRunStartTs: number | null = null;
+  let highHorizLastTs: number | null = null;
+  let maxHighHorizDurationMs = 0;
   let yawRunStartTs = 0;
   let lastYawRunTs = 0;
   let maxYawRunDurationMs = 0;
@@ -600,7 +656,19 @@ export function getGyroscopeSnapshot(): GyroscopeSnapshot {
     if (yawDeg > maxYawDeg) maxYawDeg = yawDeg;
     if (horizDeg > maxHorizDeg) maxHorizDeg = horizDeg;
     // ~2.0 rad/s (~115°/s) دوران أفقي مستدام = مؤشّر انقلاب واقعي
-    if (horizRad > 2.0) highHorizCount++;
+    if (horizRad > 2.0) {
+      if (highHorizRunStartTs === null || (highHorizLastTs !== null && s.ts - highHorizLastTs > 100)) {
+        highHorizRunStartTs = s.ts;
+      }
+      highHorizLastTs = s.ts;
+      maxHighHorizDurationMs = Math.max(
+        maxHighHorizDurationMs,
+        highHorizLastTs - highHorizRunStartTs + 1000 / getMeasuredSampleRate(),
+      );
+    } else {
+      highHorizRunStartTs = null;
+      highHorizLastTs = null;
+    }
 
     if (yawDeg >= THRESHOLDS.U_TURN_YAW_RATE) {
       if (yawRunStartTs === 0 || (lastYawRunTs > 0 && s.ts - lastYawRunTs > 100)) {
@@ -623,7 +691,7 @@ export function getGyroscopeSnapshot(): GyroscopeSnapshot {
   }
 
   // يتطلب دوراناً أفقياً مستداماً عبر عدة عيّنات لتأكيد الانقلاب
-  const rolloverDetected = highHorizCount > 4;
+  const rolloverDetected = maxHighHorizDurationMs >= 100;
 
   return {
     peakRotationRate: sensorEngine.peakRotationRate,
@@ -702,7 +770,7 @@ export function getImpulseDurationMs(): number { return sensorEngine.lastImpulse
  */
 export function isEngineReady(): boolean {
   return sensorEngine.adaptiveBaseline.isSettled()
-    && sensorEngine.ringBuffer.length >= WARMUP_SAMPLES;
+    && sensorEngine.rateEstimator.getQuality().sampleCount >= 2;
 }
 
 /**
@@ -754,11 +822,9 @@ export function getPreCrashBuffer(
     return sensorEngine.ringBuffer.sliceByTimeRange(endTs - seconds * 1000, endTs);
   }
 
-  const requestedSamples = Math.min(
-    Math.ceil(seconds * sensorEngine.sampleRateHz),
-    sensorEngine.ringBuffer.length
-  );
-  return sensorEngine.ringBuffer.sliceFromEnd(requestedSamples);
+  const last = sensorEngine.ringBuffer.getLast();
+  if (!last) return [];
+  return sensorEngine.ringBuffer.sliceByTimeRange(last.ts - seconds * 1000, last.ts);
 }
 
 /**
@@ -792,30 +858,35 @@ export function getAdjustedThreshold(baseThreshold: number): number {
 // ─── كشف الفرملة ───
 
 export function analyzeBraking(speedKmh: number): BrakingAnalysis {
-  if (sensorEngine.ringBuffer.length < BRAKING_MIN_SAMPLES * 2) {
+  if (sensorEngine.ringBuffer.length < 2) {
     return { brakingDetected: false, brakingDurationSec: 0, decelerationG: 0, speedBeforeBraking: speedKmh };
   }
 
-  const searchWindow = Math.min(sensorEngine.ringBuffer.length - 1, sensorEngine.sampleRateHz * 2);
-  const samples = sensorEngine.ringBuffer.sliceFromEnd(searchWindow);
+  const last = sensorEngine.ringBuffer.getLast();
+  if (!last) return { brakingDetected: false, brakingDurationSec: 0, decelerationG: 0, speedBeforeBraking: speedKmh };
+  const samples = sensorEngine.ringBuffer.sliceByTimeRange(last.ts - 2000, last.ts);
 
   // نتتبّع أطول نوبة فرملة متّصلة داخل النافذة، لا النوبة الأخيرة فقط. سابقاً كان
   // أي عيّنة تحت العتبة تصفّر العدّاد، فلو حدثت الفرملة ثم تبعتها عيّنات (مثل ما
   // بعد الصدمة) يُبلَّغ عن عدم وجود فرملة رغم حدوثها. نحتفظ بأفضل نوبة.
-  let curCount = 0;
+  let curDurationMs = 0;
+  let curStartTs = 0;
+  let curLastTs = 0;
   let curPeak = 0;
   let curTotal = 0;
-  let bestCount = 0;
+  let bestDurationMs = 0;
   let bestPeak = 0;
   let bestTotal = 0;
 
   const finalizeRun = () => {
-    if (curCount > bestCount) {
-      bestCount = curCount;
+    if (curDurationMs > bestDurationMs) {
+      bestDurationMs = curDurationMs;
       bestPeak = curPeak;
       bestTotal = curTotal;
     }
-    curCount = 0;
+    curDurationMs = 0;
+    curStartTs = 0;
+    curLastTs = 0;
     curPeak = 0;
     curTotal = 0;
   };
@@ -824,7 +895,9 @@ export function analyzeBraking(speedKmh: number): BrakingAnalysis {
     const vehicle = mapToVehicleFrame(samples[i].filtered);
     const yDecel = -vehicle.vY;
     if (yDecel > Math.abs(BRAKING_DECEL_THRESHOLD)) {
-      curCount++;
+      if (curStartTs === 0) curStartTs = samples[i].ts;
+      curLastTs = samples[i].ts;
+      curDurationMs = (curLastTs - curStartTs) + 1000 / getMeasuredSampleRate();
       curTotal += yDecel;
       if (yDecel > curPeak) curPeak = yDecel;
     } else {
@@ -833,9 +906,10 @@ export function analyzeBraking(speedKmh: number): BrakingAnalysis {
   }
   finalizeRun();
 
-  if (bestCount >= BRAKING_MIN_SAMPLES) {
-    const durationSec = bestCount / sensorEngine.sampleRateHz;
-    const avgDecel = bestTotal / bestCount;
+  if (bestDurationMs >= BRAKING_MIN_DURATION_MS) {
+    const durationSec = bestDurationMs / 1000;
+    // التكامل الزمني سيضاف لاحقاً؛ المتوسط هنا فقط لوصف شدة النوبة.
+    const avgDecel = Math.max(0, bestPeak > 0 ? bestTotal / Math.max(1, Math.round(bestDurationMs / (1000 / getMeasuredSampleRate()))) : 0);
     const speedBeforeBraking = speedKmh + (avgDecel * 9.81 * durationSec * 3.6);
     return {
       brakingDetected: true,
@@ -853,8 +927,10 @@ export function analyzeBraking(speedKmh: number): BrakingAnalysis {
 // ═══════════════════════════════════════════
 
 export function findPeakZone(): { zone: ImpactZone; peakG: number; peakFiltered: FilteredReading } {
-  const windowSize = Math.min(sensorEngine.ringBuffer.length, Math.ceil(sensorEngine.sampleRateHz * 0.3));
-  const window = sensorEngine.ringBuffer.sliceFromEnd(windowSize);
+  const last = sensorEngine.ringBuffer.getLast();
+  const window = last
+    ? sensorEngine.ringBuffer.sliceByTimeRange(last.ts - 300, last.ts)
+    : [];
 
   if (window.length === 0) {
     return { zone: "unknown", peakG: 0, peakFiltered: { x: 0, y: 0, z: 0 } };
@@ -870,7 +946,7 @@ export function findPeakZone(): { zone: ImpactZone; peakG: number; peakFiltered:
 }
 
 function getWindowedYaw(): { yawDeg: number; hasData: boolean } {
-  if (sensorEngine.gyroHistory.length < 3) return { yawDeg: 0, hasData: false };
+  if (sensorEngine.gyroHistory.length < 2) return { yawDeg: 0, hasData: false };
 
   const last = sensorEngine.gyroHistory.getLast();
   if (!last) return { yawDeg: 0, hasData: false };

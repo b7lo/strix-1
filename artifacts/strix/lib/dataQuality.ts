@@ -27,6 +27,7 @@
  */
 
 import { THRESHOLDS } from "./thresholds";
+import type { TimingQuality } from "./timing";
 
 export type DataQualityLevel = "high" | "medium" | "low";
 
@@ -35,6 +36,8 @@ export interface DataQualityInput {
   engineReady: boolean;
   /** معدل العيّنات الفعلي (Hz) */
   sampleRateHz: number;
+  /** جودة التوقيت الفعلية: jitter والفجوات والعينات غير المرتبة. */
+  timingQuality?: TimingQuality;
   /** هل الجيروسكوب مُفعّل ويُغذّي البيانات؟ */
   gyroscopeEnabled: boolean;
   /** هل تتوفّر بيانات موقع/سرعة من GPS؟ */
@@ -86,6 +89,25 @@ export function assessDataQuality(input: DataQualityInput): DataQualityResult {
     score += 8;
   } else {
     limitations.push("dq.sampleRateLow");
+  }
+
+  // ─── انتظام الزمن ───
+  // لا نضيف نقاطاً جديدة حتى يبقى مجموع النموذج 100؛ نخصم فقط عند وجود دليل
+  // على فجوات أو jitter قد يخفي قمة قصيرة أو يفسد jerk.
+  if (input.timingQuality) {
+    const timing = input.timingQuality;
+    if (timing.gapCount > 0) {
+      score -= Math.min(10, timing.gapCount * 2);
+      limitations.push("dq.sampleGaps");
+    }
+    if (timing.jitterMs > Math.max(5, timing.medianIntervalMs * 0.5)) {
+      score -= 5;
+      limitations.push("dq.sampleJitter");
+    }
+    if (timing.duplicateCount > 0 || timing.outOfOrderCount > 0) {
+      score -= 5;
+      limitations.push("dq.sampleOrdering");
+    }
   }
 
   // ─── GPS / السرعة (20) ───

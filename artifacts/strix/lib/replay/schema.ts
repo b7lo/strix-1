@@ -35,6 +35,9 @@ export const replaySampleSchema = z.discriminatedUnion("kind", [
     kind: z.literal("quality"),
     engineReady: z.boolean(),
     sampleRateHz: finiteNumber.positive(),
+    measuredSampleRateHz: finiteNumber.positive().optional(),
+    jitterMs: nonNegativeFinite.optional(),
+    gapCount: z.number().int().nonnegative().optional(),
     roadType: z.enum(["smooth", "normal", "rough"]),
   }),
   z.object({
