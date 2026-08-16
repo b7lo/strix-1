@@ -54,7 +54,7 @@
 - [x] T009 تشغيل التقييم وحفظ النتيجة الأولى في `artifacts/strix/specs/004-algorithm-improvement/baselines/current.json`
 - [x] T010 توثيق نوع الجهاز ومعدل العينات ومصدر كل fixture في `artifacts/strix/specs/004-algorithm-improvement/baselines/README.md`
 - [x] T011 تشغيل `pnpm --filter @workspace/strix run typecheck` وجميع اختبارات Jest و`git diff --check`
-- [ ] T012 دمج المرحلة في `main` وإنشاء tag باسم `algorithm-p0-baseline`
+- [x] T012 دمج المرحلة في `main` وإنشاء tag باسم `algorithm-p0-baseline`
 
 ### بوابة Phase 0
 
