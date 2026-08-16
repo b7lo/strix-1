@@ -143,7 +143,7 @@
 - [x] T052 [US2] إضافة اختبارات NaN وInfinity و`dt=0` في `artifacts/strix/lib/__tests__/sensorTimingSafety.test.ts`
 - [x] T053 [US2] تشغيل Replay suite على `25/50/100Hz` وحفظ تقرير المقارنة في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-2.json`
 - [x] T054 [US2] توثيق الحدود الزمنية المختارة وأساسها في `artifacts/strix/specs/004-algorithm-improvement/timing-decisions.md`
-- [ ] T055 [US2] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p2-time`
+- [x] T055 [US2] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p2-time`
 
 ### بوابة Phase 2
 
