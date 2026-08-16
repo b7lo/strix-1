@@ -72,34 +72,34 @@
 
 ## 1A — عقد البيانات والخصوصية
 
-- [ ] T013 [P] [US1] تعريف `SensorReplayV1` و`ReplaySample` و`ReplayMetadata` في `artifacts/strix/lib/replay/types.ts`
-- [ ] T014 [P] [US1] تعريف Zod schema لتسجيل Replay في `artifacts/strix/lib/replay/schema.ts`
-- [ ] T015 [P] [US1] إضافة اختبار قبول ورفض مخطط التسجيل في `artifacts/strix/lib/__tests__/replaySchema.test.ts`
-- [ ] T016 [US1] إضافة `schemaVersion` و`engineVersion` و`thresholdConfigVersion` إلى `SensorReplayV1` في `artifacts/strix/lib/replay/types.ts`
-- [ ] T017 [US1] تنفيذ إخفاء/تقريب الموقع عند التصدير في `artifacts/strix/lib/replay/privacy.ts`
-- [ ] T018 [US1] إضافة اختبارات عدم تسريب الموقع والمعرفات في `artifacts/strix/lib/__tests__/replayPrivacy.test.ts`
+- [x] T013 [P] [US1] تعريف `SensorReplayV1` و`ReplaySample` و`ReplayMetadata` في `artifacts/strix/lib/replay/types.ts`
+- [x] T014 [P] [US1] تعريف Zod schema لتسجيل Replay في `artifacts/strix/lib/replay/schema.ts`
+- [x] T015 [P] [US1] إضافة اختبار قبول ورفض مخطط التسجيل في `artifacts/strix/lib/__tests__/replaySchema.test.ts`
+- [x] T016 [US1] إضافة `schemaVersion` و`engineVersion` و`thresholdConfigVersion` إلى `SensorReplayV1` في `artifacts/strix/lib/replay/types.ts`
+- [x] T017 [US1] تنفيذ إخفاء/تقريب الموقع عند التصدير في `artifacts/strix/lib/replay/privacy.ts`
+- [x] T018 [US1] إضافة اختبارات عدم تسريب الموقع والمعرفات في `artifacts/strix/lib/__tests__/replayPrivacy.test.ts`
 
 ## 1B — التسجيل
 
-- [ ] T019 [US1] تنفيذ buffer تسجيل محدود الذاكرة في `artifacts/strix/lib/replay/recorder.ts`
-- [ ] T020 [US1] تسجيل accelerometer وgyroscope وGPS والجودة والمعايرة في `artifacts/strix/lib/replay/recorder.ts`
-- [ ] T021 [US1] دمج recorder اختياريًا باستخدام refs داخل `artifacts/strix/context/SessionContext.tsx`
-- [ ] T022 [US1] منع React state updates لكل عينة تسجيل في `artifacts/strix/context/SessionContext.tsx`
-- [ ] T023 [US1] تنفيذ تصدير JSON آمن في `artifacts/strix/lib/replay/exporter.ts`
-- [ ] T024 [US1] إضافة اختبار حد الذاكرة والجلسة الطويلة في `artifacts/strix/lib/__tests__/replayRecorder.test.ts`
+- [x] T019 [US1] تنفيذ buffer تسجيل محدود الذاكرة في `artifacts/strix/lib/replay/recorder.ts`
+- [x] T020 [US1] تسجيل accelerometer وgyroscope وGPS والجودة والمعايرة في `artifacts/strix/lib/replay/recorder.ts`
+- [x] T021 [US1] دمج recorder اختياريًا باستخدام refs داخل `artifacts/strix/context/SessionContext.tsx`
+- [x] T022 [US1] منع React state updates لكل عينة تسجيل في `artifacts/strix/context/SessionContext.tsx`
+- [x] T023 [US1] تنفيذ تصدير JSON آمن في `artifacts/strix/lib/replay/exporter.ts`
+- [x] T024 [US1] إضافة اختبار حد الذاكرة والجلسة الطويلة في `artifacts/strix/lib/__tests__/replayRecorder.test.ts`
 
 ## 1C — إعادة التشغيل
 
-- [ ] T025 [US1] تنفيذ clock افتراضي حتمي في `artifacts/strix/lib/replay/replayClock.ts`
-- [ ] T026 [US1] تنفيذ Replay Runner يمرر العينات في ترتيبها إلى المحرك في `artifacts/strix/lib/replay/player.ts`
-- [ ] T027 [US1] منع Replay Runner من استخدام `Date.now()` مباشرة في `artifacts/strix/lib/replay/player.ts`
-- [ ] T028 [US1] إضافة adapter موحد بين الجلسة الحية وReplay في `artifacts/strix/lib/sensorPipeline.ts`
-- [ ] T029 [US1] إضافة اختبار أن replay نفسه يعطي JSON نتيجة مطابقًا في `artifacts/strix/lib/__tests__/replayDeterminism.test.ts`
-- [ ] T030 [US1] إضافة اختبار reset بين تسجيلين متتاليين في `artifacts/strix/lib/__tests__/replayIsolation.test.ts`
-- [ ] T031 [US1] تحديث `artifacts/strix/scripts/evaluate-algorithm.ts` لقبول ملفات Replay
-- [ ] T032 [US1] حفظ ثلاثة تسجيلات مجهولة الهوية على الأقل في `artifacts/strix/lib/__fixtures__/replay/`
-- [ ] T033 [US1] توثيق إنشاء وتشغيل Replay في `artifacts/strix/specs/004-algorithm-improvement/replay-guide.md`
-- [ ] T034 [US1] تشغيل تقرير baseline على المسار الحي ومسار Replay والتأكد من التطابق
+- [x] T025 [US1] تنفيذ clock افتراضي حتمي في `artifacts/strix/lib/replay/replayClock.ts`
+- [x] T026 [US1] تنفيذ Replay Runner يمرر العينات في ترتيبها إلى المحرك في `artifacts/strix/lib/replay/player.ts`
+- [x] T027 [US1] منع Replay Runner من استخدام `Date.now()` مباشرة في `artifacts/strix/lib/replay/player.ts`
+- [x] T028 [US1] إضافة adapter موحد بين الجلسة الحية وReplay في `artifacts/strix/lib/sensorPipeline.ts`
+- [x] T029 [US1] إضافة اختبار أن replay نفسه يعطي JSON نتيجة مطابقًا في `artifacts/strix/lib/__tests__/replayDeterminism.test.ts`
+- [x] T030 [US1] إضافة اختبار reset بين تسجيلين متتاليين في `artifacts/strix/lib/__tests__/replayIsolation.test.ts`
+- [x] T031 [US1] تحديث `artifacts/strix/scripts/evaluate-algorithm.ts` لقبول ملفات Replay
+- [x] T032 [US1] حفظ ثلاثة تسجيلات مجهولة الهوية على الأقل في `artifacts/strix/lib/__fixtures__/replay/`
+- [x] T033 [US1] توثيق إنشاء وتشغيل Replay في `artifacts/strix/specs/004-algorithm-improvement/replay-guide.md`
+- [x] T034 [US1] تشغيل تقرير baseline على المسار الحي ومسار Replay والتأكد من التطابق
 - [ ] T035 [US1] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p1-replay`
 
 ### بوابة Phase 1

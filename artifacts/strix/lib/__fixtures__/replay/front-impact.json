@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "strix-sensor-engine-v7.3",
+  "thresholdConfigVersion": "local-thresholds-v1",
+  "sessionId": "fixture-front-impact",
+  "startedAtMs": 1700000000000,
+  "durationMs": 120,
+  "truncated": false,
+  "metadata": {
+    "platform": "android",
+    "deviceModel": "synthetic-device",
+    "appVersion": "test",
+    "source": "synthetic",
+    "sampleRateHz": 50
+  },
+  "samples": [
+    { "kind": "accelerometer", "tMs": 0, "raw": { "x": 0, "y": -1, "z": 0 }, "filtered": { "x": 0, "y": 0, "z": 0 }, "gForce": 0 },
+    { "kind": "accelerometer", "tMs": 20, "raw": { "x": 0, "y": -1, "z": -3.2 }, "filtered": { "x": 0, "y": 0, "z": -3.2 }, "gForce": 3.2 },
+    { "kind": "decision", "tMs": 20, "decision": "confirmed", "reason": "synthetic-front-impact", "confidence": 98 },
+    { "kind": "accelerometer", "tMs": 120, "raw": { "x": 0, "y": -1, "z": 0 }, "filtered": { "x": 0, "y": 0, "z": 0 }, "gForce": 0 }
+  ]
+}

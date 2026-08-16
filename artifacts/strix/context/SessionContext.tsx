@@ -59,11 +59,15 @@ import { generateCroquis } from "@/lib/croquisGenerator";
 import { uploadAccident, findMatchingAccident, initDeviceId } from "@/lib/accidentSync";
 import { getSettings } from "@/lib/storage";
 import { BACKGROUND_LOCATION_TASK } from "@/lib/backgroundTasks";
+import { exportReplayJson, SensorRecorder, type SensorReplayV1 } from "@/lib/replay";
+import { SensorPipeline } from "@/lib/sensorPipeline";
 import i18n from "@/lib/i18n";
 
 let Accelerometer: any = null;
 let Gyroscope: any = null;
 let Magnetometer: any = null;
+
+const SENSOR_RECORDING_ENABLED = process.env.EXPO_PUBLIC_STRIX_SENSOR_RECORDING === "true";
 
 if (Platform.OS !== "web") {
   try {
@@ -88,6 +92,10 @@ export interface SessionContextValue {
   startSession: () => Promise<void>;
   stopSession: () => void;
   resetCrash: () => void;
+  /** آخر تسجيل مكتمل في الذاكرة؛ لا يحتوي ملفاً دائماً ما لم يصدّره المستخدم صراحةً. */
+  getLastReplay: () => SensorReplayV1 | null;
+  /** تصدير آمن يحذف الموقع والوقت المطلق افتراضياً. */
+  exportLastReplayJson: () => string | null;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -112,6 +120,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const vehicleEstimator = useRef(new VehicleFrameEstimator());
   const magRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recorderRef = useRef<SensorRecorder | null>(null);
+  const replayPipelineRef = useRef<SensorPipeline | null>(null);
+  const lastReplayRef = useRef<SensorReplayV1 | null>(null);
   const peakRef = useRef(0);
   const peakFilteredRef = useRef<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
   // قمة خاصة بالصدمة (impact-scoped): تُحدَّث فقط أثناء تجاوز العتبة، وتُستخدم
@@ -129,6 +140,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const gyroEnabledRef = useRef(true);
   const gyroThresholdRef = useRef(80);
+
+  const getLastReplay = useCallback(() => lastReplayRef.current, []);
+  const exportLastReplayJson = useCallback(() => {
+    const replay = lastReplayRef.current;
+    return replay ? exportReplayJson(replay) : null;
+  }, []);
 
   const stopSession = useCallback(async () => {
     accelSub.current?.remove();
@@ -152,6 +169,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
+    if (recorderRef.current) {
+      lastReplayRef.current = recorderRef.current.stop();
+      recorderRef.current = null;
+    }
+    replayPipelineRef.current = null;
     setIsActive(false);
     setIsCalibrating(false);
     setCurrentGForce(0);
@@ -195,6 +217,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         thresholdRef.current
       );
       if (!validation.isValid) {
+        const recorder = recorderRef.current;
+        replayPipelineRef.current?.dispatch({
+          kind: "decision",
+          tMs: recorder?.elapsedMs() ?? 0,
+          decision: "rejected",
+          reason: "gyro-validation-rejected",
+          confidence: validation.confidence,
+        });
         cooldown.current = false;
         setIsAnalyzing(false);
         return;
@@ -202,6 +232,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
 
     setCrashDetected(true);
+    const recorder = recorderRef.current;
+    replayPipelineRef.current?.dispatch({
+      kind: "decision",
+      tMs: recorder?.elapsedMs() ?? 0,
+      decision: "confirmed",
+      reason: "impact-validation-confirmed",
+      confidence: null,
+    });
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
     // ─── 2. تجميد بيانات ما قبل وأثناء الصدمة ───
@@ -430,15 +468,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 500, distanceInterval: 2 },
       (loc) => {
         const safeSpeed = Math.max(0, loc.coords.speed ?? 0) * 3.6;
+        const ts = Date.now();
         locationRef.current = { lat: loc.coords.latitude, lon: loc.coords.longitude, speed: safeSpeed };
         setCurrentSpeedKmh(Math.round(safeSpeed));
         speedHistoryRef.current.push(safeSpeed);
         if (speedHistoryRef.current.length > 12) speedHistoryRef.current.shift();
         updateCurrentSpeed(safeSpeed);
 
+        const recorder = recorderRef.current;
+        replayPipelineRef.current?.dispatch({
+          kind: "location",
+          tMs: recorder?.elapsedMs(ts) ?? 0,
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          speedKmh: safeSpeed,
+          headingDeg: typeof loc.coords.heading === "number" && loc.coords.heading >= 0
+            ? loc.coords.heading
+            : null,
+          accuracyM: Number.isFinite(loc.coords.accuracy) ? loc.coords.accuracy : null,
+        });
+
         // ─── A-3 (دمج الحساسات): تغذية مُقدِّر اتجاه السيارة ───
         // GPS (التسارع الطولي) + المسرّع (اتجاه أفقي) + الجيروسكوب (بوّابة الانعطاف)
-        const ts = Date.now();
         vehicleEstimator.current.addSpeedSample(safeSpeed, ts);
         // تأكيد ثانوي اختياري من المغناطيسية: heading من GPS + heading الجوال (tilt-compensated)
         const heading = loc.coords.heading;
@@ -450,6 +501,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // عند بلوغ ثقة كافية، عاير اتجاه الجوال نسبةً للسيارة (يرفع مصداقية الاتجاه)
         const est = vehicleEstimator.current.getEstimate();
         if (est.calibrated) setPhoneYawOffset(est.yawOffsetRad);
+        replayPipelineRef.current?.dispatch({
+          kind: "calibration",
+          tMs: recorder?.elapsedMs(ts) ?? 0,
+          calibrated: est.calibrated,
+          confidence: est.confidence,
+          yawOffsetRad: est.yawOffsetRad,
+        });
       }
     );
 
@@ -496,6 +554,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const intervalMs = Math.round(1000 / settings.sampleRateHz);
     setSampleRate(settings.sampleRateHz);
 
+    // التسجيل التشخيصي اختياري ومحدود الذاكرة. لا يُكتب إلى القرص تلقائياً.
+    // تفعيله: EXPO_PUBLIC_STRIX_SENSOR_RECORDING=true
+    lastReplayRef.current = null;
+    recorderRef.current = SENSOR_RECORDING_ENABLED
+      ? new SensorRecorder({
+          platform: Platform.OS === "android" || Platform.OS === "ios" || Platform.OS === "web"
+            ? Platform.OS
+            : "unknown",
+          deviceModel: "unknown",
+          appVersion: "0.0.0",
+          source: "live",
+          sampleRateHz: settings.sampleRateHz,
+        })
+      : null;
+    replayPipelineRef.current = new SensorPipeline({
+      onSample: (sample) => recorderRef.current?.record(sample),
+    });
+
     // بدء تتبع الموقع والسرعة
     await startLocationTracking();
     await initDeviceId();
@@ -529,6 +605,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const gForce = calculateGForce(filtered.x, filtered.y, filtered.z);
       recordSample(gForce, filtered, raw);
       const now = Date.now();
+      const recorder = recorderRef.current;
+      replayPipelineRef.current?.dispatch({
+        kind: "accelerometer",
+        tMs: recorder?.elapsedMs(now) ?? 0,
+        raw: { ...raw },
+        filtered: { ...filtered },
+        gForce,
+      });
       // A-3 (دمج الحساسات): غذِّ مُقدِّر إطار السيارة بالتسارع الأفقي المُسوّى
       // (قبل تدوير الـ yaw) + معدل الدوران اللحظي لبوّابة رفض الانعطاف.
       const leveled = getLeveledFrame(filtered);
@@ -538,6 +622,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setCurrentGForce(gForce);
         // مؤشّر المعايرة: نشط طالما المحرك لم يجهز بعد (أول ~5 ثوانٍ)
         setIsCalibrating(!isEngineReady());
+        replayPipelineRef.current?.dispatch({
+          kind: "quality",
+          tMs: recorder?.elapsedMs(now) ?? 0,
+          engineReady: isEngineReady(),
+          sampleRateHz: getSampleRate(),
+          roadType: getRoadType(),
+        });
       }
       if (gForce > peakRef.current) {
         peakRef.current = gForce;
@@ -564,6 +655,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         registerThresholdCrossing(aboveThreshold) ||
         isInstantStrongCrash(gForce, adaptiveThreshold);
       if (confirmed && !cooldown.current && isEngineReady()) {
+        replayPipelineRef.current?.dispatch({
+          kind: "decision",
+          tMs: recorder?.elapsedMs(now) ?? 0,
+          decision: "candidate",
+          reason: "adaptive-threshold-crossed",
+          confidence: null,
+        });
         analyzeImpact();
       }
     });
@@ -572,6 +670,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       Gyroscope.setUpdateInterval(intervalMs);
       gyroSub.current = Gyroscope.addListener((data: { x: number; y: number; z: number }) => {
         recordGyroscopeSample(data);
+        const recorder = recorderRef.current;
+        replayPipelineRef.current?.dispatch({
+          kind: "gyroscope",
+          tMs: recorder?.elapsedMs() ?? 0,
+          value: { ...data },
+        });
       });
     }
 
@@ -603,7 +707,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ isActive, currentGForce, peakGForce, currentSpeedKmh, sessionDurationSec, crashDetected, isCalibrating, latestReport, isAnalyzing, startSession, stopSession, resetCrash }}>
+    <SessionContext.Provider value={{ isActive, currentGForce, peakGForce, currentSpeedKmh, sessionDurationSec, crashDetected, isCalibrating, latestReport, isAnalyzing, startSession, stopSession, resetCrash, getLastReplay, exportLastReplayJson }}>
       {children}
     </SessionContext.Provider>
   );

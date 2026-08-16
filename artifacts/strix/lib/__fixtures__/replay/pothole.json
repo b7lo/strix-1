@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "strix-sensor-engine-v7.3",
+  "thresholdConfigVersion": "local-thresholds-v1",
+  "sessionId": "fixture-pothole",
+  "startedAtMs": 1700000001000,
+  "durationMs": 80,
+  "truncated": false,
+  "metadata": {
+    "platform": "android",
+    "deviceModel": "synthetic-device",
+    "appVersion": "test",
+    "source": "synthetic",
+    "sampleRateHz": 50
+  },
+  "samples": [
+    { "kind": "accelerometer", "tMs": 0, "raw": { "x": 0, "y": -2.8, "z": 0 }, "filtered": { "x": 0, "y": -1.8, "z": 0 }, "gForce": 1.8 },
+    { "kind": "decision", "tMs": 20, "decision": "rejected", "reason": "single-vertical-spike", "confidence": 20 },
+    { "kind": "accelerometer", "tMs": 80, "raw": { "x": 0, "y": -1, "z": 0 }, "filtered": { "x": 0, "y": 0, "z": 0 }, "gForce": 0 }
+  ]
+}

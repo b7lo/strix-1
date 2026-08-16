@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "strix-sensor-engine-v7.3",
+  "thresholdConfigVersion": "local-thresholds-v1",
+  "sessionId": "fixture-calibration",
+  "startedAtMs": 1700000002000,
+  "durationMs": 500,
+  "truncated": false,
+  "metadata": {
+    "platform": "ios",
+    "deviceModel": "synthetic-device",
+    "appVersion": "test",
+    "source": "synthetic",
+    "sampleRateHz": 50
+  },
+  "samples": [
+    { "kind": "location", "tMs": 0, "latitude": 24.7136, "longitude": 46.6753, "speedKmh": 40, "headingDeg": 90, "accuracyM": 5 },
+    { "kind": "calibration", "tMs": 250, "calibrated": false, "confidence": 45, "yawOffsetRad": 0.1 },
+    { "kind": "calibration", "tMs": 500, "calibrated": true, "confidence": 82, "yawOffsetRad": 0.12 }
+  ]
+}
