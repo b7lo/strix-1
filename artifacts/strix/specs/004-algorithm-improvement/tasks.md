@@ -100,7 +100,7 @@
 - [x] T032 [US1] حفظ ثلاثة تسجيلات مجهولة الهوية على الأقل في `artifacts/strix/lib/__fixtures__/replay/`
 - [x] T033 [US1] توثيق إنشاء وتشغيل Replay في `artifacts/strix/specs/004-algorithm-improvement/replay-guide.md`
 - [x] T034 [US1] تشغيل تقرير baseline على المسار الحي ومسار Replay والتأكد من التطابق
-- [ ] T035 [US1] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p1-replay`
+- [x] T035 [US1] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p1-replay`
 
 ### بوابة Phase 1
 
