@@ -130,6 +130,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // في التقرير بدل نافذة findPeakZone التي قد تنزاح عن لحظة الصدمة فتقرأ قوة منخفضة.
   const impactPeakRef = useRef(0);
   const impactPeakFilteredRef = useRef<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
+  const impactSaturatedRef = useRef(false);
   const locationRef = useRef<{ lat: number; lon: number; speed: number } | null>(null);
   const speedHistoryRef = useRef<number[]>([]);
   const thresholdRef = useRef(2.0);
@@ -198,9 +199,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const gForce = useImpactPeak ? impactPeakRef.current : windowPeak.peakG;
     const peakFiltered = useImpactPeak ? impactPeakFilteredRef.current : windowPeak.peakFiltered;
     const zone = (useImpactPeak ? detectImpactZone(peakFiltered) : windowPeak.zone) as ImpactZone;
+    const accelerometerSaturated = impactSaturatedRef.current;
     // أفرغ القمة الخاصة بالصدمة بعد التقاطها (الصدمة التالية تبدأ من جديد)
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+    impactSaturatedRef.current = false;
 
     setCrashDetected(true);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -281,6 +284,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       directionConfidence: vfEstimate.confidence,
       roadType: getRoadType(),
       peakGForce: gForce,
+      accelerometerSaturated,
     });
 
     // ═══════════════════════════════════════
@@ -581,10 +585,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           if (transition.decision === "rejected") {
             impactPeakRef.current = 0;
             impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+            impactSaturatedRef.current = false;
           }
           if (transition.decision === "confirmed" && transition.candidate) {
             impactPeakRef.current = transition.candidate.peakG;
             impactPeakFilteredRef.current = { ...transition.candidate.peakSignal.linearAcceleration };
+            impactSaturatedRef.current = transition.candidate.peakSignal.accelerometerSaturated;
             void analyzeImpact();
           }
         }
@@ -601,6 +607,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     peakFilteredRef.current = { x: 0, y: 0, z: 0 };
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+    impactSaturatedRef.current = false;
     speedHistoryRef.current = [];
     durationRef.current = 0;
     lastUIUpdateRef.current = 0;
@@ -697,6 +704,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     peakRef.current = 0;
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+    impactSaturatedRef.current = false;
     impactStateMachineRef.current.reset();
     setPeakGForce(0);
   }, []);
