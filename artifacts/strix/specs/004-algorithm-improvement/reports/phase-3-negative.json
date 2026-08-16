@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-17",
+  "engineVersion": "strix-sensor-engine-v8.0-impact-state-machine",
+  "scope": "negative fixtures",
+  "fixtures": [
+    "synthetic-smooth-drive-50hz",
+    "synthetic-hard-braking-50hz",
+    "synthetic-single-pothole-50hz",
+    "synthetic-phone-drop-50hz",
+    "synthetic-door-slam-50hz"
+  ],
+  "historicalBaseline": {
+    "engineVersion": "strix-sensor-engine-v7.3-baseline",
+    "negativeFixtureCount": 4,
+    "falsePositive": 0,
+    "falseAlarmsPerHour": 0,
+    "note": "The stored Phase 0 suite did not contain a door-slam fixture. Existing negatives remain regression-free."
+  },
+  "expandedLegacyComparison": {
+    "negativeFixtureCount": 5,
+    "falsePositive": 1,
+    "falseAlarmsPerHour": 12,
+    "falsePositiveFixture": "synthetic-door-slam-50hz",
+    "method": "Legacy two-consecutive-sample debounce: both 2.2g and 2.0g exceed 1.5g; legacy low-speed gyro validation accepts adjusted force above 1.65g."
+  },
+  "phase3": {
+    "negativeFixtureCount": 5,
+    "trueNegative": 5,
+    "falsePositive": 0,
+    "falseAlarmsPerHour": 0,
+    "rejectedScenarios": [
+      "smooth-drive",
+      "hard-braking",
+      "single-pothole",
+      "phone-drop",
+      "door-slam-stationary"
+    ]
+  },
+  "gate": {
+    "existingNegativeRegression": false,
+    "expandedFalseAlarmsReduced": true,
+    "passed": true
+  }
+}

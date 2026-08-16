@@ -161,38 +161,38 @@
 
 ## 3A — فصل مسار الصدمة عن الحركة
 
-- [ ] T056 [P] [US3] تعريف `ImpactSignal` و`MotionSignal` في `artifacts/strix/lib/signal/types.ts`
-- [ ] T057 [P] [US3] إضافة fixtures لنبضات صدمة وتشبع وقيم شاذة في `artifacts/strix/lib/__fixtures__/signal/`
-- [ ] T058 [US3] تنفيذ مسار raw-minus-gravity السريع في `artifacts/strix/lib/signal/impactSignal.ts`
-- [ ] T059 [US3] تنفيذ مسار الحركة الناعم المعتمد على `dt` في `artifacts/strix/lib/signal/motionSignal.ts`
-- [ ] T060 [US3] تنفيذ Hampel/median اختياري قصير في `artifacts/strix/lib/signal/outlierFilter.ts`
-- [ ] T061 [US3] إضافة اختبار أن outlier filter لا يقص نبضة اصطدام متعددة العينات في `artifacts/strix/lib/__tests__/outlierFilter.test.ts`
-- [ ] T062 [US3] كشف تشبع accelerometer داخل `artifacts/strix/lib/signal/saturationDetector.ts`
-- [ ] T063 [US3] إضافة `accelerometerSaturated` وحد أدنى لـ peak G إلى `artifacts/strix/lib/dataQuality.ts`
-- [ ] T064 [US3] دمج المسارين في `artifacts/strix/lib/sensorPipeline.ts`
+- [x] T056 [P] [US3] تعريف `ImpactSignal` و`MotionSignal` في `artifacts/strix/lib/signal/types.ts`
+- [x] T057 [P] [US3] إضافة fixtures لنبضات صدمة وتشبع وقيم شاذة في `artifacts/strix/lib/__fixtures__/signal/`
+- [x] T058 [US3] تنفيذ مسار raw-minus-gravity السريع في `artifacts/strix/lib/signal/impactSignal.ts`
+- [x] T059 [US3] تنفيذ مسار الحركة الناعم المعتمد على `dt` في `artifacts/strix/lib/signal/motionSignal.ts`
+- [x] T060 [US3] تنفيذ Hampel/median اختياري قصير في `artifacts/strix/lib/signal/outlierFilter.ts`
+- [x] T061 [US3] إضافة اختبار أن outlier filter لا يقص نبضة اصطدام متعددة العينات في `artifacts/strix/lib/__tests__/outlierFilter.test.ts`
+- [x] T062 [US3] كشف تشبع accelerometer داخل `artifacts/strix/lib/signal/saturationDetector.ts`
+- [x] T063 [US3] إضافة `accelerometerSaturated` وحد أدنى لـ peak G إلى `artifacts/strix/lib/dataQuality.ts`
+- [x] T064 [US3] دمج المسارين في `artifacts/strix/lib/sensorPipeline.ts`
 
 ## 3B — آلة الحالات
 
-- [ ] T065 [P] [US3] تعريف حالات وأحداث وانتقالات الاصطدام في `artifacts/strix/lib/impact/types.ts`
-- [ ] T066 [US3] تنفيذ `IDLE → CANDIDATE` في `artifacts/strix/lib/impact/impactStateMachine.ts`
-- [ ] T067 [US3] تنفيذ بوابات القوة وشكل النبضة والجودة في `artifacts/strix/lib/impact/impactEvidence.ts`
-- [ ] T068 [US3] تنفيذ `CANDIDATE → CONFIRMED/REJECTED` في `artifacts/strix/lib/impact/impactStateMachine.ts`
-- [ ] T069 [US3] تنفيذ `POST_IMPACT` و`COOLDOWN` في `artifacts/strix/lib/impact/impactStateMachine.ts`
-- [ ] T070 [US3] فصل الاصطدام الثانوي عن حادث جديد في `artifacts/strix/lib/impact/impactStateMachine.ts`
-- [ ] T071 [US3] نقل قرار الكشف من `artifacts/strix/context/SessionContext.tsx` إلى `artifacts/strix/lib/impact/impactStateMachine.ts`
-- [ ] T072 [US3] إبقاء `SessionContext.tsx` مسؤولًا عن الاشتراك وتمرير البيانات فقط
+- [x] T065 [P] [US3] تعريف حالات وأحداث وانتقالات الاصطدام في `artifacts/strix/lib/impact/types.ts`
+- [x] T066 [US3] تنفيذ `IDLE → CANDIDATE` في `artifacts/strix/lib/impact/impactStateMachine.ts`
+- [x] T067 [US3] تنفيذ بوابات القوة وشكل النبضة والجودة في `artifacts/strix/lib/impact/impactEvidence.ts`
+- [x] T068 [US3] تنفيذ `CANDIDATE → CONFIRMED/REJECTED` في `artifacts/strix/lib/impact/impactStateMachine.ts`
+- [x] T069 [US3] تنفيذ `POST_IMPACT` و`COOLDOWN` في `artifacts/strix/lib/impact/impactStateMachine.ts`
+- [x] T070 [US3] فصل الاصطدام الثانوي عن حادث جديد في `artifacts/strix/lib/impact/impactStateMachine.ts`
+- [x] T071 [US3] نقل قرار الكشف من `artifacts/strix/context/SessionContext.tsx` إلى `artifacts/strix/lib/impact/impactStateMachine.ts`
+- [x] T072 [US3] إبقاء `SessionContext.tsx` مسؤولًا عن الاشتراك وتمرير البيانات فقط
 
 ## 3C — رفض الأحداث المشابهة
 
-- [ ] T073 [US3] تنفيذ خصائص المطبات والمحور الرأسي في `artifacts/strix/lib/impact/nonCrashClassifier.ts`
-- [ ] T074 [US3] تنفيذ خصائص سقوط/تحرك الهاتف في `artifacts/strix/lib/impact/nonCrashClassifier.ts`
-- [ ] T075 [US3] تنفيذ خصائص إغلاق الباب عند السكون في `artifacts/strix/lib/impact/nonCrashClassifier.ts`
-- [ ] T076 [US3] إضافة transition table tests في `artifacts/strix/lib/__tests__/impactStateMachine.test.ts`
-- [ ] T077 [US3] إضافة property test يمنع تأكيد الحدث مرتين في `artifacts/strix/lib/__tests__/impactStateMachine.props.test.ts`
-- [ ] T078 [US3] تشغيل جميع الحالات السلبية وحفظ مقارنة false alarms في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-3-negative.json`
-- [ ] T079 [US3] تشغيل جميع الحوادث وحفظ مقارنة recall في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-3-positive.json`
-- [ ] T080 [US3] مراجعة العتبات في PR مستقل بعد ثبات البنية وتوثيقها في `artifacts/strix/lib/thresholds.ts`
-- [ ] T081 [US3] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p3-detection`
+- [x] T073 [US3] تنفيذ خصائص المطبات والمحور الرأسي في `artifacts/strix/lib/impact/nonCrashClassifier.ts`
+- [x] T074 [US3] تنفيذ خصائص سقوط/تحرك الهاتف في `artifacts/strix/lib/impact/nonCrashClassifier.ts`
+- [x] T075 [US3] تنفيذ خصائص إغلاق الباب عند السكون في `artifacts/strix/lib/impact/nonCrashClassifier.ts`
+- [x] T076 [US3] إضافة transition table tests في `artifacts/strix/lib/__tests__/impactStateMachine.test.ts`
+- [x] T077 [US3] إضافة property test يمنع تأكيد الحدث مرتين في `artifacts/strix/lib/__tests__/impactStateMachine.props.test.ts`
+- [x] T078 [US3] تشغيل جميع الحالات السلبية وحفظ مقارنة false alarms في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-3-negative.json`
+- [x] T079 [US3] تشغيل جميع الحوادث وحفظ مقارنة recall في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-3-positive.json`
+- [x] T080 [US3] مراجعة العتبات في PR مستقل بعد ثبات البنية وتوثيقها في `artifacts/strix/lib/thresholds.ts`
+- [x] T081 [US3] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p3-detection`
 
 ### بوابة Phase 3
 

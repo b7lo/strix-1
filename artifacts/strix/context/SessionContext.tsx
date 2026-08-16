@@ -40,9 +40,6 @@ import {
   getPostCrashGyro,
   isEngineReady,
   isDirectionCalibrated,
-  registerThresholdCrossing,
-  isInstantStrongCrash,
-  resetCrashStreak,
   getLeveledFrame,
   getLatestGyroYawRateDegS,
   setPhoneYawOffset,
@@ -52,6 +49,7 @@ import {
   getMeasuredSampleRate,
   getTimingQuality,
 } from "@/lib/sensorUtils";
+import { ImpactStateMachine } from "@/lib/impact/impactStateMachine";
 import { VehicleFrameEstimator, tiltCompensatedHeadingRad } from "@/lib/vehicleFrameEstimator";
 import { assessDataQuality } from "@/lib/dataQuality";
 import { THRESHOLDS } from "@/lib/thresholds";
@@ -124,6 +122,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recorderRef = useRef<SensorRecorder | null>(null);
   const replayPipelineRef = useRef<SensorPipeline | null>(null);
+  const impactStateMachineRef = useRef(new ImpactStateMachine());
   const lastReplayRef = useRef<SensorReplayV1 | null>(null);
   const peakRef = useRef(0);
   const peakFilteredRef = useRef<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
@@ -133,7 +132,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const impactPeakFilteredRef = useRef<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
   const locationRef = useRef<{ lat: number; lon: number; speed: number } | null>(null);
   const speedHistoryRef = useRef<number[]>([]);
-  const cooldown = useRef(false);
   const thresholdRef = useRef(2.0);
   const durationRef = useRef(0);
 
@@ -176,6 +174,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       recorderRef.current = null;
     }
     replayPipelineRef.current = null;
+    impactStateMachineRef.current.reset();
     setIsActive(false);
     setIsCalibrating(false);
     setCurrentGForce(0);
@@ -185,16 +184,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const analyzeImpact = useCallback(async () => {
-    if (cooldown.current) return;
-
     const speed = locationRef.current?.speed ?? 0;
-
-    // v6: استخدام الحد المُعدّل حسب نوع الطريق
-    const adjustedThreshold = getAdjustedThreshold(thresholdRef.current);
-
-    cooldown.current = true;
     setIsAnalyzing(true);
-    resetCrashStreak(); // A-2: ابدأ عدّ التأكيد من جديد لكل حادث
 
     const crashTimestamp = Date.now();
 
@@ -211,37 +202,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
 
-    if (gyroEnabledRef.current) {
-      const validation = validateCrashWithGyro(
-        gForce, 
-        speed, 
-        gyroThresholdRef.current, 
-        thresholdRef.current
-      );
-      if (!validation.isValid) {
-        const recorder = recorderRef.current;
-        replayPipelineRef.current?.dispatch({
-          kind: "decision",
-          tMs: recorder?.elapsedMs() ?? 0,
-          decision: "rejected",
-          reason: "gyro-validation-rejected",
-          confidence: validation.confidence,
-        });
-        cooldown.current = false;
-        setIsAnalyzing(false);
-        return;
-      }
-    }
-
     setCrashDetected(true);
-    const recorder = recorderRef.current;
-    replayPipelineRef.current?.dispatch({
-      kind: "decision",
-      tMs: recorder?.elapsedMs() ?? 0,
-      decision: "confirmed",
-      reason: "impact-validation-confirmed",
-      confidence: null,
-    });
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
     // ─── 2. تجميد بيانات ما قبل وأثناء الصدمة ───
@@ -255,7 +216,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const jerk = getJerkPeak();
     const gyro = getGyroscopeSnapshot();
     const braking = analyzeBraking(speed);
-    const impactCount = recordImpact();
+    const historicalImpactCount = recordImpact();
     const baselineG = getBaselineG();
     const direction = zoneToDirection(zone);
     const preCrashBufferCaptured = getPreCrashBuffer(5, crashTimestamp);
@@ -263,6 +224,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // ─── 3. نافذة تحليل ما بعد الصدمة (2500ms) ───
     // ننتظر الآن لجمع بيانات الانحراف والاستقرار والصدمات الثانوية
     await new Promise(resolve => setTimeout(resolve, 2500));
+    const impactCount = Math.max(
+      historicalImpactCount,
+      1 + impactStateMachineRef.current.getSnapshot().secondaryImpactCount,
+    );
 
     // ═══════════════════════════════════════
     // v6: تحليل الطرف الآخر
@@ -441,7 +406,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     syncAccident();
 
     const cooldownMs = impactCount > 1 ? 3000 : 8000;
-    setTimeout(() => { cooldown.current = false; }, cooldownMs);
+    const recorder = recorderRef.current;
+    impactStateMachineRef.current.completeAnalysis(
+      recorder?.elapsedMs() ?? Date.now(),
+      cooldownMs,
+    );
 
     return report;
   }, [updateReport]);
@@ -571,8 +540,55 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           sampleRateHz: settings.sampleRateHz,
         })
       : null;
+    impactStateMachineRef.current.reset();
     replayPipelineRef.current = new SensorPipeline({
       onSample: (sample) => recorderRef.current?.record(sample),
+      onSignalPair: (impact, motion) => {
+        const speed = locationRef.current?.speed ?? 0;
+        const adjustedThreshold = getAdjustedThreshold(thresholdRef.current);
+        const gyro = getGyroscopeSnapshot();
+        const validation = !gyroEnabledRef.current || validateCrashWithGyro(
+          impact.magnitudeG,
+          speed,
+          gyroThresholdRef.current,
+          thresholdRef.current,
+        );
+        const transitions = impactStateMachineRef.current.process({
+          impact,
+          motion,
+          thresholdG: adjustedThreshold,
+          engineReady: isEngineReady(),
+          speedKmh: speed,
+          gyroPeakDegS: gyro.peakRotationRate,
+          gyroValidationPassed: typeof validation === "boolean" ? validation : validation.isValid,
+        });
+
+        for (const transition of transitions) {
+          if (
+            transition.decision === "candidate"
+            || transition.decision === "rejected"
+            || transition.decision === "confirmed"
+          ) {
+            replayPipelineRef.current?.dispatch({
+              kind: "decision",
+              tMs: impact.timestampMs,
+              decision: transition.decision,
+              reason: transition.reason,
+              confidence: transition.confidence || null,
+            });
+          }
+
+          if (transition.decision === "rejected") {
+            impactPeakRef.current = 0;
+            impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+          }
+          if (transition.decision === "confirmed" && transition.candidate) {
+            impactPeakRef.current = transition.candidate.peakG;
+            impactPeakFilteredRef.current = { ...transition.candidate.peakSignal.linearAcceleration };
+            void analyzeImpact();
+          }
+        }
+      },
     });
 
     // بدء تتبع الموقع والسرعة
@@ -595,7 +611,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCrashDetected(false);
     setLatestReport(null);
     setIsCalibrating(true); // يبدأ في وضع المعايرة حتى يجهز المحرك
-    cooldown.current = false;
 
     timerRef.current = setInterval(() => {
       durationRef.current += 1;
@@ -611,7 +626,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const recorder = recorderRef.current;
       replayPipelineRef.current?.dispatch({
         kind: "accelerometer",
-        tMs: recorder?.elapsedMs(now) ?? 0,
+        tMs: recorder?.elapsedMs(now) ?? now,
         raw: { ...raw },
         filtered: { ...filtered },
         gForce,
@@ -641,35 +656,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         peakRef.current = gForce;
         peakFilteredRef.current = filtered;
         setPeakGForce(gForce);
-      }
-      const adaptiveThreshold = getAdjustedThreshold(thresholdRef.current);
-      const aboveThreshold = gForce >= adaptiveThreshold;
-      // تتبّع القمة الخاصة بالصدمة أثناء تجاوز العتبة (تُصفَّر عند الهبوط دونها)
-      if (aboveThreshold) {
-        if (gForce > impactPeakRef.current) {
-          impactPeakRef.current = gForce;
-          impactPeakFilteredRef.current = filtered;
-        }
-      } else {
-        impactPeakRef.current = 0;
-        impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
-      }
-      // A-1: لا تبدأ الكشف قبل جاهزية المحرك (تقارب الجاذبية + استقرار الـ baseline).
-      // A-2: اشترط عيّنتين متتاليتين فوق العتبة (debounce) لرفض السبايك المفرد الكاذب
-      //      دون تشويه قيمة القمة الحقيقية.
-      // عيّنتان متتاليتان فوق العتبة (debounce) أو ضربة قوية جدًا من عيّنة واحدة
-      const confirmed =
-        registerThresholdCrossing(aboveThreshold) ||
-        isInstantStrongCrash(gForce, adaptiveThreshold);
-      if (confirmed && !cooldown.current && isEngineReady()) {
-        replayPipelineRef.current?.dispatch({
-          kind: "decision",
-          tMs: recorder?.elapsedMs(now) ?? 0,
-          decision: "candidate",
-          reason: "adaptive-threshold-crossed",
-          confidence: null,
-        });
-        analyzeImpact();
       }
     });
 
@@ -711,6 +697,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     peakRef.current = 0;
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+    impactStateMachineRef.current.reset();
     setPeakGForce(0);
   }, []);
 

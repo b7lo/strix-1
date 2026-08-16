@@ -180,6 +180,20 @@ describe("assessDataQuality (طبقة جودة البيانات)", () => {
   it("قمة قوة عالية جداً (≥15g) → تحذير تشبّع المسرّع", () => {
     const r = assessDataQuality({ ...goodInput, peakGForce: 18 });
     expect(r.accelLikelySaturated).toBe(true);
+    expect(r.accelerometerSaturated).toBe(true);
+    expect(r.peakGIsLowerBound).toBe(true);
+    expect(r.minimumPeakG).toBe(18);
+    expect(r.limitations).toContain("dq.accelSaturated");
+  });
+
+  it("يقبل كشف التشبّع المحوري حتى عندما تكون القمة المحسوبة منخفضة", () => {
+    const r = assessDataQuality({
+      ...goodInput,
+      peakGForce: 3,
+      accelerometerSaturated: true,
+    });
+    expect(r.accelerometerSaturated).toBe(true);
+    expect(r.minimumPeakG).toBe(3);
     expect(r.limitations).toContain("dq.accelSaturated");
   });
 

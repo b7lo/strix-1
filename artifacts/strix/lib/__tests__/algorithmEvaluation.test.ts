@@ -14,16 +14,16 @@ describe("algorithm evaluation metrics", () => {
 
     const metrics = calculateEvaluationMetrics(algorithmBaselineFixtures, predictions);
 
-    expect(metrics.fixtureCount).toBe(7);
+    expect(metrics.fixtureCount).toBe(8);
     expect(metrics.positiveCount).toBe(3);
-    expect(metrics.negativeCount).toBe(4);
+    expect(metrics.negativeCount).toBe(5);
     expect(metrics.confusionMatrix).toEqual({
       truePositive: 3,
       trueNegative: 1,
-      falsePositive: 3,
+      falsePositive: 4,
       falseNegative: 0,
     });
-    expect(metrics.precision).toBe(0.5);
+    expect(metrics.precision).toBe(0.428571);
     expect(metrics.recall).toBe(1);
     expect(metrics.zoneAccuracy).toBe(1);
     expect(Number.isFinite(metrics.falseAlarmsPerHour)).toBe(true);

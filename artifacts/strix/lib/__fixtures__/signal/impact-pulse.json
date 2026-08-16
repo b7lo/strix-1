@@ -1,0 +1,13 @@
+{
+  "description": "Synthetic 50 Hz three-sample impact pulse on a settled portrait phone",
+  "sampleRateHz": 50,
+  "initialGravity": { "x": 0, "y": -1, "z": 0 },
+  "samples": [
+    { "tMs": 0, "raw": { "x": 0.01, "y": -1, "z": 0 } },
+    { "tMs": 20, "raw": { "x": 0, "y": -1, "z": 0.01 } },
+    { "tMs": 40, "raw": { "x": 4, "y": -1, "z": 0 } },
+    { "tMs": 60, "raw": { "x": 6, "y": -1, "z": 0 } },
+    { "tMs": 80, "raw": { "x": 4, "y": -1, "z": 0 } },
+    { "tMs": 100, "raw": { "x": 0, "y": -1, "z": 0 } }
+  ]
+}

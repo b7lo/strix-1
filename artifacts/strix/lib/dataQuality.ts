@@ -50,6 +50,8 @@ export interface DataQualityInput {
   roadType: "smooth" | "normal" | "rough";
   /** قمة قوة G المسجّلة (لكشف تشبّع العتاد) */
   peakGForce: number;
+  /** نتيجة كاشف التشبّع المحوري؛ أدق من الاستدلال من مقدار القمة وحده. */
+  accelerometerSaturated?: boolean;
 }
 
 export interface DataQualityResult {
@@ -63,6 +65,12 @@ export interface DataQualityResult {
   limitations: string[];
   /** هل القمة قد تكون مقصوصة بسبب تشبّع عتاد المسرّع؟ */
   accelLikelySaturated: boolean;
+  /** الاسم الصريح المعتمد من مسار الإشارة الجديد. */
+  accelerometerSaturated: boolean;
+  /** عند التشبّع تكون قمة G حدًا أدنى وليست قياسًا دقيقًا. */
+  peakGIsLowerBound: boolean;
+  /** أقل قيمة مؤكدة للقمة عند التشبّع، وإلا null. */
+  minimumPeakG: number | null;
 }
 
 /**
@@ -146,8 +154,9 @@ export function assessDataQuality(input: DataQualityInput): DataQualityResult {
   }
 
   // ─── تشبّع المسرّع (قيد علمي صريح) ───
-  const accelLikelySaturated = input.peakGForce >= THRESHOLDS.DQ_ACCEL_SATURATION_G;
-  if (accelLikelySaturated) {
+  const accelerometerSaturated = input.accelerometerSaturated === true
+    || input.peakGForce >= THRESHOLDS.DQ_ACCEL_SATURATION_G;
+  if (accelerometerSaturated) {
     limitations.push("dq.accelSaturated");
   }
 
@@ -166,5 +175,18 @@ export function assessDataQuality(input: DataQualityInput): DataQualityResult {
     level = "medium";
   }
 
-  return { score, level, factors, limitations, accelLikelySaturated };
+  const minimumPeakG = accelerometerSaturated && Number.isFinite(input.peakGForce)
+    ? Math.max(0, input.peakGForce)
+    : null;
+
+  return {
+    score,
+    level,
+    factors,
+    limitations,
+    accelLikelySaturated: accelerometerSaturated,
+    accelerometerSaturated,
+    peakGIsLowerBound: accelerometerSaturated,
+    minimumPeakG,
+  };
 }

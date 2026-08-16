@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-17",
+  "engineVersion": "strix-sensor-engine-v8.0-impact-state-machine",
+  "scope": "positive fixtures",
+  "fixtures": [
+    "synthetic-front-crash-50hz",
+    "synthetic-rear-crash-50hz",
+    "synthetic-side-right-crash-50hz"
+  ],
+  "baseline": {
+    "truePositive": 3,
+    "falseNegative": 0,
+    "recall": 1,
+    "zoneAccuracy": 1
+  },
+  "phase3": {
+    "truePositive": 3,
+    "falseNegative": 0,
+    "recall": 1,
+    "zoneAccuracy": 1,
+    "decisions": [
+      { "fixtureId": "synthetic-front-crash-50hz", "confirmed": true, "confidence": 98 },
+      { "fixtureId": "synthetic-rear-crash-50hz", "confirmed": true, "confidence": 98 },
+      { "fixtureId": "synthetic-side-right-crash-50hz", "confirmed": true, "confidence": 98 }
+    ]
+  },
+  "gate": {
+    "minimumAcceptedRecall": 1,
+    "recallDidNotDecrease": true,
+    "passed": true
+  }
+}
