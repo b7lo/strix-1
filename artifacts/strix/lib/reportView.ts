@@ -13,6 +13,8 @@
  */
 import i18n from "./i18n";
 import type { AccidentReport, ImpactZone, ImpactDirection } from "./types";
+import type { AccidentConfidenceModel } from "./confidence/types";
+import type { EvidenceItem } from "./scenario/types";
 import { buildLiabilityNarrative, zoneToImpactDirection } from "./liabilityEngine";
 
 /**
@@ -32,6 +34,8 @@ export interface ReportView {
   effectiveZone: ImpactZone;
   /** الاتجاه العام المشتقّ من المنطقة الفعّالة. */
   effectiveDirection: ImpactDirection;
+  /** منطقة بديلة عند تقارب الاحتمالين الأعلى. */
+  alternativeZone: ImpactZone | null;
   /** اسم السيناريو (يصف ما حدث فيزيائياً — لا يتغيّر بالنسبة). */
   scenarioAr: string;
   /** خلاصة بسيطة متّسقة مع النسبة والمنطقة الفعّالتين. */
@@ -42,6 +46,13 @@ export interface ReportView {
   jerkRaw: number;
   /** هل قراءة الـ jerk مشبّعة/غير موثوقة؟ (لعرض تنبيه بدل اعتبارها دليلاً). */
   jerkSaturated: boolean;
+  /** معرف القاعدة الهندسية التي أنتجت تقدير المسؤولية. */
+  ruleId: string | null;
+  /** الأدلة المؤيدة والمعارضة والقيود القابلة للعرض. */
+  evidence: EvidenceItem[];
+  limitations: string[];
+  /** درجات الثقة الخمس المستقلة. */
+  confidenceModel: AccidentConfidenceModel | null;
 }
 
 /**
@@ -66,6 +77,10 @@ export function getReportView(report: AccidentReport): ReportView {
       : cva.verified_impact_zone_b
     : report.impactZone;
   const effectiveDirection = zoneToImpactDirection(effectiveZone);
+  const distribution = isCross ? null : report.impactZoneDistribution ?? null;
+  const alternativeZone = distribution && distribution.ambiguity >= 0.75
+    ? distribution.alternativeZone
+    : null;
 
   const effectiveSpeed = cva
     ? isPartyA
@@ -99,6 +114,7 @@ export function getReportView(report: AccidentReport): ReportView {
     otherFaultPercent,
     effectiveZone,
     effectiveDirection,
+    alternativeZone,
     scenarioAr: report.scenarioAr,
     plainSummary: plainSummaryAr,
     descriptionAr: isCross
@@ -106,5 +122,9 @@ export function getReportView(report: AccidentReport): ReportView {
       : descriptionAr,
     jerkRaw,
     jerkSaturated,
+    ruleId: report.liabilityRuleId ?? null,
+    evidence: report.liabilityEvidence ?? [],
+    limitations: report.liabilityLimitations ?? [],
+    confidenceModel: report.confidenceModel ?? null,
   };
 }

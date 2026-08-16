@@ -126,8 +126,10 @@ function determineRoleOfA(zoneA: ImpactZone, zoneB: ImpactZone): Role {
 
 /**
  * حساب مستقل للمسؤولية المتقاطعة: إعادة بناء جنائية من الصفر بدل تمرير
- * تقدير كل طرف المتحيّز لمنظوره. الخطوات: دور → مسؤولية أساس → تعديل السرعة
+ * تقدير كل طرف المتحيّز لمنظوره. الخطوات: دور → مسؤولية أساس
  * → تعديل الفرملة → قاعدة الاصطدام الخلفي → القصّ إلى السلّم القانوني.
+ * السرعة لا تعدّل المسؤولية مباشرة؛ تُعد مخالفة مستقلة فقط عند وجود حد طريق
+ * موثوق، وهو دليل غير متوفر في عقد المطابقة الحالي.
  */
 function calculateCrossLiability(
   reportA: CrossReport,
@@ -151,15 +153,6 @@ function calculateCrossLiability(
     default:
       rawFaultA = 50;
       break;
-  }
-
-  const speedA = reportA.preCrashSpeedKmh ?? reportA.speedKmh ?? 0;
-  const speedB = reportB.preCrashSpeedKmh ?? reportB.speedKmh ?? 0;
-
-  if (speedA + speedB > 0) {
-    const speedRatio = speedA / (speedA + speedB);
-    const speedAdjust = (speedRatio - 0.5) * 30;
-    rawFaultA += speedAdjust;
   }
 
   if (reportA.braking?.brakingDetected) {
@@ -233,6 +226,13 @@ export function generateCrossVerifiedAnalysis(
     consistency_flags: flags,
     liability_a_percent: liabilityA,
     liability_b_percent: liabilityB,
+    rule_id: "STRIX-CROSS-CONTACT-001",
+    evidence: [
+      `impact-zone-a:${reportA.impactZone}`,
+      `impact-zone-b:${reportB.impactZone}`,
+      ...(reportA.braking?.brakingDetected ? ["braking-a"] : []),
+      ...(reportB.braking?.brakingDetected ? ["braking-b"] : []),
+    ],
     created_at: Date.now(),
   };
 }

@@ -58,6 +58,8 @@ export interface CrossVerifiedAnalysis {
   consistency_flags: string[];
   liability_a_percent: number;
   liability_b_percent: number;
+  rule_id?: string;
+  evidence?: string[];
   created_at: number;
 }
 

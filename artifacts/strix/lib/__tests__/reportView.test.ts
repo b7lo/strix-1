@@ -113,4 +113,27 @@ describe("reportView: مصدر عرض موحّد بلا تناقض", () => {
     expect(view.mineFaultPercent).toBe(50);
     expect(view.crossVerified).toBe(false);
   });
+
+  it("يعرض المنطقة البديلة فقط عند تقارب الاحتمالات", () => {
+    const report = makeReport({
+      impactZone: "front",
+      impactZoneDistribution: {
+        probabilities: {
+          front: 0.44,
+          "front-right": 0.43,
+          "side-right": 0.03,
+          "rear-right": 0.02,
+          rear: 0.01,
+          "rear-left": 0.01,
+          "side-left": 0.02,
+          "front-left": 0.03,
+          unknown: 0.01,
+        },
+        primaryZone: "front",
+        alternativeZone: "front-right",
+        ambiguity: 0.99,
+      },
+    });
+    expect(getReportView(report).alternativeZone).toBe("front-right");
+  });
 });

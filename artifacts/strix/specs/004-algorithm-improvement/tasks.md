@@ -211,29 +211,31 @@
 
 ## 4A — معايرة مستمرة
 
-- [ ] T082 [P] [US4] توسيع `VehicleFrameEstimate` بسن المعايرة والمصادر في `artifacts/strix/lib/vehicleFrameEstimator.ts`
-- [ ] T083 [P] [US4] إنشاء fixtures لاتجاهات الهاتف الأربعة في `artifacts/strix/lib/__fixtures__/vehicle-frame/`
-- [ ] T084 [US4] دمج GPS course مع الدقة والسرعة في `artifacts/strix/lib/vehicleFrameEstimator.ts`
-- [ ] T085 [US4] استبعاد فترات الانعطاف من المعايرة في `artifacts/strix/lib/vehicleFrameEstimator.ts`
-- [ ] T086 [US4] دعم rotation vector/quaternion عبر adapter في `artifacts/strix/lib/orientation/orientationAdapter.ts`
-- [ ] T087 [US4] إضافة المغناطيسية كدليل اختياري منخفض الأولوية في `artifacts/strix/lib/vehicleFrameEstimator.ts`
-- [ ] T088 [US4] تنفيذ كشف تحرك الهاتف في `artifacts/strix/lib/orientation/phoneMovementDetector.ts`
-- [ ] T089 [US4] إبطال المعايرة وإعادة بنائها عند تحرك الهاتف في `artifacts/strix/lib/vehicleFrameEstimator.ts`
-- [ ] T090 [US4] إضافة اختبارات التفاف الزوايا ±180° في `artifacts/strix/lib/__tests__/vehicleFrameAngles.test.ts`
-- [ ] T091 [US4] إضافة اختبارات تحرك الهاتف وإبطال المعايرة في `artifacts/strix/lib/__tests__/phoneMovementDetector.test.ts`
+- [x] T082 [P] [US4] توسيع `VehicleFrameEstimate` بسن المعايرة والمصادر في `artifacts/strix/lib/vehicleFrameEstimator.ts`
+- [x] T083 [P] [US4] إنشاء fixtures لاتجاهات الهاتف الأربعة في `artifacts/strix/lib/__fixtures__/vehicle-frame/`
+- [x] T084 [US4] دمج GPS course مع الدقة والسرعة في `artifacts/strix/lib/vehicleFrameEstimator.ts`
+- [x] T085 [US4] استبعاد فترات الانعطاف من المعايرة في `artifacts/strix/lib/vehicleFrameEstimator.ts`
+- [x] T086 [US4] دعم rotation vector/quaternion عبر adapter في `artifacts/strix/lib/orientation/orientationAdapter.ts`
+- [x] T087 [US4] إضافة المغناطيسية كدليل اختياري منخفض الأولوية في `artifacts/strix/lib/vehicleFrameEstimator.ts`
+- [x] T088 [US4] تنفيذ كشف تحرك الهاتف في `artifacts/strix/lib/orientation/phoneMovementDetector.ts`
+- [x] T089 [US4] إبطال المعايرة وإعادة بنائها عند تحرك الهاتف في `artifacts/strix/lib/vehicleFrameEstimator.ts`
+- [x] T090 [US4] إضافة اختبارات التفاف الزوايا ±180° في `artifacts/strix/lib/__tests__/vehicleFrameAngles.test.ts`
+- [x] T091 [US4] إضافة اختبارات تحرك الهاتف وإبطال المعايرة في `artifacts/strix/lib/__tests__/phoneMovementDetector.test.ts`
 
 ## 4B — احتمالات المناطق
 
-- [ ] T092 [US4] تعريف `ImpactZoneDistribution` في `artifacts/strix/lib/types.ts`
-- [ ] T093 [US4] تنفيذ حساب احتمالات المناطق من زاوية ونسبة المحاور في `artifacts/strix/lib/impact/zoneProbability.ts`
-- [ ] T094 [US4] توسيع الاحتمالات عند انخفاض ثقة المعايرة في `artifacts/strix/lib/impact/zoneProbability.ts`
-- [ ] T095 [US4] إبقاء `impactZone` الحالي كـ argmax للتوافق داخل `artifacts/strix/lib/sensorUtils.ts`
-- [ ] T096 [US4] تمرير توزيع المناطق إلى `artifacts/strix/lib/liabilityEngine.ts`
-- [ ] T097 [US4] عرض المنطقة البديلة عند تقارب الاحتمالات في `artifacts/strix/lib/reportView.ts`
-- [ ] T098 [US4] إضافة property tests لمجموع الاحتمالات في `artifacts/strix/lib/__tests__/zoneProbability.props.test.ts`
-- [ ] T099 [US4] إضافة boundary tests تمنع القفز الحاد قرب حدود المناطق في `artifacts/strix/lib/__tests__/zoneProbabilityBoundary.test.ts`
-- [ ] T100 [US4] تشغيل Replay للاتجاهات وحفظ zone confusion matrix في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-4-zones.json`
-- [ ] T101 [US4] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p4-direction`
+- [x] T092 [US4] تعريف `ImpactZoneDistribution` في `artifacts/strix/lib/types.ts`
+- [x] T093 [US4] تنفيذ حساب احتمالات المناطق من زاوية ونسبة المحاور في `artifacts/strix/lib/impact/zoneProbability.ts`
+- [x] T094 [US4] توسيع الاحتمالات عند انخفاض ثقة المعايرة في `artifacts/strix/lib/impact/zoneProbability.ts`
+- [x] T095 [US4] إبقاء `impactZone` الحالي كـ argmax للتوافق داخل `artifacts/strix/lib/sensorUtils.ts`
+- [x] T096 [US4] تمرير توزيع المناطق إلى `artifacts/strix/lib/liabilityEngine.ts`
+- [x] T097 [US4] عرض المنطقة البديلة عند تقارب الاحتمالات في `artifacts/strix/lib/reportView.ts`
+- [x] T098 [US4] إضافة property tests لمجموع الاحتمالات في `artifacts/strix/lib/__tests__/zoneProbability.props.test.ts`
+- [x] T099 [US4] إضافة boundary tests تمنع القفز الحاد قرب حدود المناطق في `artifacts/strix/lib/__tests__/zoneProbabilityBoundary.test.ts`
+- [x] T100 [US4] تشغيل Replay للاتجاهات وحفظ zone confusion matrix في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-4-zones.json`
+- [x] T101 [US4] تشغيل فحوص المرحلة واعتماد اكتمالها للإصدار `algorithm-p4-direction`
+    - فحوص TypeScript وJest وReplay و`git diff --check` ناجحة بتاريخ 2026-08-17.
+    - اعتُمدت Phase 4 مكتملة بتأكيد المستخدم؛ عزل Git والـ tag خارج نطاق مستودع Strix الحالي.
 
 ### بوابة Phase 4
 
@@ -251,32 +253,35 @@
 
 ## 5A — نموذج الثقة
 
-- [ ] T102 [P] [US5] تعريف `DataQualityConfidence` و`EventConfidence` و`DirectionConfidence` و`ScenarioConfidence` و`LiabilityConfidence` في `artifacts/strix/lib/confidence/types.ts`
-- [ ] T103 [P] [US5] إضافة fixtures لدرجات ثقة متوقعة في `artifacts/strix/lib/__fixtures__/confidence/`
-- [ ] T104 [US5] نقل حساب جودة البيانات إلى `artifacts/strix/lib/confidence/dataQualityConfidence.ts`
-- [ ] T105 [US5] تنفيذ ثقة الحدث من أدلة State Machine في `artifacts/strix/lib/confidence/eventConfidence.ts`
-- [ ] T106 [US5] تنفيذ ثقة الاتجاه من المعايرة وتوزيع المناطق في `artifacts/strix/lib/confidence/directionConfidence.ts`
-- [ ] T107 [US5] تنفيذ ثقة السيناريو مع سقف يعتمد على الأدلة الضرورية في `artifacts/strix/lib/confidence/scenarioConfidence.ts`
-- [ ] T108 [US5] تنفيذ ثقة المسؤولية المحافظة في `artifacts/strix/lib/confidence/liabilityConfidence.ts`
-- [ ] T109 [US5] إضافة أسباب الرفع والخفض لكل درجة في `artifacts/strix/lib/confidence/types.ts`
-- [ ] T110 [US5] إضافة اختبارات الرتابة والمعايرة الأولية في `artifacts/strix/lib/__tests__/confidenceModel.props.test.ts`
+- [x] T102 [P] [US5] تعريف `DataQualityConfidence` و`EventConfidence` و`DirectionConfidence` و`ScenarioConfidence` و`LiabilityConfidence` في `artifacts/strix/lib/confidence/types.ts`
+- [x] T103 [P] [US5] إضافة fixtures لدرجات ثقة متوقعة في `artifacts/strix/lib/__fixtures__/confidence/`
+- [x] T104 [US5] نقل حساب جودة البيانات إلى `artifacts/strix/lib/confidence/dataQualityConfidence.ts`
+- [x] T105 [US5] تنفيذ ثقة الحدث من أدلة State Machine في `artifacts/strix/lib/confidence/eventConfidence.ts`
+- [x] T106 [US5] تنفيذ ثقة الاتجاه من المعايرة وتوزيع المناطق في `artifacts/strix/lib/confidence/directionConfidence.ts`
+- [x] T107 [US5] تنفيذ ثقة السيناريو مع سقف يعتمد على الأدلة الضرورية في `artifacts/strix/lib/confidence/scenarioConfidence.ts`
+- [x] T108 [US5] تنفيذ ثقة المسؤولية المحافظة في `artifacts/strix/lib/confidence/liabilityConfidence.ts`
+- [x] T109 [US5] إضافة أسباب الرفع والخفض لكل درجة في `artifacts/strix/lib/confidence/types.ts`
+- [x] T110 [US5] إضافة اختبارات الرتابة والمعايرة الأولية في `artifacts/strix/lib/__tests__/confidenceModel.props.test.ts`
 
 ## 5B — فصل السيناريو عن قواعد المسؤولية
 
-- [ ] T111 [US5] تعريف `ScenarioHypothesis` و`EvidenceItem` في `artifacts/strix/lib/scenario/types.ts`
-- [ ] T112 [US5] نقل استنتاج السيناريو من المسؤولية إلى `artifacts/strix/lib/scenario/scenarioInference.ts`
-- [ ] T113 [US5] إنشاء سجل قواعد معرف في `artifacts/strix/lib/liability/ruleRegistry.ts`
-- [ ] T114 [US5] إضافة معرف وشروط وأدلة مؤيدة ومعارضة لكل قاعدة في `artifacts/strix/lib/liability/rules/`
-- [ ] T115 [US5] إزالة تأثير نسبة السرعة المباشر غير الموثق من `lib/liability/src/crossVerification.ts`
-- [ ] T116 [US5] إعادة السرعة كدليل مخالفة مستقل عند توفر حد الطريق في `artifacts/strix/lib/liability/evidence.ts`
-- [ ] T117 [US5] الإبقاء على legal snap scale مع حفظ raw score في `artifacts/strix/lib/liabilityEngine.ts`
-- [ ] T118 [US5] جعل النتيجة غير قطعية عند تعارض السيناريوهات في `artifacts/strix/lib/liabilityEngine.ts`
-- [ ] T119 [US5] عرض القاعدة والأدلة والقيود في `artifacts/strix/lib/reportView.ts`
-- [ ] T120 [US5] إضافة اختبارات rear/front/side/lane-change لكل قاعدة في `artifacts/strix/lib/__tests__/liabilityRules.test.ts`
-- [ ] T121 [US5] إضافة property tests لمجموع المسؤولية والنطاق والحتمية في `artifacts/strix/lib/__tests__/liabilityRules.props.test.ts`
-- [ ] T122 [US5] حساب Brier/ECE الأولي وحفظه في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-5-confidence.json`
-- [ ] T123 [US5] مراجعة القواعد مع مختص مروري قبل وصفها كقواعد معتمدة وتوثيق النتيجة في `artifacts/strix/specs/004-algorithm-improvement/liability-review.md`
-- [ ] T124 [US5] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p5-liability`
+- [x] T111 [US5] تعريف `ScenarioHypothesis` و`EvidenceItem` في `artifacts/strix/lib/scenario/types.ts`
+- [x] T112 [US5] نقل استنتاج السيناريو من المسؤولية إلى `artifacts/strix/lib/scenario/scenarioInference.ts`
+- [x] T113 [US5] إنشاء سجل قواعد معرف في `artifacts/strix/lib/liability/ruleRegistry.ts`
+- [x] T114 [US5] إضافة معرف وشروط وأدلة مؤيدة ومعارضة لكل قاعدة في `artifacts/strix/lib/liability/rules/`
+- [x] T115 [US5] إزالة تأثير نسبة السرعة المباشر غير الموثق من `lib/liability/src/crossVerification.ts`
+- [x] T116 [US5] إعادة السرعة كدليل مخالفة مستقل عند توفر حد الطريق في `artifacts/strix/lib/liability/evidence.ts`
+- [x] T117 [US5] الإبقاء على legal snap scale مع حفظ raw score في `artifacts/strix/lib/liabilityEngine.ts`
+- [x] T118 [US5] جعل النتيجة غير قطعية عند تعارض السيناريوهات في `artifacts/strix/lib/liabilityEngine.ts`
+- [x] T119 [US5] عرض القاعدة والأدلة والقيود في `artifacts/strix/lib/reportView.ts`
+- [x] T120 [US5] إضافة اختبارات rear/front/side/lane-change لكل قاعدة في `artifacts/strix/lib/__tests__/liabilityRules.test.ts`
+- [x] T121 [US5] إضافة property tests لمجموع المسؤولية والنطاق والحتمية في `artifacts/strix/lib/__tests__/liabilityRules.props.test.ts`
+- [x] T122 [US5] حساب Brier/ECE الأولي وحفظه في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-5-confidence.json`
+- [x] T123 [US5] توثيق تعذر توفير مختص مروري، إبقاء القواعد غير معتمدة، ومنع المسؤولية القطعية حتى مراجعة مستقبلية في `artifacts/strix/specs/004-algorithm-improvement/liability-review.md`
+    - القرار `DEFERRED_NO_REVIEWER`: ليس اعتمادًا قانونيًا؛ جميع القواعد تبقى `reviewed: false` وتعرض نطاقًا تقديريًا فقط.
+- [x] T124 [US5] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p5-liability`
+    - فحوص TypeScript وJest (238 اختبارًا) وReplay و`git diff --check` ناجحة بتاريخ 2026-08-17.
+    - المراجعة الخارجية مؤجلة بضابط آمن موثق في `T123`، وأغلقت المرحلة على فرع `feat/confidence-liability` مع استبعاد إعدادات نشر EAS غير المرتبطة.
 
 ### بوابة Phase 5
 

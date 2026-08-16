@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-17T00:00:00.000Z",
+  "scope": "initial synthetic confidence calibration",
+  "engineVersion": "strix-sensor-engine-v7.3-phase5",
+  "sampleCount": 6,
+  "calibrationSamples": [
+    { "predicted": 0.9, "observed": 1 },
+    { "predicted": 0.8, "observed": 1 },
+    { "predicted": 0.7, "observed": 1 },
+    { "predicted": 0.4, "observed": 0 },
+    { "predicted": 0.2, "observed": 0 },
+    { "predicted": 0.1, "observed": 0 }
+  ],
+  "metrics": {
+    "brierScore": 0.058333,
+    "expectedCalibrationError": 0.216667,
+    "eceBinCount": 3
+  },
+  "interpretation": {
+    "brierScore": "Initial synthetic discrimination is good, but the sample is too small for field claims.",
+    "expectedCalibrationError": "Confidence is not yet field-calibrated; collect reviewed real outcomes before tuning.",
+    "legalReview": "Not completed. Rules remain engineering hypotheses and are not described as approved traffic rules."
+  },
+  "limitations": [
+    "Synthetic examples only",
+    "No independent field holdout set",
+    "No external traffic/legal specialist sign-off",
+    "Metrics must not be used as production accuracy claims"
+  ]
+}

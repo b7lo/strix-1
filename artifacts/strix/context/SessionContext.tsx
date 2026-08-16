@@ -19,7 +19,7 @@ import {
   resetFilter,
   calculateGForce,
   findPeakZone,
-  detectImpactZone,
+  detectImpactZoneDistribution,
   resetGyroPeaks,
   recordSample,
   getJerkPeak,
@@ -43,6 +43,7 @@ import {
   getLeveledFrame,
   getLatestGyroYawRateDegS,
   setPhoneYawOffset,
+  clearPhoneYawCalibration,
   getGravityVector,
   getRoadType,
   getSampleRate,
@@ -51,6 +52,8 @@ import {
 } from "@/lib/sensorUtils";
 import { ImpactStateMachine } from "@/lib/impact/impactStateMachine";
 import { VehicleFrameEstimator, tiltCompensatedHeadingRad } from "@/lib/vehicleFrameEstimator";
+import { PhoneMovementDetector } from "@/lib/orientation/phoneMovementDetector";
+import { adaptOrientation, eulerToQuaternion } from "@/lib/orientation/orientationAdapter";
 import { assessDataQuality } from "@/lib/dataQuality";
 import { THRESHOLDS } from "@/lib/thresholds";
 import { analyzeOtherParty } from "@/lib/otherPartyAnalysis";
@@ -66,6 +69,7 @@ import i18n from "@/lib/i18n";
 let Accelerometer: any = null;
 let Gyroscope: any = null;
 let Magnetometer: any = null;
+let DeviceMotion: any = null;
 
 const SENSOR_RECORDING_ENABLED = process.env.EXPO_PUBLIC_STRIX_SENSOR_RECORDING === "true";
 
@@ -75,6 +79,7 @@ if (Platform.OS !== "web") {
     Accelerometer = sensors.Accelerometer;
     Gyroscope = sensors.Gyroscope;
     Magnetometer = sensors.Magnetometer;
+    DeviceMotion = sensors.DeviceMotion;
   } catch {}
 }
 
@@ -115,9 +120,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const accelSub = useRef<{ remove: () => void } | null>(null);
   const gyroSub = useRef<{ remove: () => void } | null>(null);
   const magSub = useRef<{ remove: () => void } | null>(null);
+  const deviceMotionSub = useRef<{ remove: () => void } | null>(null);
   const locationSub = useRef<Location.LocationSubscription | null>(null);
   // A-3 (دمج الحساسات): مُقدِّر اتجاه السيارة + آخر قراءة مغناطيسية
   const vehicleEstimator = useRef(new VehicleFrameEstimator());
+  const phoneMovementDetector = useRef(new PhoneMovementDetector());
+  const orientationHeadingRef = useRef<number | null>(null);
   const magRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recorderRef = useRef<SensorRecorder | null>(null);
@@ -155,6 +163,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     gyroSub.current = null;
     magSub.current?.remove();
     magSub.current = null;
+    deviceMotionSub.current?.remove();
+    deviceMotionSub.current = null;
     locationSub.current?.remove?.();
     locationSub.current = null;
 
@@ -198,7 +208,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const useImpactPeak = impactPeakRef.current > windowPeak.peakG;
     const gForce = useImpactPeak ? impactPeakRef.current : windowPeak.peakG;
     const peakFiltered = useImpactPeak ? impactPeakFilteredRef.current : windowPeak.peakFiltered;
-    const zone = (useImpactPeak ? detectImpactZone(peakFiltered) : windowPeak.zone) as ImpactZone;
+    const vfEstimateAtImpact = vehicleEstimator.current.getEstimate(crashTimestamp);
+    const zoneDistribution = detectImpactZoneDistribution(
+      peakFiltered,
+      vfEstimateAtImpact.confidence,
+    );
+    const zone = zoneDistribution.primaryZone as ImpactZone;
     const accelerometerSaturated = impactSaturatedRef.current;
     // أفرغ القمة الخاصة بالصدمة بعد التقاطها (الصدمة التالية تبدأ من جديد)
     impactPeakRef.current = 0;
@@ -265,15 +280,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       crashTimestamp, // v7.1 FIX: تمرير اللحظة الفعلية لتجنب إزاحة 250ms
     });
 
-    const liability = calculateLiability(
-      direction, gForce, analysisSpeed, jerk, braking, gyro, impactCount, baselineG, zone,
-      advancedAnalysis, isDirectionCalibrated(), otherParty
-    );
-
     // ═══════════════════════════════════════
     // طبقة جودة البيانات (مستقلة عن المسؤولية) + ثقة معايرة الاتجاه (A-3)
     // ═══════════════════════════════════════
-    const vfEstimate = vehicleEstimator.current.getEstimate();
+    const vfEstimate = vfEstimateAtImpact;
     const dataQuality = assessDataQuality({
       engineReady: isEngineReady(),
       sampleRateHz: getMeasuredSampleRate(),
@@ -287,6 +297,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       accelerometerSaturated,
     });
 
+    const liability = calculateLiability(
+      direction, gForce, analysisSpeed, jerk, braking, gyro, impactCount, baselineG, zone,
+      advancedAnalysis, isDirectionCalibrated(), otherParty, null, zoneDistribution,
+      {
+        dataQualityScore: dataQuality.score,
+        directionCalibrationConfidence: vfEstimate.confidence,
+        accelerometerSaturated,
+      }
+    );
+
     // ═══════════════════════════════════════
     // v6: بناء التقرير مع بيانات الطرف الآخر
     // ═══════════════════════════════════════
@@ -296,6 +316,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       peakGForce: Math.round(gForce * 100) / 100,
       jerkPeak: Math.round(jerk * 10) / 10,
       impactZone: zone,
+      impactZoneDistribution: zoneDistribution,
       impactDirection: direction,
       speedKmh: Math.round(speed),
       preCrashSpeedKmh: Math.round(preCrashSpeed),
@@ -324,6 +345,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       dataQualityLevel: dataQuality.level,
       dataQualityLimitations: dataQuality.limitations,
       directionCalibrationConfidence: vfEstimate.confidence,
+      confidenceModel: {
+        ...liability.confidenceModel,
+        dataQuality,
+      },
+      scenarioHypothesis: liability.scenarioHypothesis,
+      alternativeScenarios: liability.alternativeScenarios,
+      liabilityRuleId: liability.ruleId,
+      liabilityRuleReviewed: liability.ruleReviewed,
+      liabilityEvidence: liability.evidence,
+      liabilityLimitations: liability.limitations,
       impactCount,
       baselineG: Math.round(baselineG * 1000) / 1000,
       sessionDurationAtCrash: durationRef.current,
@@ -364,7 +395,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             if (match.crossVerifiedAnalysis) {
               const cv = calculateLiability(
                 direction, gForce, analysisSpeed, jerk, braking, gyro, impactCount, baselineG, zone,
-                advancedAnalysis, isDirectionCalibrated(), otherParty, match.crossVerifiedAnalysis
+                advancedAnalysis, isDirectionCalibrated(), otherParty, match.crossVerifiedAnalysis,
+                zoneDistribution,
+                {
+                  dataQualityScore: dataQuality.score,
+                  directionCalibrationConfidence: vfEstimate.confidence,
+                  accelerometerSaturated,
+                }
               );
               updatedDesc = cv.descriptionAr + i18n.t("sysNotes.crossAdjusted");
               liabilityFields = {
@@ -379,6 +416,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 liabilityRaw: cv.rawFaultPercent,
                 liabilityConclusive: cv.isConclusive,
                 liabilityRange: cv.faultRange,
+                confidenceModel: {
+                  ...cv.confidenceModel,
+                  dataQuality,
+                },
+                scenarioHypothesis: cv.scenarioHypothesis,
+                alternativeScenarios: cv.alternativeScenarios,
+                liabilityRuleId: cv.ruleId,
+                liabilityRuleReviewed: cv.ruleReviewed,
+                liabilityEvidence: cv.evidence,
+                liabilityLimitations: cv.limitations,
               };
             }
 
@@ -466,9 +513,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
         // ─── A-3 (دمج الحساسات): تغذية مُقدِّر اتجاه السيارة ───
         // GPS (التسارع الطولي) + المسرّع (اتجاه أفقي) + الجيروسكوب (بوّابة الانعطاف)
-        vehicleEstimator.current.addSpeedSample(safeSpeed, ts);
-        // تأكيد ثانوي اختياري من المغناطيسية: heading من GPS + heading الجوال (tilt-compensated)
         const heading = loc.coords.heading;
+        const accuracyM = loc.coords.accuracy ?? Number.POSITIVE_INFINITY;
+        vehicleEstimator.current.addGpsSample({
+          speedKmh: safeSpeed,
+          timestampMs: ts,
+          courseRad: typeof heading === "number" && heading >= 0 ? (heading * Math.PI) / 180 : null,
+          courseAccuracyDeg: accuracyM <= 20 ? 15 : accuracyM <= 50 ? 30 : 60,
+        });
+        if (orientationHeadingRef.current !== null) {
+          vehicleEstimator.current.addRotationVectorObservation(orientationHeadingRef.current, ts);
+        }
+        // تأكيد ثانوي اختياري من المغناطيسية: heading من GPS + heading الجوال (tilt-compensated)
         const mag = magRef.current;
         if (mag && typeof heading === "number" && heading >= 0 && safeSpeed >= THRESHOLDS.VF_MIN_SPEED_KMH) {
           const phoneHeading = tiltCompensatedHeadingRad(mag, getGravityVector());
@@ -602,6 +658,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await initDeviceId();
     resetFilter();
     vehicleEstimator.current.reset();
+    phoneMovementDetector.current.reset();
+    orientationHeadingRef.current = null;
     magRef.current = null;
     peakRef.current = 0;
     peakFilteredRef.current = { x: 0, y: 0, z: 0 };
@@ -692,6 +750,35 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         });
       } catch (err) {
         console.warn("[Strix] Magnetometer unavailable:", err);
+      }
+    }
+
+    // Rotation vector: detects phone repositioning and supplies a higher-quality heading adapter.
+    if (DeviceMotion) {
+      try {
+        DeviceMotion.setUpdateInterval(200);
+        deviceMotionSub.current = DeviceMotion.addListener((data: any) => {
+          const rotation = data?.rotation;
+          if (!rotation) return;
+          const quaternion = eulerToQuaternion(
+            Number(rotation.alpha) || 0,
+            Number(rotation.beta) || 0,
+            Number(rotation.gamma) || 0,
+          );
+          const now = Date.now();
+          orientationHeadingRef.current = adaptOrientation(quaternion).yawRad;
+          const movement = phoneMovementDetector.current.addSample(
+            quaternion,
+            now,
+            getLatestGyroYawRateDegS(),
+          );
+          if (movement.moved) {
+            vehicleEstimator.current.invalidateCalibration(now);
+            clearPhoneYawCalibration();
+          }
+        });
+      } catch (err) {
+        console.warn("[Strix] Device motion unavailable:", err);
       }
     }
 

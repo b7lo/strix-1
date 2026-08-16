@@ -89,4 +89,17 @@ describe("A-7: cross-verification (انجراف الساعة + الأدوار)",
     const res = generateCrossVerifiedAnalysis(a, b);
     expect(res.verified_speed_a_kmh).toBe(0);
   });
+
+  it("نسبة السرعات وحدها لا تغيّر مسؤولية نفس مناطق التماس", () => {
+    const slow = generateCrossVerifiedAnalysis(
+      makeReport({ impactZone: "side-left", preCrashSpeedKmh: 5 }),
+      makeReport({ impactZone: "side-right", preCrashSpeedKmh: 100 }),
+    );
+    const fast = generateCrossVerifiedAnalysis(
+      makeReport({ impactZone: "side-left", preCrashSpeedKmh: 100 }),
+      makeReport({ impactZone: "side-right", preCrashSpeedKmh: 5 }),
+    );
+    expect(fast.liability_a_percent).toBe(slow.liability_a_percent);
+    expect(fast.rule_id).toBe("STRIX-CROSS-CONTACT-001");
+  });
 });
