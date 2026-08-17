@@ -271,6 +271,13 @@ class TimeWindowBuffer<T extends { ts: number }> {
     }
   }
 
+  forEachRecent(count: number, callback: (item: T) => void): void {
+    const elementsToVisit = Math.min(Math.max(0, count), this.length);
+    for (let i = this.length - elementsToVisit; i < this.length; i++) {
+      callback(this.buffer[(this.tail + i) % this.capacity]);
+    }
+  }
+
   // Get last element
   getLast(): T | undefined {
     if (this.length === 0) return undefined;
@@ -978,24 +985,25 @@ function getImpactSourceVector(filtered: FilteredReading): { x: number; y: numbe
   // ═══════════════════════════════════════════
   const vehicle = mapToVehicleFrame(filtered);
 
-  // المعدل المرجّح من آخر 8 عينات قوية (في إطار المركبة)
-  const recentHigh = sensorEngine.ringBuffer.sliceFromEnd(8).filter(s => s.gForce > 0.5);
-
   let avgX = vehicle.vX;
   let avgY = vehicle.vY;
 
-  if (recentHigh.length >= 3) {
-    let wX = 0, wY = 0, totalW = 0;
-    for (const s of recentHigh) {
+  let strongCount = 0;
+  let wX = 0;
+  let wY = 0;
+  let totalW = 0;
+  sensorEngine.ringBuffer.forEachRecent(8, (s) => {
+    if (s.gForce > 0.5) {
       const sv = mapToVehicleFrame(s.filtered);
       wX += sv.vX * s.gForce;
       wY += sv.vY * s.gForce;
       totalW += s.gForce;
+      strongCount++;
     }
-    if (totalW > 0) {
-      avgX = wX / totalW;
-      avgY = wY / totalW;
-    }
+  });
+  if (strongCount >= 3 && totalW > 0) {
+    avgX = wX / totalW;
+    avgY = wY / totalW;
   }
 
   // عكس المحاور (قانون نيوتن الثالث)
@@ -1083,14 +1091,21 @@ export function recordImpact(): number {
   const now = Date.now();
   sensorEngine.impactTimestamps.push(now);
   const cutoff = now - MULTI_IMPACT_WINDOW_MS;
-  sensorEngine.impactTimestamps = sensorEngine.impactTimestamps.filter((t) => t >= cutoff);
+  while (sensorEngine.impactTimestamps.length > 0 && sensorEngine.impactTimestamps[0] < cutoff) {
+    sensorEngine.impactTimestamps.shift();
+  }
   return sensorEngine.impactTimestamps.length;
 }
 
 export function getImpactCount(): number {
   const now = Date.now();
   const cutoff = now - MULTI_IMPACT_WINDOW_MS;
-  return sensorEngine.impactTimestamps.filter((t) => t >= cutoff).length;
+  let count = 0;
+  for (let index = sensorEngine.impactTimestamps.length - 1; index >= 0; index--) {
+    if (sensorEngine.impactTimestamps[index] < cutoff) break;
+    count++;
+  }
+  return count;
 }
 
 // ─── تشخيص (v6: موسّع) ───

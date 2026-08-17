@@ -300,36 +300,38 @@
 
 ## 6A — المطابقة والاتساق الفيزيائي
 
-- [ ] T125 [P] [US6] توسيع عقد المطابقة بجودة GPS واتجاه السير وتوقيت القمة في `lib/liability/src/types.ts`
-- [ ] T126 [P] [US6] إضافة fixtures لحوادث متقاربة زمانيًا ومكانيًا في `lib/liability/src/__fixtures__/matching/`
-- [ ] T127 [US6] إضافة تشابه توقيت القمم إلى `lib/liability/src/matching.ts`
-- [ ] T128 [US6] إضافة توافق مناطق التماس المتبادلة إلى `lib/liability/src/matching.ts`
-- [ ] T129 [US6] إضافة اتجاه السير ودقة GPS إلى `lib/liability/src/matching.ts`
-- [ ] T130 [US6] تنفيذ hard contradictions في `lib/liability/src/crossVerification.ts`
-- [ ] T131 [US6] منع غياب GPS من التعويض بزاوية واحدة فقط في `lib/liability/src/matching.ts`
-- [ ] T132 [US6] إضافة اختبارات match precision/recall في `lib/liability/src/__tests__/matchingEvaluation.test.ts`
-- [ ] T133 [US6] إضافة اختبارات التناقض الفيزيائي في `lib/liability/src/__tests__/physicalConsistency.test.ts`
-- [ ] T134 [US6] دمج الحقول الجديدة في `artifacts/strix/lib/accidentSync.ts`
+- [x] T125 [P] [US6] توسيع عقد المطابقة بجودة GPS واتجاه السير وتوقيت القمة في `lib/liability/src/types.ts`
+- [x] T126 [P] [US6] إضافة fixtures لحوادث متقاربة زمانيًا ومكانيًا في `lib/liability/src/__fixtures__/matching/`
+- [x] T127 [US6] إضافة تشابه توقيت القمم إلى `lib/liability/src/matching.ts`
+- [x] T128 [US6] إضافة توافق مناطق التماس المتبادلة إلى `lib/liability/src/matching.ts`
+- [x] T129 [US6] إضافة اتجاه السير ودقة GPS إلى `lib/liability/src/matching.ts`
+- [x] T130 [US6] تنفيذ hard contradictions في `lib/liability/src/crossVerification.ts`
+- [x] T131 [US6] منع غياب GPS من التعويض بزاوية واحدة فقط في `lib/liability/src/matching.ts`
+- [x] T132 [US6] إضافة اختبارات match precision/recall في `lib/liability/src/__tests__/matchingEvaluation.test.ts`
+- [x] T133 [US6] إضافة اختبارات التناقض الفيزيائي في `lib/liability/src/__tests__/physicalConsistency.test.ts`
+- [x] T134 [US6] دمج الحقول الجديدة في `artifacts/strix/lib/accidentSync.ts`
 
 ## 6B — Remote Config الآمن
 
-- [ ] T135 [P] [US6] تعريف `ThresholdConfigEnvelope` وإصدار المخطط في `artifacts/strix/lib/remoteConfig.ts`
-- [ ] T136 [US6] التحقق من العلاقات بين العتبات قبل التطبيق في `artifacts/strix/lib/remoteConfig.ts`
-- [ ] T137 [US6] جعل تطبيق الإعداد ذريًا all-or-nothing في `artifacts/strix/lib/remoteConfig.ts`
-- [ ] T138 [US6] حفظ إصدار العتبات في التقرير وReplay داخل `artifacts/strix/lib/types.ts`
-- [ ] T139 [US6] إضافة fallback وrollback إلى آخر إعداد صالح في `artifacts/strix/lib/remoteConfig.ts`
-- [ ] T140 [US6] إضافة اختبارات الإعداد الجزئي والفاسد في `artifacts/strix/lib/__tests__/remoteConfigSafety.test.ts`
+- [x] T135 [P] [US6] تعريف `ThresholdConfigEnvelope` وإصدار المخطط في `artifacts/strix/lib/remoteConfig.ts`
+- [x] T136 [US6] التحقق من العلاقات بين العتبات قبل التطبيق في `artifacts/strix/lib/remoteConfig.ts`
+- [x] T137 [US6] جعل تطبيق الإعداد ذريًا all-or-nothing في `artifacts/strix/lib/remoteConfig.ts`
+- [x] T138 [US6] حفظ إصدار العتبات في التقرير وReplay داخل `artifacts/strix/lib/types.ts`
+- [x] T139 [US6] إضافة fallback وrollback إلى آخر إعداد صالح في `artifacts/strix/lib/remoteConfig.ts`
+- [x] T140 [US6] إضافة اختبارات الإعداد الجزئي والفاسد في `artifacts/strix/lib/__tests__/remoteConfigSafety.test.ts`
 
 ## 6C — الأداء والبطارية
 
-- [ ] T141 [P] [US6] إضافة قياس زمن P50/P95 لمعالجة العينة في `artifacts/strix/lib/performance/sensorProfiler.ts`
-- [ ] T142 [P] [US6] إضافة اختبار ذاكرة منطقي لجلسة طويلة في `artifacts/strix/lib/__tests__/longSessionPerformance.test.ts`
-- [ ] T143 [US6] إزالة نسخ المصفوفات الكبيرة من المسار الساخن في `artifacts/strix/lib/sensorUtils.ts`
-- [ ] T144 [US6] استبدال العمليات التي تنشئ arrays مؤقتة داخل الحلقة في `artifacts/strix/lib/advancedAnalysis.ts`
-- [ ] T145 [US6] فصل معدل تحديث الواجهة عن معدل الحساس في `artifacts/strix/context/SessionContext.tsx`
-- [ ] T146 [US6] توثيق P50/P95 والذاكرة والبطارية في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-6-performance.md`
-- [ ] T147 [US6] تشغيل تقييم المطابقة والأداء وحفظ التقرير في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-6.json`
-- [ ] T148 [US6] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p6-operations`
+- [x] T141 [P] [US6] إضافة قياس زمن P50/P95 لمعالجة العينة في `artifacts/strix/lib/performance/sensorProfiler.ts`
+- [x] T142 [P] [US6] إضافة اختبار ذاكرة منطقي لجلسة طويلة في `artifacts/strix/lib/__tests__/longSessionPerformance.test.ts`
+- [x] T143 [US6] إزالة نسخ المصفوفات الكبيرة من المسار الساخن في `artifacts/strix/lib/sensorUtils.ts`
+- [x] T144 [US6] استبدال العمليات التي تنشئ arrays مؤقتة داخل الحلقة في `artifacts/strix/lib/advancedAnalysis.ts`
+- [x] T145 [US6] فصل معدل تحديث الواجهة عن معدل الحساس في `artifacts/strix/context/SessionContext.tsx`
+- [x] T146 [US6] توثيق P50/P95 والذاكرة والبطارية في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-6-performance.md`
+- [x] T147 [US6] تشغيل تقييم المطابقة والأداء وحفظ التقرير في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-6.json`
+- [x] T148 [US6] تشغيل فحوص المرحلة ودمجها وإنشاء tag باسم `algorithm-p6-operations`
+    - فحوص TypeScript للحزمتين وJest (246 اختبارًا) واختبارات المطابقة (7 اختبارات) وPhase 6 evaluation و`git diff --check` ناجحة بتاريخ 2026-08-17.
+    - أُغلقت المرحلة على فرع `feat/cross-verification-ops` مع استبعاد تغييرات EAS وAPI غير المرتبطة من دمج المرحلة.
 
 ### بوابة Phase 6
 

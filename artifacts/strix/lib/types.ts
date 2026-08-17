@@ -91,6 +91,8 @@ export interface ConfidenceDetails {
 export interface AccidentReport {
   id: string;
   timestamp: number;
+  /** إصدار العتبات الفعّال عند إنشاء التقرير. */
+  thresholdConfigVersion?: string;
   syncStatus?: "synced" | "pending" | "failed";
 
   // ─── بيانات التسارع الأساسية ───
@@ -113,6 +115,12 @@ export interface AccidentReport {
   // ─── الموقع ───
   latitude: number | null;
   longitude: number | null;
+  /** دقة GPS الأفقية بالمتر لحظة الحادث. */
+  gpsAccuracyMeters?: number | null;
+  /** اتجاه حركة المركبة من GPS بالدرجات لحظة الحادث. */
+  travelHeadingDeg?: number | null;
+  /** توقيت أعلى قمة صدمة بالمِلّي ثانية (epoch). */
+  impactPeakTimestamp?: number | null;
 
   // ─── التحليل ───
   severity: Severity;

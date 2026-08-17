@@ -42,6 +42,12 @@ export interface CrossReport {
   preCrashSpeedKmh?: number | null;
   /** تحليل الفرملة — يكفي وجود العلم `brakingDetected`. */
   braking?: { brakingDetected: boolean } | null;
+  /** دقة GPS الأفقية بالمتر؛ القيم الكبيرة تخفض وزن دليل الموقع. */
+  gpsAccuracyMeters?: number | null;
+  /** اتجاه حركة المركبة بالدرجات (0..360). */
+  travelHeadingDeg?: number | null;
+  /** توقيت أعلى قمة صدمة بالمِلّي ثانية (epoch). */
+  impactPeakTimestamp?: number | null;
 }
 
 /** نتيجة المطابقة الثنائية (التحقق المتبادل) بين مركبتين. */
@@ -70,6 +76,14 @@ export interface MatchInput {
   longitude?: number | null;
   /** زاوية الاقتراب بالدرجات (0..360). */
   approachAngle: number;
+  /** دقة GPS الأفقية بالمتر. */
+  gpsAccuracyMeters?: number | null;
+  /** اتجاه حركة المركبة بالدرجات (0..360). */
+  travelHeadingDeg?: number | null;
+  /** توقيت أعلى قمة صدمة بالمِلّي ثانية (epoch). */
+  impactPeakTimestamp?: number | null;
+  /** منطقة التماس المرصودة لهذا الطرف. */
+  impactZone?: ImpactZone | null;
 }
 
 /** ناتج تسجيل المطابقة. */
@@ -84,4 +98,16 @@ export interface MatchScore {
   timeDiffMs: number;
   /** هل زاويتا الاقتراب متقاربتان (ضمن العتبة)؟ */
   anglesAligned: boolean;
+  /** هل توفر GPS صالح للطرفين؟ */
+  hasUsableGps: boolean;
+  /** فرق توقيت قمتي الصدمة، أو null عند غياب إحدى القمتين. */
+  peakTimeDiffMs: number | null;
+  /** توافق منطقتَي التماس، أو null عند غياب المنطقة. */
+  contactZonesCompatible: boolean | null;
+  /** توافق اتجاهَي السير مع نوع التماس، أو null عند غياب الدليل. */
+  headingsConsistent: boolean | null;
+  /** الأدلة التي رفعت الدرجة. */
+  evidence: string[];
+  /** تناقضات صريحة تسببت في الرفض. */
+  contradictions: string[];
 }

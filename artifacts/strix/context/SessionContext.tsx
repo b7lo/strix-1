@@ -64,6 +64,8 @@ import { getSettings } from "@/lib/storage";
 import { BACKGROUND_LOCATION_TASK } from "@/lib/backgroundTasks";
 import { exportReplayJson, SensorRecorder, type SensorReplayV1 } from "@/lib/replay";
 import { SensorPipeline } from "@/lib/sensorPipeline";
+import { getThresholdConfigVersion } from "@/lib/remoteConfig";
+import { sensorProfiler } from "@/lib/performance/sensorProfiler";
 import i18n from "@/lib/i18n";
 
 let Accelerometer: any = null;
@@ -138,8 +140,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // في التقرير بدل نافذة findPeakZone التي قد تنزاح عن لحظة الصدمة فتقرأ قوة منخفضة.
   const impactPeakRef = useRef(0);
   const impactPeakFilteredRef = useRef<{ x: number; y: number; z: number }>({ x: 0, y: 0, z: 0 });
+  const impactPeakTimestampRef = useRef<number | null>(null);
   const impactSaturatedRef = useRef(false);
-  const locationRef = useRef<{ lat: number; lon: number; speed: number } | null>(null);
+  const locationRef = useRef<{
+    lat: number;
+    lon: number;
+    speed: number;
+    accuracyM: number | null;
+    headingDeg: number | null;
+  } | null>(null);
   const speedHistoryRef = useRef<number[]>([]);
   const thresholdRef = useRef(2.0);
   const durationRef = useRef(0);
@@ -215,9 +224,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     );
     const zone = zoneDistribution.primaryZone as ImpactZone;
     const accelerometerSaturated = impactSaturatedRef.current;
+    const impactPeakTimestamp = impactPeakTimestampRef.current ?? crashTimestamp;
     // أفرغ القمة الخاصة بالصدمة بعد التقاطها (الصدمة التالية تبدأ من جديد)
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+    impactPeakTimestampRef.current = null;
     impactSaturatedRef.current = false;
 
     setCrashDetected(true);
@@ -312,7 +323,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // ═══════════════════════════════════════
     const report: AccidentReport = {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
-      timestamp: Date.now(),
+      timestamp: crashTimestamp,
+      thresholdConfigVersion: getThresholdConfigVersion(),
       peakGForce: Math.round(gForce * 100) / 100,
       jerkPeak: Math.round(jerk * 10) / 10,
       impactZone: zone,
@@ -323,6 +335,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       speedHistory: [...history],
       latitude: locationRef.current?.lat ?? null,
       longitude: locationRef.current?.lon ?? null,
+      gpsAccuracyMeters: locationRef.current?.accuracyM ?? null,
+      travelHeadingDeg: locationRef.current?.headingDeg ?? null,
+      impactPeakTimestamp,
       severity: liability.severity,
       liabilityScore: liability.userFaultPercent,
       confidence: liability.confidence,
@@ -492,7 +507,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       (loc) => {
         const safeSpeed = Math.max(0, loc.coords.speed ?? 0) * 3.6;
         const ts = Date.now();
-        locationRef.current = { lat: loc.coords.latitude, lon: loc.coords.longitude, speed: safeSpeed };
+        const headingDeg = typeof loc.coords.heading === "number" && loc.coords.heading >= 0
+          ? loc.coords.heading
+          : null;
+        const accuracyM = Number.isFinite(loc.coords.accuracy) ? loc.coords.accuracy : null;
+        locationRef.current = {
+          lat: loc.coords.latitude,
+          lon: loc.coords.longitude,
+          speed: safeSpeed,
+          accuracyM,
+          headingDeg,
+        };
         setCurrentSpeedKmh(Math.round(safeSpeed));
         speedHistoryRef.current.push(safeSpeed);
         if (speedHistoryRef.current.length > 12) speedHistoryRef.current.shift();
@@ -505,21 +530,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
           speedKmh: safeSpeed,
-          headingDeg: typeof loc.coords.heading === "number" && loc.coords.heading >= 0
-            ? loc.coords.heading
-            : null,
-          accuracyM: Number.isFinite(loc.coords.accuracy) ? loc.coords.accuracy : null,
+          headingDeg,
+          accuracyM,
         });
 
         // ─── A-3 (دمج الحساسات): تغذية مُقدِّر اتجاه السيارة ───
         // GPS (التسارع الطولي) + المسرّع (اتجاه أفقي) + الجيروسكوب (بوّابة الانعطاف)
         const heading = loc.coords.heading;
-        const accuracyM = loc.coords.accuracy ?? Number.POSITIVE_INFINITY;
+        const courseAccuracyM = loc.coords.accuracy ?? Number.POSITIVE_INFINITY;
         vehicleEstimator.current.addGpsSample({
           speedKmh: safeSpeed,
           timestampMs: ts,
           courseRad: typeof heading === "number" && heading >= 0 ? (heading * Math.PI) / 180 : null,
-          courseAccuracyDeg: accuracyM <= 20 ? 15 : accuracyM <= 50 ? 30 : 60,
+          courseAccuracyDeg: courseAccuracyM <= 20 ? 15 : courseAccuracyM <= 50 ? 30 : 60,
         });
         if (orientationHeadingRef.current !== null) {
           vehicleEstimator.current.addRotationVectorObservation(orientationHeadingRef.current, ts);
@@ -641,11 +664,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           if (transition.decision === "rejected") {
             impactPeakRef.current = 0;
             impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+            impactPeakTimestampRef.current = null;
             impactSaturatedRef.current = false;
           }
           if (transition.decision === "confirmed" && transition.candidate) {
             impactPeakRef.current = transition.candidate.peakG;
             impactPeakFilteredRef.current = { ...transition.candidate.peakSignal.linearAcceleration };
+            impactPeakTimestampRef.current = Date.now();
             impactSaturatedRef.current = transition.candidate.peakSignal.accelerometerSaturated;
             void analyzeImpact();
           }
@@ -665,10 +690,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     peakFilteredRef.current = { x: 0, y: 0, z: 0 };
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+    impactPeakTimestampRef.current = null;
     impactSaturatedRef.current = false;
     speedHistoryRef.current = [];
     durationRef.current = 0;
     lastUIUpdateRef.current = 0;
+    sensorProfiler.reset();
     setPeakGForce(0);
     setCurrentGForce(0);
     setCurrentSpeedKmh(0);
@@ -684,6 +711,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     Accelerometer.setUpdateInterval(intervalMs);
     accelSub.current = Accelerometer.addListener((raw: { x: number; y: number; z: number }) => {
+      const profileStartedAt = sensorProfiler.start();
       const now = Date.now();
       const filtered = applyHighPassFilter(raw, now);
       const gForce = calculateGForce(filtered.x, filtered.y, filtered.z);
@@ -722,6 +750,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         peakFilteredRef.current = filtered;
         setPeakGForce(gForce);
       }
+      sensorProfiler.end(profileStartedAt);
     });
 
     if (settings.gyroscopeEnabled && Gyroscope) {
@@ -791,6 +820,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     peakRef.current = 0;
     impactPeakRef.current = 0;
     impactPeakFilteredRef.current = { x: 0, y: 0, z: 0 };
+    impactPeakTimestampRef.current = null;
     impactSaturatedRef.current = false;
     impactStateMachineRef.current.reset();
     setPeakGForce(0);

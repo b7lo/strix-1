@@ -12,7 +12,8 @@
     "ios": "expo run:ios",
     "test": "jest",
     "evaluate:algorithm": "tsx scripts/evaluate-algorithm.ts",
-    "evaluate:rates": "tsx scripts/evaluate-sample-rates.ts"
+    "evaluate:rates": "tsx scripts/evaluate-sample-rates.ts",
+    "evaluate:phase6": "tsx scripts/evaluate-phase-6.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

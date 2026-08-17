@@ -208,6 +208,9 @@ export async function uploadAccident(report: AccidentReport): Promise<string | n
     speedKmh: report.speedKmh,
     jerkPeak: report.jerkPeak,
     approachAngle: report.otherParty?.approachAngleDeg ?? 0,
+    gpsAccuracyMeters: report.gpsAccuracyMeters ?? null,
+    travelHeadingDeg: report.travelHeadingDeg ?? null,
+    impactPeakTimestamp: report.impactPeakTimestamp ?? null,
     severity: report.severity,
     reportJson: sanitizeReportForStorage(report) as unknown as Record<string, unknown>,
   };
@@ -501,6 +504,10 @@ export async function findMatchingAccident(
         latitude: report.latitude,
         longitude: report.longitude,
         approachAngle: report.otherParty?.approachAngleDeg ?? 0,
+        gpsAccuracyMeters: report.gpsAccuracyMeters ?? null,
+        travelHeadingDeg: report.travelHeadingDeg ?? null,
+        impactPeakTimestamp: report.impactPeakTimestamp ?? null,
+        impactZone: report.impactZone,
       },
     );
 
@@ -562,11 +569,32 @@ export async function findMatchingAccident(
     const cLon = candidate.longitude as number;
     const cAngle = candidate.approach_angle as number;
     const cTimestamp = new Date(candidate.timestamp as string).getTime();
+    const candidateReport = isRecord(candidate.report_json)
+      ? candidate.report_json as unknown as AccidentReport
+      : null;
 
     // قرار المطابقة عبر المحرك المشترك (نفس منطق الخادم بالضبط).
     const score = scoreMatch(
-      { timestamp: report.timestamp, latitude: myLat, longitude: myLon, approachAngle: myAngle },
-      { timestamp: cTimestamp, latitude: cLat, longitude: cLon, approachAngle: cAngle },
+      {
+        timestamp: report.timestamp,
+        latitude: myLat,
+        longitude: myLon,
+        approachAngle: myAngle,
+        gpsAccuracyMeters: report.gpsAccuracyMeters,
+        travelHeadingDeg: report.travelHeadingDeg,
+        impactPeakTimestamp: report.impactPeakTimestamp,
+        impactZone: report.impactZone,
+      },
+      {
+        timestamp: cTimestamp,
+        latitude: cLat,
+        longitude: cLon,
+        approachAngle: cAngle,
+        gpsAccuracyMeters: candidateReport?.gpsAccuracyMeters,
+        travelHeadingDeg: candidateReport?.travelHeadingDeg,
+        impactPeakTimestamp: candidateReport?.impactPeakTimestamp,
+        impactZone: candidateReport?.impactZone ?? candidate.impact_zone as AccidentReport["impactZone"],
+      },
     );
     if (!score.isMatch) continue;
 
@@ -574,7 +602,7 @@ export async function findMatchingAccident(
     const timeDiff = score.timeDiffMs;
     const confidence = score.confidence;
 
-    const otherReport = candidate.report_json as AccidentReport | null;
+    const otherReport = candidateReport;
     let crossVerifiedAnalysis: CrossVerifiedAnalysis | null = null;
 
     if (otherReport) {

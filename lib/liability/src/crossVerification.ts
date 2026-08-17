@@ -1,6 +1,7 @@
 import type { CrossReport, CrossVerifiedAnalysis, ImpactZone } from "./types";
 import { CROSS } from "./thresholds";
 import { haversineDistance } from "./geo";
+import { contactZonesCompatible, travelHeadingsConsistent } from "./matching";
 
 /** واجهة مصغّرة لكائن crypto العام (متوفّر في Node وRN والمتصفّح). */
 interface CryptoLike {
@@ -54,6 +55,10 @@ function checkZoneConsistency(zoneA: ImpactZone, zoneB: ImpactZone): string[] {
     flags.push("ZONE_BOTH_REAR: Both vehicles report rear impact — physically impossible");
   }
 
+  if (contactZonesCompatible(zoneA, zoneB) === false && !(isRearA && isRearB)) {
+    flags.push("CONTACT_ZONES_INCOMPATIBLE: Reported contact surfaces cannot touch in one collision");
+  }
+
   return flags;
 }
 
@@ -87,6 +92,39 @@ function checkTimeAndDistance(reportA: CrossReport, reportB: CrossReport): strin
     flags.push(
       `TIME_GAP: Time difference > ${CROSS.TIME_TOLERANCE_MS / 1000}s (${Math.round(timeDiff / 1000)}s apart)`,
     );
+  }
+
+
+  if (
+    typeof reportA.impactPeakTimestamp === "number"
+    && Number.isFinite(reportA.impactPeakTimestamp)
+    && typeof reportB.impactPeakTimestamp === "number"
+    && Number.isFinite(reportB.impactPeakTimestamp)
+  ) {
+    const peakDiff = Math.abs(reportA.impactPeakTimestamp - reportB.impactPeakTimestamp);
+    if (peakDiff > CROSS.PEAK_TIME_TOLERANCE_MS) {
+      flags.push(
+        `IMPACT_PEAK_TIME_GAP: Peak difference > ${CROSS.PEAK_TIME_TOLERANCE_MS}ms (${Math.round(peakDiff)}ms apart)`,
+      );
+    }
+  }
+
+  const headingConsistency = travelHeadingsConsistent(
+    {
+      timestamp: reportA.timestamp,
+      approachAngle: 0,
+      travelHeadingDeg: reportA.travelHeadingDeg,
+      impactZone: reportA.impactZone,
+    },
+    {
+      timestamp: reportB.timestamp,
+      approachAngle: 0,
+      travelHeadingDeg: reportB.travelHeadingDeg,
+      impactZone: reportB.impactZone,
+    },
+  );
+  if (headingConsistency === false) {
+    flags.push("TRAVEL_HEADINGS_INCONSISTENT: Travel headings contradict the reported contact zones");
   }
 
   return flags;
