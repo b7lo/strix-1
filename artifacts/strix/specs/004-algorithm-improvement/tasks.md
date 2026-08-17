@@ -386,7 +386,8 @@
 - [x] T166 تشغيل جميع اختبارات Jest وReplay وproperty tests
 - [x] T167 تشغيل `git diff --check` وفحص الأسرار والملفات الحساسة
 - [x] T168 إنشاء تقرير نهائي قبل/بعد في `artifacts/strix/specs/004-algorithm-improvement/final-report.md`
-- [ ] T169 إنشاء tag إصدار نهائي بعد موافقة المراجعة
+- [x] T169 إنشاء tag إصدار نهائي بعد موافقة المراجعة
+    - وافق المستخدم بتاريخ 2026-08-17، واعتمد tag باسم `algorithm-v1.0.0` على آخر إصدار قواعد مستقر (`algorithm-p6-operations`) دون Phase 7 التجريبية.
 
 ---
 

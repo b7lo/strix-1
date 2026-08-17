@@ -10,7 +10,7 @@
 | Phase 5 confidence/liability | `algorithm-p5-liability` | engine v7.3 phase 5 | legal snap + raw score | none | Rules unreviewed; conservative ranges |
 | Phase 6 operations | `algorithm-p6-operations` | report/replay version fields | atomic remote config with rollback | none | Matching, physical checks, bounded performance |
 | Phase 7 experiment | `NO_GO_INSUFFICIENT_REVIEWED_DATA` | feature schema 1 | rules unchanged | no trained artifact | Tooling and shadow fallback implemented only |
-| Final release | pending review | preserve recorded versions | preserve rollback version | none | Final tag requires reviewer approval |
+| Final release | `algorithm-v1.0.0` | preserve recorded versions | preserve rollback version | none | Approved 2026-08-17; points to the Phase 6 stable rules release and excludes Phase 7 experimental ML |
 
 ## Compatibility rules
 
