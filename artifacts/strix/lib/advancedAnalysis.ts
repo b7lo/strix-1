@@ -57,14 +57,16 @@ function longestQualifiedDurationMs<T extends { ts: number }>(
   predicate: (sample: T) => boolean,
 ): number {
   if (samples.length === 0) return 0;
-  const intervals = samples
-    .slice(1)
-    .map((sample, index) => sample.ts - samples[index].ts)
-    .filter((dt) => dt > 0 && dt <= 200)
-    .sort((a, b) => a - b);
-  const nominalInterval = intervals.length > 0
-    ? intervals[Math.floor(intervals.length / 2)]
-    : 20;
+  let intervalTotal = 0;
+  let intervalCount = 0;
+  for (let index = 1; index < samples.length; index++) {
+    const dt = samples[index].ts - samples[index - 1].ts;
+    if (dt > 0 && dt <= 200) {
+      intervalTotal += dt;
+      intervalCount++;
+    }
+  }
+  const nominalInterval = intervalCount > 0 ? intervalTotal / intervalCount : 20;
 
   let runStart: number | null = null;
   let runLast: number | null = null;
@@ -107,22 +109,19 @@ function analyzeAngularStability(
 
   // تحليل الـ 2 ثانية قبل الصدمة
   const windowStart = crashTimestamp - 2000;
-  const preCrashGyro = gyroHistory.filter(
-    (s) => s.ts >= windowStart && s.ts <= crashTimestamp
-  );
-
-  if (preCrashGyro.length < 2) return result;
-
-  // البحث عن أعلى معدل دوران Yaw (المحور Z)
-  // نطلب مدة فعلية فوق العتبة بدل عيّنتين ثابتتين لتثبيت السلوك بين الأجهزة.
   let maxYawRate = 0;
-  for (const sample of preCrashGyro) {
+  let preCrashCount = 0;
+  for (const sample of gyroHistory) {
+    if (sample.ts < windowStart || sample.ts > crashTimestamp) continue;
+    preCrashCount++;
     const yawDegS = getGyroYawRateDegS(sample);
     if (yawDegS > maxYawRate) maxYawRate = yawDegS;
   }
+  if (preCrashCount < 2) return result;
   const suddenYawDurationMs = longestQualifiedDurationMs(
-    preCrashGyro,
-    (sample) => getGyroYawRateDegS(sample) > YAW_SUDDEN_THRESHOLD_DEG_S,
+    gyroHistory,
+    (sample) => sample.ts >= windowStart && sample.ts <= crashTimestamp
+      && getGyroYawRateDegS(sample) > YAW_SUDDEN_THRESHOLD_DEG_S,
   );
   const confirmedSuddenYaw = suddenYawDurationMs >= YAW_SUDDEN_MIN_DURATION_MS;
 
@@ -208,27 +207,30 @@ function analyzeRoadContext(
   // ─── كشف الدوار عبر الجيروسكوب (Sustained Yaw) ───
   // البحث عن Yaw مستمر > 5°/s لمدة > 3 ثوانٍ
   const windowStart = crashTimestamp - 5000;
-  const preCrashGyro = gyroHistory.filter(
-    (s) => s.ts >= windowStart && s.ts <= crashTimestamp
-  );
+  let preCrashCount = 0;
+  for (const sample of gyroHistory) {
+    if (sample.ts >= windowStart && sample.ts <= crashTimestamp) preCrashCount++;
+  }
 
-  if (preCrashGyro.length >= 10) {
+  if (preCrashCount >= 10) {
     let sustainedYawCount = 0;
     let sustainedYawStartTs = 0;
+    let sustainedYawLastTs = 0;
 
-    for (const sample of preCrashGyro) {
+    for (const sample of gyroHistory) {
+      if (sample.ts < windowStart || sample.ts > crashTimestamp) continue;
       const yawDegS = getGyroYawRateDegS(sample);
       if (yawDegS > ROUNDABOUT_YAW_THRESHOLD) {
         if (sustainedYawCount === 0) sustainedYawStartTs = sample.ts;
         sustainedYawCount++;
+        sustainedYawLastTs = sample.ts;
       } else {
         sustainedYawCount = 0;
       }
     }
 
     if (sustainedYawCount > 0) {
-      const lastSample = preCrashGyro[preCrashGyro.length - 1];
-      const sustainedDuration = lastSample.ts - sustainedYawStartTs;
+      const sustainedDuration = sustainedYawLastTs - sustainedYawStartTs;
 
       // Enhance roundabout detection: Must be between 5 km/h and 60 km/h
       // (roundabouts are typically taken at moderate speeds)
@@ -295,37 +297,32 @@ function analyzeMicroKinematic(
   if (signalDurationMs < 100) return result;
 
   // ─── 1. حساب التباين (Variance) في نوافذ 100ms ───
-  const windows: number[] = [];
   const windowStart = preCrashBuffer[0].ts;
-  const buckets = new Map<number, RingSample[]>();
+  const buckets = new Map<number, { count: number; sum: number; sumSquares: number }>();
   for (const sample of preCrashBuffer) {
     const bucket = Math.floor((sample.ts - windowStart) / 100);
-    const values = buckets.get(bucket) ?? [];
-    values.push(sample);
-    buckets.set(bucket, values);
+    const aggregate = buckets.get(bucket) ?? { count: 0, sum: 0, sumSquares: 0 };
+    aggregate.count++;
+    aggregate.sum += sample.gForce;
+    aggregate.sumSquares += sample.gForce * sample.gForce;
+    buckets.set(bucket, aggregate);
   }
-  for (const slice of buckets.values()) {
-    if (slice.length < 2) continue;
-    const mean = slice.reduce((a, s) => a + s.gForce, 0) / slice.length;
-    const variance = slice.reduce((a, s) => a + (s.gForce - mean) ** 2, 0) / slice.length;
-    windows.push(variance);
-  }
-
-  // أعلى تباين مسجّل
-  const maxVariance = windows.length > 0 ? Math.max(...windows) : 0;
-  result.highFreqVariance = Math.round(maxVariance * 10000) / 10000;
-
-  // ─── 2. كشف اهتزاز مستمر (نمط "الخشونة") ───
+  let maxVariance = 0;
   let highVarStreak = 0;
   let maxStreak = 0;
-  for (const v of windows) {
-    if (v > SCRAPE_VARIANCE_THRESHOLD) {
+  for (const aggregate of buckets.values()) {
+    if (aggregate.count < 2) continue;
+    const mean = aggregate.sum / aggregate.count;
+    const variance = Math.max(0, aggregate.sumSquares / aggregate.count - mean * mean);
+    if (variance > maxVariance) maxVariance = variance;
+    if (variance > SCRAPE_VARIANCE_THRESHOLD) {
       highVarStreak++;
       if (highVarStreak > maxStreak) maxStreak = highVarStreak;
     } else {
       highVarStreak = 0;
     }
   }
+  result.highFreqVariance = Math.round(maxVariance * 10000) / 10000;
   result.vibrationDurationMs = maxStreak * 100;
 
   // ─── 3. كشف Jerk Spike ───
@@ -346,18 +343,14 @@ function analyzeMicroKinematic(
   // بدلاً من صوت + حركة، نطابق Jerk Peak مع Gyro Yaw Shift
   if (jerkSpikeTs > 0 && gyroHistory.length > 0) {
     const syncWindow = 200; // 200ms tolerance
-    const nearGyro = gyroHistory.filter(
-      (g) => Math.abs(g.ts - jerkSpikeTs) < syncWindow
-    );
-
-    if (nearGyro.length > 0) {
-      const maxYawNear = Math.max(
-        ...nearGyro.map(getGyroYawRateDegS)
-      );
-      // Jerk spike + Yaw shift في نفس اللحظة = تأكيد
-      if (maxYawNear > 3 && maxJerkInWindow > 5) {
-        result.jerkGyroSync = true;
-      }
+    let maxYawNear = 0;
+    for (const gyro of gyroHistory) {
+      if (Math.abs(gyro.ts - jerkSpikeTs) >= syncWindow) continue;
+      const yaw = getGyroYawRateDegS(gyro);
+      if (yaw > maxYawNear) maxYawNear = yaw;
+    }
+    if (maxYawNear > 3 && maxJerkInWindow > 5) {
+      result.jerkGyroSync = true;
     }
   }
 
@@ -437,17 +430,27 @@ function analyzePreCrashEvents(
   }
 
   // ─── 3. البحث عن قيادة مستقرة (variance منخفض + yaw منخفض) ───
-  const gValues = preCrashBuffer.map((s) => s.gForce);
-  const meanG = gValues.reduce((a, b) => a + b, 0) / gValues.length;
-  const varianceG = gValues.reduce((a, v) => a + (v - meanG) ** 2, 0) / gValues.length;
+  let gTotal = 0;
+  let gSquaresTotal = 0;
+  for (const sample of preCrashBuffer) {
+    gTotal += sample.gForce;
+    gSquaresTotal += sample.gForce * sample.gForce;
+  }
+  const meanG = gTotal / preCrashBuffer.length;
+  const varianceG = Math.max(0, gSquaresTotal / preCrashBuffer.length - meanG * meanG);
 
   const windowStart = crashTimestamp - 5000;
-  const preCrashYaw = gyroHistory.filter(
-    (s) => s.ts >= windowStart && s.ts <= crashTimestamp
-  );
-  const avgYaw = preCrashYaw.length > 0
-    ? preCrashYaw.reduce((a, s) => a + getGyroYawRateDegS(s), 0) / preCrashYaw.length
-    : 0;
+  let yawTotal = 0;
+  let yawCount = 0;
+  let maxYawPreCrash = 0;
+  for (const sample of gyroHistory) {
+    if (sample.ts < windowStart || sample.ts > crashTimestamp) continue;
+    const yaw = getGyroYawRateDegS(sample);
+    yawTotal += yaw;
+    yawCount++;
+    if (yaw > maxYawPreCrash) maxYawPreCrash = yaw;
+  }
+  const avgYaw = yawCount > 0 ? yawTotal / yawCount : 0;
 
   if (varianceG < STEADY_VARIANCE_THRESHOLD && avgYaw < STEADY_YAW_THRESHOLD) {
     result.steadyDriving = true;
@@ -455,10 +458,6 @@ function analyzePreCrashEvents(
 
   // ─── 4. مناورة التفادي (فرملة + انحراف في نفس الوقت) ───
   if (result.hardBraking) {
-    // هل يوجد انحراف Yaw أيضاً؟
-    const maxYawPreCrash = preCrashYaw.length > 0
-      ? Math.max(...preCrashYaw.map(getGyroYawRateDegS))
-      : 0;
     if (maxYawPreCrash > YAW_SUDDEN_THRESHOLD_DEG_S) {
       result.evasiveManeuver = true;
     }

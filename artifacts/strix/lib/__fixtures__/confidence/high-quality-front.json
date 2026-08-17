@@ -1,0 +1,17 @@
+{
+  "id": "confidence-front-high",
+  "expected": {
+    "event": [70, 100],
+    "direction": [70, 100],
+    "scenario": [60, 100],
+    "liabilityConclusive": true
+  },
+  "input": {
+    "direction": "front",
+    "zone": "front",
+    "peakG": 4.2,
+    "speedKmh": 45,
+    "jerkPeak": 24,
+    "directionCalibrated": true
+  }
+}

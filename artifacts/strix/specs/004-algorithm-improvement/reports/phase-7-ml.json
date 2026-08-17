@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "phase": 7,
+  "generatedAt": "2026-08-17T00:00:00.000Z",
+  "status": "BLOCKED_INSUFFICIENT_REVIEWED_DATA",
+  "model": {
+    "type": "multinomial-linear-softmax",
+    "artifactAvailable": false,
+    "shadowAdapterImplemented": true,
+    "rulesFallbackImplemented": true
+  },
+  "datasetInventory": {
+    "accidentReports": 150,
+    "falseAlarmRows": 46,
+    "distinctDevices": 4,
+    "rawReplayWindows": 0,
+    "reviewedLabels": 0,
+    "independentTestRows": 0
+  },
+  "comparison": {
+    "performed": false,
+    "rulesBaseline": "strix-sensor-engine-v7.3-baseline",
+    "modelMacroF1": null,
+    "modelBrierScore": null,
+    "modelEce": null,
+    "reason": "No reviewed privacy-safe replay dataset or frozen independent test set is available."
+  },
+  "toolingValidation": {
+    "syntheticSmokeTestOnly": true,
+    "trainingAndEvaluationPipelineExecuted": true,
+    "syntheticMacroF1": 1,
+    "eligibleForAccuracyClaim": false
+  },
+  "nextGate": [
+    "Collect opt-in privacy-safe replay windows",
+    "Review labels under the documented protocol",
+    "Freeze grouped independent test split",
+    "Train and compare against the unchanged rules baseline"
+  ]
+}

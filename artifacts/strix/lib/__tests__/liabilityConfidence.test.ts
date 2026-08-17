@@ -12,11 +12,13 @@ const quietGyro: GyroscopeSnapshot = {
 };
 
 describe("A-6: ربط المسؤولية بالثقة", () => {
-  it("اصطدام أمامي واضح + اتجاه معاير ← نتيجة قاطعة بنطاق ضيّق", () => {
+  it("قاعدة غير مراجعة خارجيًا ← تبقى النتيجة تقديرية حتى مع أدلة قوية", () => {
     const r = calculateLiability("front", 3.0, 40, 20, null, quietGyro, 1, 0, "front", null, true);
     expect(r.confidence).toBe("high");
-    expect(r.isConclusive).toBe(true);
-    expect(r.faultRange).toEqual([100, 100]);
+    expect(r.isConclusive).toBe(false);
+    expect(r.faultRange).toEqual([75, 100]);
+    expect(r.confidenceModel.liability.conclusive).toBe(false);
+    expect(r.confidenceModel.liability.limitations).toContain("liability.rule-not-legally-reviewed");
     expect(r.rawFaultPercent).toBeGreaterThanOrEqual(0);
   });
 

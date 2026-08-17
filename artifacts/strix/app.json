@@ -35,7 +35,7 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.strix.app",
-      "buildNumber": "16",
+      "buildNumber": "17",
       "usesAppleSignIn": true
     },
     "android": {

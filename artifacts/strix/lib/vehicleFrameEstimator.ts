@@ -41,6 +41,20 @@
 
 import { THRESHOLDS } from "./thresholds";
 
+export type VehicleFrameSource =
+  | "accelerometer"
+  | "gps-speed"
+  | "gps-course"
+  | "gyroscope"
+  | "rotation-vector"
+  | "magnetometer";
+
+export interface VehicleFrameSourceStatus {
+  source: VehicleFrameSource;
+  observationCount: number;
+  lastObservedAtMs: number;
+}
+
 export interface VehicleFrameEstimate {
   /** إزاحة دوران الجوال حول المحور الرأسي نسبةً للسيارة (راديان) */
   yawOffsetRad: number;
@@ -54,6 +68,21 @@ export interface VehicleFrameEstimate {
   resultant: number;
   /** هل أكّدت المغناطيسية التقدير؟ */
   magnetometerAgrees: boolean;
+  /** عمر أحدث ملاحظة ساهمت في المعايرة. */
+  calibrationAgeMs: number | null;
+  /** المصادر التي ساهمت فعلياً، مع حداثتها وعدد ملاحظاتها. */
+  sources: VehicleFrameSourceStatus[];
+  /** سبب إبطال آخر معايرة، إن تحرك الهاتف. */
+  invalidatedReason: "phone-moved" | null;
+}
+
+export interface GpsFrameSample {
+  speedKmh: number;
+  timestampMs: number;
+  courseRad?: number | null;
+  /** دقة اتجاه GPS بالدرجات؛ القيم الكبيرة لا تُستخدم كدليل اتجاه. */
+  courseAccuracyDeg?: number | null;
+  speedAccuracyKmh?: number | null;
 }
 
 function wrapPi(a: number): number {
@@ -86,6 +115,21 @@ export class VehicleFrameEstimator {
   // تأكيد المغناطيسية (اختياري)
   private magObservations = 0;
   private magAgreements = 0;
+  private readonly sourceStats = new Map<VehicleFrameSource, VehicleFrameSourceStatus>();
+  private latestObservationTs = 0;
+  private lastGpsCourseRad: number | null = null;
+  private lastGpsCourseAccuracyDeg: number | null = null;
+  private invalidatedReason: "phone-moved" | null = null;
+
+  private noteSource(source: VehicleFrameSource, timestampMs: number): void {
+    const previous = this.sourceStats.get(source);
+    this.sourceStats.set(source, {
+      source,
+      observationCount: (previous?.observationCount ?? 0) + 1,
+      lastObservedAtMs: timestampMs,
+    });
+    this.latestObservationTs = Math.max(this.latestObservationTs, timestampMs);
+  }
 
   /**
    * تُستدعى لكل عيّنة تسارع (بعد التسوية بالجاذبية، قبل تدوير الـ yaw).
@@ -94,7 +138,7 @@ export class VehicleFrameEstimator {
    * @param _ts الطابع الزمني (ms) — محفوظ للتوسّع المستقبلي
    * @param yawRateDegS معدل الدوران اللحظي (deg/s) لبوّابة الانعطاف
    */
-  addAccelSample(ax: number, ay: number, _ts: number, yawRateDegS = 0): void {
+  addAccelSample(ax: number, ay: number, ts: number, yawRateDegS = 0): void {
     const a = THRESHOLDS.VF_ACCEL_EMA_ALPHA;
     if (!this.emaInit) {
       this.emaAx = ax;
@@ -105,6 +149,8 @@ export class VehicleFrameEstimator {
       this.emaAy = a * ay + (1 - a) * this.emaAy;
     }
     this.lastYawRateDegS = Math.abs(yawRateDegS);
+    this.noteSource("accelerometer", ts);
+    this.noteSource("gyroscope", ts);
   }
 
   /**
@@ -114,6 +160,24 @@ export class VehicleFrameEstimator {
    * @returns true إذا سُجّلت ملاحظة معايرة جديدة
    */
   addSpeedSample(speedKmh: number, ts: number): boolean {
+    return this.addGpsSample({ speedKmh, timestampMs: ts });
+  }
+
+  /** GPS speed/course input with explicit accuracy metadata. */
+  addGpsSample(sample: GpsFrameSample): boolean {
+    const { speedKmh, timestampMs: ts } = sample;
+    this.noteSource("gps-speed", ts);
+    if (
+      typeof sample.courseRad === "number"
+      && Number.isFinite(sample.courseRad)
+      && (sample.courseAccuracyDeg == null || sample.courseAccuracyDeg <= 35)
+      && speedKmh >= THRESHOLDS.VF_MIN_SPEED_KMH
+    ) {
+      this.lastGpsCourseRad = wrapPi(sample.courseRad);
+      this.lastGpsCourseAccuracyDeg = sample.courseAccuracyDeg ?? null;
+      this.noteSource("gps-course", ts);
+    }
+
     const prevSpeed = this.prevSpeedKmh;
     const prevTs = this.prevSpeedTs;
     this.prevSpeedKmh = speedKmh;
@@ -141,11 +205,31 @@ export class VehicleFrameEstimator {
     const forwardAngle = aLong > 0 ? measuredAngle : measuredAngle + Math.PI;
 
     // وزن الحدث = شدة التسارع الطولي (مُقيَّدة بسقف كي لا تهيمن الفرملة العنيفة)
-    const w = Math.min(Math.abs(aLong), THRESHOLDS.VF_EVENT_WEIGHT_CAP_MS2);
+    const speedAccuracyFactor = sample.speedAccuracyKmh == null
+      ? 1
+      : Math.max(0.25, 1 - sample.speedAccuracyKmh / 20);
+    const w = Math.min(Math.abs(aLong), THRESHOLDS.VF_EVENT_WEIGHT_CAP_MS2) * speedAccuracyFactor;
     this.sumSin += w * Math.sin(forwardAngle);
     this.sumCos += w * Math.cos(forwardAngle);
     this.sumWeight += w;
     this.events++;
+    this.invalidatedReason = null;
+    return true;
+  }
+
+  /** Direct high-quality yaw observation from rotation-vector + GPS course. */
+  addRotationVectorObservation(phoneHeadingRad: number, timestampMs: number): boolean {
+    if (this.lastGpsCourseRad === null) return false;
+    const accuracy = this.lastGpsCourseAccuracyDeg ?? 20;
+    if (accuracy > 35) return false;
+    const yaw = wrapPi(this.lastGpsCourseRad - phoneHeadingRad);
+    const weight = Math.max(0.5, 2 * (1 - accuracy / 45));
+    this.sumSin += weight * Math.sin(yaw);
+    this.sumCos += weight * Math.cos(yaw);
+    this.sumWeight += weight;
+    this.events++;
+    this.noteSource("rotation-vector", timestampMs);
+    this.invalidatedReason = null;
     return true;
   }
 
@@ -157,9 +241,10 @@ export class VehicleFrameEstimator {
    * @param phoneHeadingRad اتجاه الجوال المطلق (راديان، tilt-compensated)
    * @param vehicleCourseRad اتجاه حركة المركبة من GPS (راديان)
    */
-  addMagneticObservation(phoneHeadingRad: number, vehicleCourseRad: number): void {
+  addMagneticObservation(phoneHeadingRad: number, vehicleCourseRad: number, timestampMs = this.latestObservationTs): void {
     if (this.events < 1) return; // لا معنى للتأكيد قبل وجود تقدير أساسي
     this.magObservations++;
+    this.noteSource("magnetometer", timestampMs);
     // إزاحة yaw المتوقّعة من المغناطيسية = فرق الاتجاهين
     const magYaw = wrapPi(vehicleCourseRad - phoneHeadingRad);
     const accelYaw = this.rawYawOffset();
@@ -178,7 +263,7 @@ export class VehicleFrameEstimator {
   }
 
   /** التقدير الحالي لإطار السيارة */
-  getEstimate(): VehicleFrameEstimate {
+  getEstimate(nowMs = this.latestObservationTs): VehicleFrameEstimate {
     const eventCount = this.events;
     const resultant = this.resultant();
     const yawOffsetRad = wrapPi(this.rawYawOffset());
@@ -204,7 +289,24 @@ export class VehicleFrameEstimator {
       eventCount,
       resultant: Math.round(resultant * 100) / 100,
       magnetometerAgrees,
+      calibrationAgeMs: this.latestObservationTs > 0
+        ? Math.max(0, nowMs - this.latestObservationTs)
+        : null,
+      sources: [...this.sourceStats.values()].sort((a, b) => a.source.localeCompare(b.source)),
+      invalidatedReason: this.invalidatedReason,
     };
+  }
+
+  /** Invalidates yaw evidence after the phone is moved relative to its mount. */
+  invalidateCalibration(timestampMs = this.latestObservationTs): void {
+    this.sumSin = 0;
+    this.sumCos = 0;
+    this.sumWeight = 0;
+    this.events = 0;
+    this.magObservations = 0;
+    this.magAgreements = 0;
+    this.latestObservationTs = Math.max(this.latestObservationTs, timestampMs);
+    this.invalidatedReason = "phone-moved";
   }
 
   reset(): void {
@@ -220,6 +322,11 @@ export class VehicleFrameEstimator {
     this.events = 0;
     this.magObservations = 0;
     this.magAgreements = 0;
+    this.sourceStats.clear();
+    this.latestObservationTs = 0;
+    this.lastGpsCourseRad = null;
+    this.lastGpsCourseAccuracyDeg = null;
+    this.invalidatedReason = null;
   }
 }
 

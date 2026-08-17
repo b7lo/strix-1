@@ -7,6 +7,7 @@ import {
   type SensorRecorderOptions,
   type SensorReplayV1,
 } from "./types";
+import { getThresholdConfigVersion } from "../remoteConfig";
 
 const DEFAULT_MAX_SAMPLES = 60_000;
 const DEFAULT_MAX_DURATION_MS = 10 * 60 * 1000;
@@ -116,7 +117,7 @@ export class SensorRecorder {
     return {
       schemaVersion: SENSOR_REPLAY_SCHEMA_VERSION,
       engineVersion: SENSOR_REPLAY_ENGINE_VERSION,
-      thresholdConfigVersion: SENSOR_REPLAY_THRESHOLD_VERSION,
+      thresholdConfigVersion: getThresholdConfigVersion() || SENSOR_REPLAY_THRESHOLD_VERSION,
       sessionId: this.sessionId,
       startedAtMs: this.startedAtMs,
       durationMs: this.lastTMs,

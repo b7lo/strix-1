@@ -1,5 +1,6 @@
 import type { AlgorithmEvaluationFixture } from "../../evaluation/types";
 import { hardBrakingFixture } from "./negative/hardBraking";
+import { doorSlamFixture } from "./negative/doorSlam";
 import { phoneDropFixture } from "./negative/phoneDrop";
 import { singlePotholeFixture } from "./negative/singlePothole";
 import { smoothDriveFixture } from "./negative/smoothDrive";
@@ -15,4 +16,5 @@ export const algorithmBaselineFixtures: readonly AlgorithmEvaluationFixture[] = 
   hardBrakingFixture,
   singlePotholeFixture,
   phoneDropFixture,
+  doorSlamFixture,
 ];

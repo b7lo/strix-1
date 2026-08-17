@@ -12,6 +12,22 @@ import type WebSocket from "ws";
 
 let cached: SupabaseClient | null = null;
 
+/** الحد الأدنى المستخدم من عميل الخدمة، ويسمح بحقن بديل آمن في الاختبارات. */
+export interface SupabaseAdminLike {
+  auth: {
+    getUser(token: string): Promise<{
+      data: { user: { id: string } | null };
+      error: { message: string } | null;
+    }>;
+    admin: {
+      deleteUser(userId: string): Promise<{
+        data: unknown;
+        error: { message: string } | null;
+      }>;
+    };
+  };
+}
+
 /** هل عميل الخدمة مُهيّأ (متغيّرات البيئة مضبوطة)؟ */
 export function isSupabaseAdminConfigured(): boolean {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);

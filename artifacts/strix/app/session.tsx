@@ -67,7 +67,7 @@ export default function SessionScreen() {
 
   const handleStop = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    stopSession();
+    await stopSession();
     router.back();
   }, [stopSession]);
 

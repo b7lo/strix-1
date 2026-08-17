@@ -12,7 +12,12 @@
     "ios": "expo run:ios",
     "test": "jest",
     "evaluate:algorithm": "tsx scripts/evaluate-algorithm.ts",
-    "evaluate:rates": "tsx scripts/evaluate-sample-rates.ts"
+    "evaluate:rates": "tsx scripts/evaluate-sample-rates.ts",
+    "evaluate:phase6": "tsx scripts/evaluate-phase-6.ts",
+    "ml:extract": "tsx ml/extract-features.ts",
+    "ml:split": "tsx ml/split-dataset.ts",
+    "ml:train": "python3 ml/train-baseline.py",
+    "ml:evaluate": "python3 ml/evaluate.py"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

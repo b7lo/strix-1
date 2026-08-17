@@ -1,0 +1,16 @@
+{
+  "id": "confidence-unknown-weak",
+  "expected": {
+    "direction": [0, 44],
+    "scenario": [0, 44],
+    "liabilityConclusive": false
+  },
+  "input": {
+    "direction": "unknown",
+    "zone": "unknown",
+    "peakG": 1.6,
+    "speedKmh": 0,
+    "jerkPeak": 4,
+    "directionCalibrated": false
+  }
+}

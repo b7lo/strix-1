@@ -246,6 +246,25 @@ export declare const accidentsTable: import("drizzle-orm/pg-core").PgTableWithCo
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        localId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "local_id";
+            tableName: "accidents";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 100;
+        }>;
         matchedAccidentId: import("drizzle-orm/pg-core").PgColumn<{
             name: "matched_accident_id";
             tableName: "accidents";
@@ -558,6 +577,25 @@ export declare const insertAccidentSchema: import("drizzle-zod").BuildSchema<"in
         identity: undefined;
         generated: undefined;
     }, {}, {}>;
+    localId: import("drizzle-orm/pg-core").PgColumn<{
+        name: "local_id";
+        tableName: "accidents";
+        dataType: "string";
+        columnType: "PgVarchar";
+        data: string;
+        driverParam: string;
+        notNull: false;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: [string, ...string[]];
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {
+        length: 100;
+    }>;
     matchedAccidentId: import("drizzle-orm/pg-core").PgColumn<{
         name: "matched_accident_id";
         tableName: "accidents";
@@ -870,6 +908,25 @@ export declare const selectAccidentSchema: import("drizzle-zod").BuildSchema<"se
         identity: undefined;
         generated: undefined;
     }, {}, {}>;
+    localId: import("drizzle-orm/pg-core").PgColumn<{
+        name: "local_id";
+        tableName: "accidents";
+        dataType: "string";
+        columnType: "PgVarchar";
+        data: string;
+        driverParam: string;
+        notNull: false;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: [string, ...string[]];
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {
+        length: 100;
+    }>;
     matchedAccidentId: import("drizzle-orm/pg-core").PgColumn<{
         name: "matched_accident_id";
         tableName: "accidents";

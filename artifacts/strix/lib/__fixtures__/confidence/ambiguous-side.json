@@ -1,0 +1,17 @@
+{
+  "id": "confidence-side-ambiguous",
+  "expected": {
+    "direction": [0, 55],
+    "scenario": [0, 55],
+    "liabilityConclusive": false
+  },
+  "input": {
+    "direction": "side-right",
+    "zone": "side-right",
+    "peakG": 2.1,
+    "speedKmh": 20,
+    "jerkPeak": 12,
+    "directionCalibrated": false,
+    "zoneAmbiguity": 0.94
+  }
+}

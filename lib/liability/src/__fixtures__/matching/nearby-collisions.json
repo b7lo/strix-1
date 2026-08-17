@@ -1,0 +1,50 @@
+[
+  {
+    "name": "rear-end collision",
+    "expectedMatch": true,
+    "a": { "timestamp": 1000000, "latitude": 24.7136, "longitude": 46.6753, "gpsAccuracyMeters": 5, "approachAngle": 10, "travelHeadingDeg": 90, "impactPeakTimestamp": 1000020, "impactZone": "front" },
+    "b": { "timestamp": 1000120, "latitude": 24.71361, "longitude": 46.67531, "gpsAccuracyMeters": 6, "approachAngle": 12, "travelHeadingDeg": 92, "impactPeakTimestamp": 1000080, "impactZone": "rear" }
+  },
+  {
+    "name": "head-on collision",
+    "expectedMatch": true,
+    "a": { "timestamp": 2000000, "latitude": 24.7136, "longitude": 46.6753, "gpsAccuracyMeters": 8, "approachAngle": 20, "travelHeadingDeg": 0, "impactPeakTimestamp": 2000040, "impactZone": "front-left" },
+    "b": { "timestamp": 2000200, "latitude": 24.71362, "longitude": 46.6753, "gpsAccuracyMeters": 8, "approachAngle": 25, "travelHeadingDeg": 180, "impactPeakTimestamp": 2000110, "impactZone": "front-right" }
+  },
+  {
+    "name": "crossing side collision",
+    "expectedMatch": true,
+    "a": { "timestamp": 3000000, "latitude": 24.7136, "longitude": 46.6753, "gpsAccuracyMeters": 10, "approachAngle": 5, "travelHeadingDeg": 0, "impactPeakTimestamp": 3000020, "impactZone": "front" },
+    "b": { "timestamp": 3000300, "latitude": 24.71363, "longitude": 46.67532, "gpsAccuracyMeters": 9, "approachAngle": 8, "travelHeadingDeg": 90, "impactPeakTimestamp": 3000150, "impactZone": "side-left" }
+  },
+  {
+    "name": "strong non-GPS evidence",
+    "expectedMatch": true,
+    "a": { "timestamp": 4000000, "latitude": null, "longitude": null, "approachAngle": 0, "travelHeadingDeg": 90, "impactPeakTimestamp": 4000010, "impactZone": "front" },
+    "b": { "timestamp": 4000100, "latitude": null, "longitude": null, "approachAngle": 3, "travelHeadingDeg": 93, "impactPeakTimestamp": 4000060, "impactZone": "rear" }
+  },
+  {
+    "name": "both rear surfaces",
+    "expectedMatch": false,
+    "a": { "timestamp": 5000000, "latitude": 24.7136, "longitude": 46.6753, "gpsAccuracyMeters": 5, "approachAngle": 0, "travelHeadingDeg": 90, "impactPeakTimestamp": 5000010, "impactZone": "rear-left" },
+    "b": { "timestamp": 5000100, "latitude": 24.71361, "longitude": 46.67531, "gpsAccuracyMeters": 5, "approachAngle": 2, "travelHeadingDeg": 92, "impactPeakTimestamp": 5000060, "impactZone": "rear-right" }
+  },
+  {
+    "name": "different impact peaks",
+    "expectedMatch": false,
+    "a": { "timestamp": 6000000, "latitude": 24.7136, "longitude": 46.6753, "gpsAccuracyMeters": 5, "approachAngle": 0, "travelHeadingDeg": 90, "impactPeakTimestamp": 6000010, "impactZone": "front" },
+    "b": { "timestamp": 6000200, "latitude": 24.71361, "longitude": 46.67531, "gpsAccuracyMeters": 5, "approachAngle": 2, "travelHeadingDeg": 91, "impactPeakTimestamp": 6005010, "impactZone": "rear" }
+  },
+  {
+    "name": "rear-end with opposite headings",
+    "expectedMatch": false,
+    "a": { "timestamp": 7000000, "latitude": 24.7136, "longitude": 46.6753, "gpsAccuracyMeters": 5, "approachAngle": 0, "travelHeadingDeg": 0, "impactPeakTimestamp": 7000010, "impactZone": "front" },
+    "b": { "timestamp": 7000100, "latitude": 24.71361, "longitude": 46.67531, "gpsAccuracyMeters": 5, "approachAngle": 2, "travelHeadingDeg": 180, "impactPeakTimestamp": 7000060, "impactZone": "rear" }
+  },
+  {
+    "name": "missing GPS with angle only",
+    "expectedMatch": false,
+    "a": { "timestamp": 8000000, "latitude": null, "longitude": null, "approachAngle": 10 },
+    "b": { "timestamp": 8000100, "latitude": null, "longitude": null, "approachAngle": 12 }
+  }
+]

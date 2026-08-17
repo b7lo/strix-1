@@ -23,7 +23,8 @@
  * ═══════════════════════════════════════════════════════════════════
  */
 
-import type { ImpactZone, ImpactDirection, GyroscopeSnapshot, BrakingAnalysis } from "./types";
+import type { ImpactZone, ImpactDirection, ImpactZoneDistribution, GyroscopeSnapshot, BrakingAnalysis } from "./types";
+import { calculateImpactZoneDistribution } from "./impact/zoneProbability";
 import { zoneToDirection } from "./types";
 import { KalmanFilter3D, AdaptiveBaseline, FrequencySeparator } from "./kalmanFilter";
 import { THRESHOLDS } from "./thresholds";
@@ -266,6 +267,13 @@ class TimeWindowBuffer<T extends { ts: number }> {
   // Iterate over elements (from oldest to newest)
   forEach(callback: (item: T) => void) {
     for (let i = 0; i < this.length; i++) {
+      callback(this.buffer[(this.tail + i) % this.capacity]);
+    }
+  }
+
+  forEachRecent(count: number, callback: (item: T) => void): void {
+    const elementsToVisit = Math.min(Math.max(0, count), this.length);
+    for (let i = this.length - elementsToVisit; i < this.length; i++) {
       callback(this.buffer[(this.tail + i) % this.capacity]);
     }
   }
@@ -784,6 +792,11 @@ export function setPhoneYawOffset(offsetRad: number): void {
   sensorEngine.phoneYawCalibrated = true;
 }
 
+export function clearPhoneYawCalibration(): void {
+  sensorEngine.phoneYawOffset = 0;
+  sensorEngine.phoneYawCalibrated = false;
+}
+
 export function getPhoneYawOffset(): number { return sensorEngine.phoneYawOffset; }
 
 /** A-3: هل تمت معايرة اتجاه الجوال نسبةً للسيارة؟ (تُستخدم لتقييد الثقة بصدق) */
@@ -965,37 +978,32 @@ function getWindowedYaw(): { yawDeg: number; hasData: boolean } {
   return { yawDeg: maxYaw, hasData: true };
 }
 
-export function detectImpactZone(filtered: FilteredReading): ImpactZone {
+function getImpactSourceVector(filtered: FilteredReading): { x: number; y: number } {
   // ═══════════════════════════════════════════
   // v6.1: تحويل من إطار الجهاز إلى إطار المركبة
   // يعمل مع كل وضعيات الجوال (مسطح، عمودي، أفقي)
   // ═══════════════════════════════════════════
   const vehicle = mapToVehicleFrame(filtered);
 
-  const absX = Math.abs(vehicle.vX);
-  const absY = Math.abs(vehicle.vY);
-  const totalXY = absX + absY;
-
-  if (totalXY < 0.05) return "unknown";
-
-  // المعدل المرجّح من آخر 8 عينات قوية (في إطار المركبة)
-  const recentHigh = sensorEngine.ringBuffer.sliceFromEnd(8).filter(s => s.gForce > 0.5);
-
   let avgX = vehicle.vX;
   let avgY = vehicle.vY;
 
-  if (recentHigh.length >= 3) {
-    let wX = 0, wY = 0, totalW = 0;
-    for (const s of recentHigh) {
+  let strongCount = 0;
+  let wX = 0;
+  let wY = 0;
+  let totalW = 0;
+  sensorEngine.ringBuffer.forEachRecent(8, (s) => {
+    if (s.gForce > 0.5) {
       const sv = mapToVehicleFrame(s.filtered);
       wX += sv.vX * s.gForce;
       wY += sv.vY * s.gForce;
       totalW += s.gForce;
+      strongCount++;
     }
-    if (totalW > 0) {
-      avgX = wX / totalW;
-      avgY = wY / totalW;
-    }
+  });
+  if (strongCount >= 3 && totalW > 0) {
+    avgX = wX / totalW;
+    avgY = wY / totalW;
   }
 
   // عكس المحاور (قانون نيوتن الثالث)
@@ -1003,6 +1011,28 @@ export function detectImpactZone(filtered: FilteredReading): ImpactZone {
   // فنعكسها لنحصل على اتجاه المصدر
   avgX = -avgX;
   avgY = -avgY;
+
+  return { x: avgX, y: avgY };
+}
+
+export function detectImpactZoneDistribution(
+  filtered: FilteredReading,
+  calibrationConfidence = 100,
+): ImpactZoneDistribution {
+  const source = getImpactSourceVector(filtered);
+  return calculateImpactZoneDistribution(source.x, source.y, calibrationConfidence);
+}
+
+export function detectImpactZone(filtered: FilteredReading): ImpactZone {
+  // impactZone يبقى argmax للتوافق مع التخزين والشاشات القديمة.
+  return detectImpactZoneDistribution(filtered).primaryZone;
+}
+
+/** Legacy hard-boundary classifier kept only for comparison reports. */
+export function detectImpactZoneLegacy(filtered: FilteredReading): ImpactZone {
+  const source = getImpactSourceVector(filtered);
+  const avgX = source.x;
+  const avgY = source.y;
 
   const aX = Math.abs(avgX);
   const aY = Math.abs(avgY);
@@ -1061,14 +1091,21 @@ export function recordImpact(): number {
   const now = Date.now();
   sensorEngine.impactTimestamps.push(now);
   const cutoff = now - MULTI_IMPACT_WINDOW_MS;
-  sensorEngine.impactTimestamps = sensorEngine.impactTimestamps.filter((t) => t >= cutoff);
+  while (sensorEngine.impactTimestamps.length > 0 && sensorEngine.impactTimestamps[0] < cutoff) {
+    sensorEngine.impactTimestamps.shift();
+  }
   return sensorEngine.impactTimestamps.length;
 }
 
 export function getImpactCount(): number {
   const now = Date.now();
   const cutoff = now - MULTI_IMPACT_WINDOW_MS;
-  return sensorEngine.impactTimestamps.filter((t) => t >= cutoff).length;
+  let count = 0;
+  for (let index = sensorEngine.impactTimestamps.length - 1; index >= 0; index--) {
+    if (sensorEngine.impactTimestamps[index] < cutoff) break;
+    count++;
+  }
+  return count;
 }
 
 // ─── تشخيص (v6: موسّع) ───

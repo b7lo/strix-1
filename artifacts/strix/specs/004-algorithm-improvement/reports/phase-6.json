@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "phase": 6,
+  "generatedAt": "2026-08-17T01:34:44.759Z",
+  "matching": {
+    "fixtureCount": 8,
+    "confusionMatrix": {
+      "truePositive": 4,
+      "trueNegative": 4,
+      "falsePositive": 0,
+      "falseNegative": 0
+    },
+    "precision": 1,
+    "recall": 1
+  },
+  "performance": {
+    "benchmarkSamples": 50000,
+    "targetSampleRateHz": 100,
+    "samplePeriodMs": 10,
+    "p50Ms": 0.0010310000000117725,
+    "p95Ms": 0.0016640000000052169,
+    "maxMs": 0.3834410000000048,
+    "safeMarginAtP95Ms": 9.998335999999995,
+    "retainedProfilerSamples": 4096,
+    "profilerCapacity": 4096,
+    "sensorBufferLength": 1000,
+    "sensorBufferCapacity": 1000,
+    "boundedMemory": true
+  },
+  "battery": {
+    "sensorRateHz": 100,
+    "uiUpdateRateLimitHz": 10,
+    "magnetometerRateHz": 5,
+    "deviceMotionRateHz": 5,
+    "measuredOnPhysicalDevice": false,
+    "note": "Battery drain requires a controlled physical-device run; this report verifies rate limiting only."
+  }
+}

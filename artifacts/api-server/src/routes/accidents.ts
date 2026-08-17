@@ -6,6 +6,7 @@ import {
   MATCH,
   type CrossReport,
   type ImpactZone as CrossImpactZone,
+  type MatchInput,
 } from "@workspace/liability";
 
 type AccidentSeverity = "critical" | "severe" | "moderate" | "minor";
@@ -68,9 +69,13 @@ type CreateAccidentBody = {
 type MatchAccidentBody = {
   deviceId: string;
   timestamp: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   approachAngle: number;
+  gpsAccuracyMeters: number | null;
+  travelHeadingDeg: number | null;
+  impactPeakTimestamp: number | null;
+  impactZone: ImpactZone | null;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -140,11 +145,21 @@ function parseMatchAccidentBody(body: unknown): MatchAccidentBody | null {
   const approachAngle = body.approachAngle;
 
   if (!deviceId || Number.isNaN(new Date(timestamp).getTime())) return null;
-  if (typeof latitude !== "number" || !Number.isFinite(latitude)) return null;
-  if (typeof longitude !== "number" || !Number.isFinite(longitude)) return null;
   if (typeof approachAngle !== "number" || !Number.isFinite(approachAngle)) return null;
 
-  return { deviceId, timestamp, latitude, longitude, approachAngle };
+  return {
+    deviceId,
+    timestamp,
+    latitude: numberOrNull(latitude),
+    longitude: numberOrNull(longitude),
+    approachAngle,
+    gpsAccuracyMeters: numberOrNull(body.gpsAccuracyMeters),
+    travelHeadingDeg: numberOrNull(body.travelHeadingDeg),
+    impactPeakTimestamp: numberOrNull(body.impactPeakTimestamp),
+    impactZone: impactZoneValues.has(body.impactZone as ImpactZone)
+      ? body.impactZone as ImpactZone
+      : null,
+  };
 }
 
 async function getDb() {
@@ -178,6 +193,30 @@ function toCrossReport(row: {
     preCrashSpeedKmh:
       typeof rj.preCrashSpeedKmh === "number" ? rj.preCrashSpeedKmh : null,
     braking,
+    gpsAccuracyMeters: numberOrNull(rj.gpsAccuracyMeters),
+    travelHeadingDeg: numberOrNull(rj.travelHeadingDeg),
+    impactPeakTimestamp: numberOrNull(rj.impactPeakTimestamp),
+  };
+}
+
+function toMatchInput(row: {
+  timestamp: Date;
+  latitude: number | null;
+  longitude: number | null;
+  approachAngle: number;
+  impactZone: string;
+  reportJson: unknown;
+}): MatchInput {
+  const report = isRecord(row.reportJson) ? row.reportJson : {};
+  return {
+    timestamp: row.timestamp.getTime(),
+    latitude: row.latitude,
+    longitude: row.longitude,
+    approachAngle: row.approachAngle,
+    gpsAccuracyMeters: numberOrNull(report.gpsAccuracyMeters),
+    travelHeadingDeg: numberOrNull(report.travelHeadingDeg),
+    impactPeakTimestamp: numberOrNull(report.impactPeakTimestamp),
+    impactZone: row.impactZone as CrossImpactZone,
   };
 }
 
@@ -190,24 +229,25 @@ router.post("/accidents", async (req, res, next) => {
 
   try {
     const { db, accidentsTable } = await getDb();
+    const accidentValues: typeof accidentsTable.$inferInsert = {
+      deviceId: parsed.deviceId,
+      userId: parsed.userId,
+      timestamp: new Date(parsed.timestamp),
+      latitude: parsed.latitude,
+      longitude: parsed.longitude,
+      peakGForce: parsed.peakGForce,
+      impactZone: parsed.impactZone,
+      impactDirection: parsed.impactDirection,
+      speedKmh: parsed.speedKmh,
+      jerkPeak: parsed.jerkPeak,
+      approachAngle: parsed.approachAngle,
+      severity: parsed.severity,
+      reportJson: parsed.reportJson,
+      localId: parsed.localId,
+    };
     const [created] = await db
       .insert(accidentsTable)
-      .values({
-        deviceId: parsed.deviceId,
-        userId: parsed.userId,
-        timestamp: new Date(parsed.timestamp),
-        latitude: parsed.latitude,
-        longitude: parsed.longitude,
-        peakGForce: parsed.peakGForce,
-        impactZone: parsed.impactZone,
-        impactDirection: parsed.impactDirection,
-        speedKmh: parsed.speedKmh,
-        jerkPeak: parsed.jerkPeak,
-        approachAngle: parsed.approachAngle,
-        severity: parsed.severity,
-        reportJson: parsed.reportJson,
-        localId: parsed.localId,
-      })
+      .values(accidentValues)
       .returning({ id: accidentsTable.id });
 
     res.status(201).json({ id: created.id });
@@ -259,22 +299,12 @@ router.post("/accidents/:id/match", async (req, res, next) => {
       .limit(50);
 
     // نختار أفضل مطابقة (أعلى ثقة) لا أوّل مطابقة تُصادَف.
-    const ownMatchInput = {
-      timestamp: crashTime,
-      latitude: own.latitude,
-      longitude: own.longitude,
-      approachAngle: own.approachAngle,
-    };
+    const ownMatchInput = toMatchInput(own);
 
     let best: { candidate: (typeof candidates)[number]; confidence: number; distanceMeters: number; timeDiffMs: number } | null = null;
 
     for (const candidate of candidates) {
-      const score = scoreMatch(ownMatchInput, {
-        timestamp: candidate.timestamp.getTime(),
-        latitude: candidate.latitude,
-        longitude: candidate.longitude,
-        approachAngle: candidate.approachAngle,
-      });
+      const score = scoreMatch(ownMatchInput, toMatchInput(candidate));
       if (!score.isMatch) continue;
       if (!best || score.confidence > best.confidence) {
         best = {

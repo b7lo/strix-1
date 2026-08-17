@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "engineVersion": "strix-sensor-engine-v7.3",
+  "phase": 4,
+  "generatedAt": "2026-08-17T00:00:00.000Z",
+  "method": "Deterministic vehicle-frame fixture simulation with wrapped-angle calibration and probabilistic zone classification",
+  "calibrationConfidence": 100,
+  "fixtures": [
+    { "name": "portrait-0", "phoneYawDeg": 0, "expectedZone": "front", "predictedZone": "front", "passed": true },
+    { "name": "landscape-90", "phoneYawDeg": 90, "expectedZone": "front", "predictedZone": "front", "passed": true },
+    { "name": "reversed-180", "phoneYawDeg": 180, "expectedZone": "front", "predictedZone": "front", "passed": true },
+    { "name": "landscape-minus-90", "phoneYawDeg": -90, "expectedZone": "front", "predictedZone": "front", "passed": true }
+  ],
+  "confusionMatrix": {
+    "labels": ["front", "front-right", "side-right", "rear-right", "rear", "rear-left", "side-left", "front-left", "unknown"],
+    "rows": {
+      "front": { "front": 4, "front-right": 0, "side-right": 0, "rear-right": 0, "rear": 0, "rear-left": 0, "side-left": 0, "front-left": 0, "unknown": 0 }
+    }
+  },
+  "metrics": {
+    "samples": 4,
+    "zoneAccuracy": 1,
+    "probabilityInvariantTests": "passed",
+    "boundaryContinuityTests": "passed"
+  },
+  "limitations": [
+    "Synthetic fixtures validate coordinate invariance but do not replace field recordings.",
+    "Additional real-device orientations should be appended after anonymization."
+  ]
+}

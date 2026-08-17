@@ -1,17 +1,18 @@
 import {
   findPeakZone,
   getAdjustedThreshold,
+  getGyroscopeSnapshot,
   isEngineReady,
-  isInstantStrongCrash,
   recordGyroscopeSample,
   recordSample,
-  registerThresholdCrossing,
-  resetCrashStreak,
   resetFilter,
   setSampleRate,
   updateCurrentSpeed,
   validateCrashWithGyro,
 } from "../sensorUtils";
+import { ImpactStateMachine } from "../impact/impactStateMachine";
+import { MotionSignalProcessor } from "../signal/motionSignal";
+import type { ImpactSignal } from "../signal/types";
 import { calculateEvaluationMetrics } from "./metrics";
 import type {
   AlgorithmEvaluationFixture,
@@ -19,7 +20,7 @@ import type {
   AlgorithmPrediction,
 } from "./types";
 
-export const BASELINE_ENGINE_VERSION = "strix-sensor-engine-v7.3-baseline";
+export const BASELINE_ENGINE_VERSION = "strix-sensor-engine-v8.0-impact-state-machine";
 const FIXED_CLOCK_START_MS = 1_700_000_000_000;
 const WARMUP_SECONDS = 5;
 
@@ -32,6 +33,8 @@ function runFixture(fixture: AlgorithmEvaluationFixture): AlgorithmPrediction {
     resetFilter();
     setSampleRate(fixture.sampleRateHz);
     updateCurrentSpeed(fixture.speedKmh);
+    const impactStateMachine = new ImpactStateMachine();
+    const motionProcessor = new MotionSignalProcessor();
 
     const sampleIntervalMs = 1000 / fixture.sampleRateHz;
     const warmupSamples = Math.ceil(WARMUP_SECONDS * fixture.sampleRateHz);
@@ -39,7 +42,6 @@ function runFixture(fixture: AlgorithmEvaluationFixture): AlgorithmPrediction {
     for (let index = 0; index < warmupSamples; index++) {
       clockMs = FIXED_CLOCK_START_MS + index * sampleIntervalMs;
       recordSample(0, { x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }, clockMs);
-      registerThresholdCrossing(false);
     }
 
     const eventStartMs = FIXED_CLOCK_START_MS + warmupSamples * sampleIntervalMs;
@@ -54,40 +56,58 @@ function runFixture(fixture: AlgorithmEvaluationFixture): AlgorithmPrediction {
       clockMs = eventStartMs + sample.atMs;
       if (sample.gyro) recordGyroscopeSample(sample.gyro, clockMs);
 
+      const raw = sample.raw ?? { x: sample.filtered.x, y: sample.filtered.y - 1, z: sample.filtered.z };
       recordSample(
         sample.gForce,
         sample.filtered,
-        sample.raw ?? { x: sample.filtered.x, y: sample.filtered.y - 1, z: sample.filtered.z },
+        raw,
         clockMs,
       );
 
       const adjustedThreshold = getAdjustedThreshold(fixture.baseCrashThreshold);
-      const aboveThreshold = sample.gForce >= adjustedThreshold;
-      const confirmed =
-        registerThresholdCrossing(aboveThreshold) ||
-        isInstantStrongCrash(sample.gForce, adjustedThreshold);
-
-      if (!confirmed || !isEngineReady()) continue;
-
       const validation = validateCrashWithGyro(
         sample.gForce,
         fixture.speedKmh,
         fixture.gyroThreshold,
         fixture.baseCrashThreshold,
       );
+      const impact: ImpactSignal = {
+        timestampMs: clockMs,
+        dtSec: sampleIntervalMs / 1000,
+        raw,
+        gravity: {
+          x: raw.x - sample.filtered.x,
+          y: raw.y - sample.filtered.y,
+          z: raw.z - sample.filtered.z,
+        },
+        linearAcceleration: sample.filtered,
+        magnitudeG: sample.gForce,
+        accelerometerSaturated: Math.max(Math.abs(raw.x), Math.abs(raw.y), Math.abs(raw.z)) >= 15,
+        minimumPeakG: null,
+      };
+      if (impact.accelerometerSaturated) impact.minimumPeakG = impact.magnitudeG;
+      const transitions = impactStateMachine.process({
+        impact,
+        motion: motionProcessor.process(impact),
+        thresholdG: adjustedThreshold,
+        engineReady: isEngineReady(),
+        speedKmh: fixture.speedKmh,
+        gyroPeakDegS: getGyroscopeSnapshot().peakRotationRate,
+        gyroValidationPassed: validation.isValid,
+        dataQualityScore: 100,
+      });
 
-      if (validation.isValid) {
+      const confirmation = transitions.find((transition) => transition.decision === "confirmed");
+      if (confirmation) {
         const peak = findPeakZone();
         prediction = {
           fixtureId: fixture.id,
           detectedCrash: true,
           predictedZone: peak.zone,
-          confidence: Math.round(validation.confidence * 100) / 100,
+          confidence: confirmation.confidence,
         };
         break;
       }
-
-      resetCrashStreak();
     }
 
     return prediction;

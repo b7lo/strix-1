@@ -1,3 +1,6 @@
+import type { AccidentConfidenceModel } from "./confidence/types";
+import type { EvidenceItem, ScenarioHypothesis } from "./scenario/types";
+
 /**
  * نظام مناطق الاصطدام — 8 مناطق (دقة مثالية لحساسات الجوال)
  *
@@ -31,6 +34,17 @@ export type ImpactDirection =
   | "side-left"
   | "side-right"
   | "unknown";
+
+export interface ImpactZoneDistribution {
+  /** احتمالات جميع المناطق؛ قيم منتهية وغير سالبة ومجموعها 1. */
+  probabilities: Record<ImpactZone, number>;
+  /** المنطقة المتوافقة خلفياً مع الحقل impactZone. */
+  primaryZone: ImpactZone;
+  /** ثاني أعلى منطقة عندما تكون دلالتها مفيدة. */
+  alternativeZone: ImpactZone | null;
+  /** مقدار تقارب أول احتمالين (0 واضح، 1 شديد الالتباس). */
+  ambiguity: number;
+}
 
 export type Confidence = "high" | "medium" | "low";
 export type FeedbackType = "correct" | "incorrect" | null;
@@ -77,6 +91,8 @@ export interface ConfidenceDetails {
 export interface AccidentReport {
   id: string;
   timestamp: number;
+  /** إصدار العتبات الفعّال عند إنشاء التقرير. */
+  thresholdConfigVersion?: string;
   syncStatus?: "synced" | "pending" | "failed";
 
   // ─── بيانات التسارع الأساسية ───
@@ -85,6 +101,8 @@ export interface AccidentReport {
 
   // ─── منطقة الاصطدام (v6.1 — 8 مناطق) ───
   impactZone: ImpactZone;
+  /** توزيع احتمالي صريح بدل إخفاء عدم اليقين في منطقة واحدة. */
+  impactZoneDistribution?: ImpactZoneDistribution;
   /** للتوافق مع الشاشات القديمة */
   impactDirection: ImpactDirection;
 
@@ -97,6 +115,12 @@ export interface AccidentReport {
   // ─── الموقع ───
   latitude: number | null;
   longitude: number | null;
+  /** دقة GPS الأفقية بالمتر لحظة الحادث. */
+  gpsAccuracyMeters?: number | null;
+  /** اتجاه حركة المركبة من GPS بالدرجات لحظة الحادث. */
+  travelHeadingDeg?: number | null;
+  /** توقيت أعلى قمة صدمة بالمِلّي ثانية (epoch). */
+  impactPeakTimestamp?: number | null;
 
   // ─── التحليل ───
   severity: Severity;
@@ -162,6 +186,15 @@ export interface AccidentReport {
   dataQualityLimitations?: string[];
   /** ثقة معايرة اتجاه الجوال نسبةً للسيارة لحظة الحادث (0..100) */
   directionCalibrationConfidence?: number;
+
+  // ─── Phase 5: ثقة مفصولة + قاعدة قابلة للتفسير ───
+  confidenceModel?: AccidentConfidenceModel;
+  scenarioHypothesis?: ScenarioHypothesis;
+  alternativeScenarios?: ScenarioHypothesis[];
+  liabilityRuleId?: string;
+  liabilityRuleReviewed?: boolean;
+  liabilityEvidence?: EvidenceItem[];
+  liabilityLimitations?: string[];
 }
 
 /**
@@ -180,6 +213,8 @@ export interface CrossVerifiedAnalysis {
   consistency_flags: string[];
   liability_a_percent: number;
   liability_b_percent: number;
+  rule_id?: string;
+  evidence?: string[];
   created_at: number;
 }
 

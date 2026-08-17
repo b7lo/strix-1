@@ -26,11 +26,20 @@ import type {
   AdvancedAnalysisResult,
   OtherPartyAnalysis,
   CrossVerifiedAnalysis,
+  ImpactZoneDistribution,
 } from "./types";
 import { ZONE_LABELS_AR } from "./types";
 import i18n from "./i18n";
 import { DynamicText } from "./dynamicTextGenerator";
 import { THRESHOLDS } from "./thresholds";
+import { calculateDirectionConfidence } from "./confidence/directionConfidence";
+import { calculateEventConfidence } from "./confidence/eventConfidence";
+import { calculateLiabilityConfidence } from "./confidence/liabilityConfidence";
+import { calculateScenarioConfidence } from "./confidence/scenarioConfidence";
+import { confidenceLevel, type AccidentConfidenceModel } from "./confidence/types";
+import { inferScenario } from "./scenario/scenarioInference";
+import type { EvidenceItem, ScenarioHypothesis } from "./scenario/types";
+import { findLiabilityRule } from "./liability/ruleRegistry";
 
 export interface LiabilityResult {
   userFaultPercent: number;
@@ -50,6 +59,19 @@ export interface LiabilityResult {
   isConclusive: boolean;
   /** A-6: نطاق المسؤولية عند عدم القطعية [أدنى, أعلى] */
   faultRange: [number, number];
+  confidenceModel: AccidentConfidenceModel;
+  scenarioHypothesis: ScenarioHypothesis;
+  alternativeScenarios: ScenarioHypothesis[];
+  ruleId: string;
+  ruleReviewed: boolean;
+  evidence: EvidenceItem[];
+  limitations: string[];
+}
+
+export interface LiabilityConfidenceContext {
+  dataQualityScore: number;
+  directionCalibrationConfidence: number;
+  accelerometerSaturated?: boolean;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -367,7 +389,8 @@ function analyzeCornerRear(
 //  - PARKING = زحف بطيء فعلي [STATIONARY_SPEED, SPEED_MANEUVER) — لا مركبة واقفة
 //    تماماً (< STATIONARY_SPEED)، كي لا تُنتزع حالة "صُدمت وأنت واقف".
 //  - كل السيناريوهات الجانبية تشترط اصطداماً جانبياً صريحاً.
-function classifyNewScenario(
+function materializeSpecificScenario(
+  scenarioCode: string,
   direction: ImpactDirection,
   zone: ImpactZone,
   g: number,
@@ -390,12 +413,7 @@ function classifyNewScenario(
     !!gyro && gyro.dominantAxis === "yaw" && gyro.yawRate > THRESHOLDS.HIGH_YAW_RATE;
 
   // 1) DOOR_OPENING — الأكثر تحديداً: صدمة جانبية خفيفة جداً، شبه واقف، بلا تغيير مسار
-  if (
-    isSide &&
-    g <= THRESHOLDS.DOOR_OPENING_MAX_G &&
-    speed <= THRESHOLDS.STATIONARY_SPEED &&
-    !laneChangeConfirmed
-  ) {
+  if (scenarioCode.startsWith("DOOR_OPENING_")) {
     return {
       fault: 20,
       code: `DOOR_OPENING_${sideKey}`,
@@ -405,8 +423,8 @@ function classifyNewScenario(
   }
 
   // 2) INTERSECTION_ROW — تقاطع + اصطدام جانبي (الأولوية تحدد الاتجاه)
-  if (isSide && road?.roadType === "intersection") {
-    if (road.hasPriority) {
+  if (scenarioCode.startsWith("INTERSECTION_ROW_")) {
+    if (scenarioCode === "INTERSECTION_ROW_PRIORITY") {
       return {
         fault: 25,
         code: "INTERSECTION_ROW_PRIORITY",
@@ -423,12 +441,7 @@ function classifyNewScenario(
   }
 
   // 3) U_TURN — دوران Yaw مرتفع مستدام (فوق عتبة تغيير المسار العادية)
-  if (
-    !!gyro && gyro.dominantAxis === "yaw" &&
-    gyro.yawRate >= THRESHOLDS.U_TURN_YAW_RATE &&
-    (gyro.yawSustainedDurationMs ?? 0) >= THRESHOLDS.U_TURN_MIN_DURATION_MS &&
-    speed >= THRESHOLDS.MIN_SPEED_LANE_CHANGE
-  ) {
+  if (scenarioCode === "U_TURN") {
     return {
       fault: 65,
       code: "U_TURN",
@@ -438,7 +451,7 @@ function classifyNewScenario(
   }
 
   // 4) LANE_MERGE — اصطدام جانبي مع تأكيد تغيير مسار من المستخدم (دون عتبة U-turn)
-  if (isSide && laneChangeConfirmed) {
+  if (scenarioCode.startsWith("LANE_MERGE_")) {
     return {
       fault: 60,
       code: `LANE_MERGE_${sideKey}`,
@@ -448,11 +461,7 @@ function classifyNewScenario(
   }
 
   // 5) PARKING_MANEUVER — زحف بطيء فعلي (ليس أمامي/خلفي مباشر، ولا واقف تماماً)
-  if (
-    !isRear && !isFrontDirect &&
-    speed >= THRESHOLDS.STATIONARY_SPEED &&
-    speed < THRESHOLDS.SPEED_MANEUVER
-  ) {
+  if (scenarioCode === "PARKING_MANEUVER") {
     return {
       fault: 50,
       code: "PARKING_MANEUVER",
@@ -479,7 +488,9 @@ export function calculateLiability(
   directionCalibrated = true,
   // ── إضافات Axis 2 (اختيارية، تحافظ على التوافق الخلفي) ──
   otherParty: OtherPartyAnalysis | null = null,
-  crossVerified: CrossVerifiedAnalysis | null = null
+  crossVerified: CrossVerifiedAnalysis | null = null,
+  zoneDistribution: ImpactZoneDistribution | null = null,
+  confidenceContext: LiabilityConfidenceContext | null = null
 ): LiabilityResult {
   // تعويض baseline G (اهتزازات الطريق) — مع حارس التناهي (sanitize) لضمان P2/P12
   const sanitize = (n: number) => (Number.isFinite(n) ? n : 0);
@@ -492,6 +503,16 @@ export function calculateLiability(
 
   const severity = classifySeverity(g, speed);
   const confidenceDetails = buildConfidenceDetails(direction, g, speed, jerk, gyro, braking, seed);
+  const scenarioInference = inferScenario({
+    direction,
+    zone,
+    peakG: g,
+    speedKmh: speed,
+    jerkPeak: jerk,
+    gyroscope: gyro,
+    braking,
+    advancedAnalysis,
+  });
 
   // A-6: إذا لم يُعاير اتجاه الجوال نسبةً للسيارة، لا نسمح بثقة "عالية"
   // (الاتجاه/المنطقة تقديري حينها → نكون صادقين بدل ادّعاء القطعية).
@@ -504,7 +525,16 @@ export function calculateLiability(
 
   // Axis 3: السيناريوهات الجديدة تُقيَّم أولاً (الأكثر تحديداً). عند عدم التطابق
   // نسقط للمحلّلات القائمة دون تغيير سلوكها.
-  const newScenario = classifyNewScenario(direction, zone, g, speed, gyro, advancedAnalysis, seed);
+  const newScenario = materializeSpecificScenario(
+    scenarioInference.primary.scenarioCode,
+    direction,
+    zone,
+    g,
+    speed,
+    gyro,
+    advancedAnalysis,
+    seed,
+  );
   if (newScenario) {
     analyzed = newScenario;
   } else if (zone === "front-left" || zone === "front-right") {
@@ -527,6 +557,15 @@ export function calculateLiability(
         i18n.t("liability.unknownFactor2"),
       ],
     };
+  }
+
+  // Scenario inference is independent from fault assignment. Keep legacy
+  // scenario materialization for text/fault compatibility, but publish the
+  // independently inferred hypothesis and use its rule metadata below.
+  if (scenarioInference.primary.scenarioCode !== analyzed.code &&
+      scenarioInference.primary.scenarioCode !== "UNKNOWN" &&
+      !analyzed.code.startsWith("SIDE_")) {
+    scenarioInference.alternatives.unshift(scenarioInference.primary);
   }
 
   // Axis 3: الاصطدام المتسلسل (Chain Collision) — Req 11.
@@ -655,9 +694,76 @@ export function calculateLiability(
 
   const otherFault = 100 - userFault;
 
+  const rule = findLiabilityRule(analyzed.code);
+  const dataQualityScore = clamp(
+    confidenceContext?.dataQualityScore ?? (directionCalibrated ? 85 : 55),
+    0,
+    100,
+  );
+  const accelerometerSaturated = confidenceContext?.accelerometerSaturated === true;
+  const dataQualityConfidence = {
+    kind: "data-quality" as const,
+    score: dataQualityScore,
+    level: confidenceLevel(dataQualityScore),
+    reasons: [{ code: "dq.aggregate", effect: "increase" as const, weight: dataQualityScore }],
+    limitations: [
+      ...(!directionCalibrated ? ["dq.directionUncalibrated"] : []),
+      ...(accelerometerSaturated ? ["dq.accelSaturated"] : []),
+    ],
+    accelerometerSaturated,
+    peakGIsLowerBound: accelerometerSaturated,
+    minimumPeakG: accelerometerSaturated ? g : null,
+  };
+  const eventConfidence = calculateEventConfidence({
+    decision: "confirmed",
+    evidenceConfidence: confidenceDetails.score,
+    peakToThresholdRatio: g / Math.max(0.1, THRESHOLDS.G_MODERATE),
+    dataQualityScore: dataQualityConfidence.score,
+    engineReady: true,
+    accelerometerSaturated,
+  });
+  const directionConfidence = calculateDirectionConfidence({
+    calibrated: directionCalibrated,
+    calibrationConfidence: confidenceContext?.directionCalibrationConfidence ?? (directionCalibrated ? 100 : 20),
+    distribution: zoneDistribution,
+  });
+  const requiredScores = scenarioInference.primary.evidence
+    .filter((item) => item.required)
+    .map((item) => item.strength);
+  const scenarioConfidence = calculateScenarioConfidence({
+    evidenceScore: scenarioInference.primary.confidence,
+    eventScore: eventConfidence.score,
+    directionScore: directionConfidence.score,
+    requiredEvidenceScores: requiredScores,
+    hypothesisCount: 1 + scenarioInference.alternatives.length,
+    conflicting: scenarioInference.conflicting,
+  });
+  const liabilityConfidence = calculateLiabilityConfidence({
+    scenarioScore: scenarioConfidence.score,
+    dataQualityScore: dataQualityConfidence.score,
+    directionScore: directionConfidence.score,
+    ruleId: rule.id,
+    ruleReviewed: rule.reviewed,
+    conflicting: scenarioInference.conflicting,
+    hasRequiredEvidence: requiredScores.every((score) => score >= 45),
+  });
+  const confidenceModel: AccidentConfidenceModel = {
+    dataQuality: dataQualityConfidence,
+    event: eventConfidence,
+    direction: directionConfidence,
+    scenario: scenarioConfidence,
+    liability: liabilityConfidence,
+  };
+
   // A-6: ربط القطعية بالثقة — لا نُصدر رقماً حاسماً عند ثقة غير عالية أو اتجاه مجهول
   const isConclusive =
-    confidenceDetails.level === "high" && direction !== "unknown" && directionCalibrated;
+    confidenceDetails.level === "high"
+    && direction !== "unknown"
+    && directionCalibrated
+    && rule.reviewed
+    && (zoneDistribution?.ambiguity ?? 0) < 0.85
+    && !scenarioInference.conflicting
+    && requiredScores.every((score) => score >= 45);
 
   let faultRange: [number, number] = [userFault, userFault];
   if (!isConclusive) {
@@ -681,6 +787,16 @@ export function calculateLiability(
     rawFaultPercent: rawFault,
     isConclusive,
     faultRange,
+    confidenceModel,
+    scenarioHypothesis: scenarioInference.primary,
+    alternativeScenarios: scenarioInference.alternatives,
+    ruleId: rule.id,
+    ruleReviewed: rule.reviewed,
+    evidence: scenarioInference.primary.evidence,
+    limitations: [
+      ...scenarioConfidence.limitations,
+      ...liabilityConfidence.limitations,
+    ],
   };
 }
 
