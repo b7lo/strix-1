@@ -44,6 +44,7 @@ CREATE TABLE accidents (
   approach_angle double precision NOT NULL DEFAULT 0,
   severity severity NOT NULL,
   report_json jsonb NOT NULL,
+  local_id varchar(100),
   matched_accident_id uuid,
   match_confidence integer,
   created_at timestamptz NOT NULL DEFAULT now(),
