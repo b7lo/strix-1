@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "phase": 6,
-  "generatedAt": "2026-08-17T00:28:25.332Z",
+  "generatedAt": "2026-08-17T01:34:44.759Z",
   "matching": {
     "fixtureCount": 8,
     "confusionMatrix": {
@@ -17,10 +17,10 @@
     "benchmarkSamples": 50000,
     "targetSampleRateHz": 100,
     "samplePeriodMs": 10,
-    "p50Ms": 0.0006430000000250402,
-    "p95Ms": 0.00101399999999785,
-    "maxMs": 0.30909400000001597,
-    "safeMarginAtP95Ms": 9.998986000000002,
+    "p50Ms": 0.0010310000000117725,
+    "p95Ms": 0.0016640000000052169,
+    "maxMs": 0.3834410000000048,
+    "safeMarginAtP95Ms": 9.998335999999995,
     "retainedProfilerSamples": 4096,
     "profilerCapacity": 4096,
     "sensorBufferLength": 1000,

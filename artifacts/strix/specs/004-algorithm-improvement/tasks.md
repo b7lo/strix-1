@@ -348,18 +348,24 @@
 **يعتمد على:** اكتمال Phases 0–6 ووجود dataset كافية.  
 **قاعدة:** لا يدمج في `main` حتى يتفوق على baseline على test set مستقل.
 
-- [ ] T149 [P] [US7] توثيق سياسة الوسم وتقسيم البيانات في `artifacts/strix/ml/DATASET.md`
-- [ ] T150 [P] [US7] تعريف feature schema بإصدار في `artifacts/strix/ml/features.schema.json`
-- [ ] T151 [US7] تنفيذ extractor للميزات دون بيانات مستقبلية في `artifacts/strix/ml/extract-features.ts`
-- [ ] T152 [US7] تقسيم البيانات حسب الرحلة والسيارة والجهاز في `artifacts/strix/ml/split-dataset.ts`
+- [x] T149 [P] [US7] توثيق سياسة الوسم وتقسيم البيانات في `artifacts/strix/ml/DATASET.md`
+- [x] T150 [P] [US7] تعريف feature schema بإصدار في `artifacts/strix/ml/features.schema.json`
+- [x] T151 [US7] تنفيذ extractor للميزات دون بيانات مستقبلية في `artifacts/strix/ml/extract-features.ts`
+- [x] T152 [US7] تقسيم البيانات حسب الرحلة والسيارة والجهاز في `artifacts/strix/ml/split-dataset.ts`
+    - أضيف جمع Replay اختياري بموافقة صريحة، إزالة الموقع والوقت المطلق، ووسم المستخدم قبل الرفع إلى bucket خاص.
+    - جرد الإنتاج: 150 تقريرًا و46 إنذارًا كاذبًا من 4 أجهزة، لكن دون عينات Replay خام أو labels مراجعة؛ لذلك يبقى التدريب T153 محجوبًا حتى تتوفر dataset صالحة.
 - [ ] T153 [US7] تدريب baseline قابل للتفسير خارج التطبيق في `artifacts/strix/ml/train-baseline.py`
+    - أداة التدريب الخطية القابلة للتفسير منفذة ومختبرة اصطناعيًا، لكن التدريب الفعلي محجوب لعدم وجود labels مراجعة وReplay خام.
 - [ ] T154 [US7] تقييم confusion matrix وMacro F1 والمعايرة في `artifacts/strix/ml/evaluate.py`
-- [ ] T155 [US7] حفظ model card والقيود في `artifacts/strix/ml/MODEL_CARD.md`
-- [ ] T156 [US7] تنفيذ adapter تشغيل تجريبي في `artifacts/strix/lib/ml/impactClassifier.ts`
-- [ ] T157 [US7] تشغيل النموذج في shadow mode دون تغيير القرار في `artifacts/strix/lib/sensorPipeline.ts`
-- [ ] T158 [US7] إضافة fallback كامل إلى القواعد عند فشل النموذج في `artifacts/strix/lib/ml/impactClassifier.ts`
+    - أداة التقييم منفذة لـ confusion matrix وMacro F1 وBrier وECE، لكن التقييم الفعلي محجوب لعدم وجود test set مستقل.
+- [x] T155 [US7] حفظ model card والقيود في `artifacts/strix/ml/MODEL_CARD.md`
+- [x] T156 [US7] تنفيذ adapter تشغيل تجريبي في `artifacts/strix/lib/ml/impactClassifier.ts`
+- [x] T157 [US7] تشغيل النموذج في shadow mode دون تغيير القرار في `artifacts/strix/lib/sensorPipeline.ts`
+- [x] T158 [US7] إضافة fallback كامل إلى القواعد عند فشل النموذج في `artifacts/strix/lib/ml/impactClassifier.ts`
 - [ ] T159 [US7] مقارنة النموذج والقواعد على test set في `artifacts/strix/specs/004-algorithm-improvement/reports/phase-7-ml.json`
-- [ ] T160 [US7] إجراء مراجعة go/no-go موثقة في `artifacts/strix/specs/004-algorithm-improvement/ml-decision.md`
+    - التقرير موجود بحالة `BLOCKED_INSUFFICIENT_REVIEWED_DATA` ولا يحتوي ادعاء مقارنة غير متاح.
+- [x] T160 [US7] إجراء مراجعة go/no-go موثقة في `artifacts/strix/specs/004-algorithm-improvement/ml-decision.md`
+    - القرار `NO_GO_INSUFFICIENT_REVIEWED_DATA`: لا model artifact ولا تفعيل أو دمج حتى اجتياز بوابة البيانات والاختبار المستقل.
 
 ### بوابة Phase 7
 
@@ -372,14 +378,14 @@
 
 # Phase 8 — الإغلاق والتوثيق النهائي
 
-- [ ] T161 تحديث `artifacts/strix/ALGORITHM_IMPROVEMENT_ROADMAP.md` بحالة كل مرحلة
-- [ ] T162 [P] تحديث مخطط تدفق المحرك في `artifacts/strix/specs/004-algorithm-improvement/architecture.md`
-- [ ] T163 [P] تحديث دليل الاختبارات الميدانية في `artifacts/strix/specs/004-algorithm-improvement/field-test-guide.md`
-- [ ] T164 إضافة جدول إصدارات المحرك والعتبات والنموذج في `artifacts/strix/specs/004-algorithm-improvement/version-matrix.md`
-- [ ] T165 تشغيل TypeScript لكل الحزم المتأثرة وإصلاح الأخطاء المرتبطة بالتطوير
-- [ ] T166 تشغيل جميع اختبارات Jest وReplay وproperty tests
-- [ ] T167 تشغيل `git diff --check` وفحص الأسرار والملفات الحساسة
-- [ ] T168 إنشاء تقرير نهائي قبل/بعد في `artifacts/strix/specs/004-algorithm-improvement/final-report.md`
+- [x] T161 تحديث `artifacts/strix/ALGORITHM_IMPROVEMENT_ROADMAP.md` بحالة كل مرحلة
+- [x] T162 [P] تحديث مخطط تدفق المحرك في `artifacts/strix/specs/004-algorithm-improvement/architecture.md`
+- [x] T163 [P] تحديث دليل الاختبارات الميدانية في `artifacts/strix/specs/004-algorithm-improvement/field-test-guide.md`
+- [x] T164 إضافة جدول إصدارات المحرك والعتبات والنموذج في `artifacts/strix/specs/004-algorithm-improvement/version-matrix.md`
+- [x] T165 تشغيل TypeScript لكل الحزم المتأثرة وإصلاح الأخطاء المرتبطة بالتطوير
+- [x] T166 تشغيل جميع اختبارات Jest وReplay وproperty tests
+- [x] T167 تشغيل `git diff --check` وفحص الأسرار والملفات الحساسة
+- [x] T168 إنشاء تقرير نهائي قبل/بعد في `artifacts/strix/specs/004-algorithm-improvement/final-report.md`
 - [ ] T169 إنشاء tag إصدار نهائي بعد موافقة المراجعة
 
 ---

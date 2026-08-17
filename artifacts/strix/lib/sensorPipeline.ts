@@ -1,4 +1,5 @@
 import type { ReplaySample } from "./replay/types";
+import type { ImpactClassifier, ShadowImpactPrediction } from "./ml/impactClassifier";
 import { ImpactSignalProcessor, type ImpactSignalProcessorOptions } from "./signal/impactSignal";
 import { MotionSignalProcessor, type MotionSignalProcessorOptions } from "./signal/motionSignal";
 import type { ImpactSignal, MotionSignal } from "./signal/types";
@@ -14,12 +15,15 @@ export interface SensorPipelineHandlers {
   onCalibration?: (sample: Extract<ReplaySample, { kind: "calibration" }>) => void;
   onQuality?: (sample: Extract<ReplaySample, { kind: "quality" }>) => void;
   onDecision?: (sample: Extract<ReplaySample, { kind: "decision" }>) => void;
+  onShadowPrediction?: (prediction: ShadowImpactPrediction) => void;
   onReset?: () => void;
 }
 
 export interface SensorPipelineOptions {
   impact?: ImpactSignalProcessorOptions;
   motion?: MotionSignalProcessorOptions;
+  /** Optional experiment only; its output never changes the rules decision. */
+  shadowClassifier?: ImpactClassifier;
 }
 
 /**
@@ -30,6 +34,7 @@ export interface SensorPipelineOptions {
 export class SensorPipeline {
   private readonly impactProcessor: ImpactSignalProcessor;
   private readonly motionProcessor: MotionSignalProcessor;
+  private readonly shadowClassifier?: ImpactClassifier;
   private lastAccelerometerTMs: number | null = null;
 
   constructor(
@@ -38,10 +43,12 @@ export class SensorPipeline {
   ) {
     this.impactProcessor = new ImpactSignalProcessor(options.impact);
     this.motionProcessor = new MotionSignalProcessor(options.motion);
+    this.shadowClassifier = options.shadowClassifier;
   }
 
   dispatch(sample: ReplaySample): void {
     this.handlers.onSample?.(sample);
+    this.shadowClassifier?.observeSample(sample);
     switch (sample.kind) {
       case "accelerometer": {
         const dtSec = this.lastAccelerometerTMs !== null && sample.tMs > this.lastAccelerometerTMs
@@ -53,6 +60,9 @@ export class SensorPipeline {
         this.handlers.onImpactSignal?.(impact);
         this.handlers.onMotionSignal?.(motion);
         this.handlers.onSignalPair?.(impact, motion);
+        if (this.shadowClassifier) {
+          this.handlers.onShadowPrediction?.(this.shadowClassifier.observeSignals(impact, motion));
+        }
         this.handlers.onAccelerometer?.(sample);
         break;
       }
@@ -67,6 +77,7 @@ export class SensorPipeline {
   reset(): void {
     this.impactProcessor.reset();
     this.motionProcessor.reset();
+    this.shadowClassifier?.reset();
     this.lastAccelerometerTMs = null;
     this.handlers.onReset?.();
   }

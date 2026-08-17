@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://strix.app/schemas/impact-features-v1.json",
+  "title": "Strix Impact Feature Row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "replayId",
+    "groupId",
+    "label",
+    "labelVerified",
+    "source",
+    "sampleRateHz",
+    "durationMs",
+    "peakG",
+    "peakJerk",
+    "impulseMs",
+    "horizontalEnergy",
+    "verticalEnergy",
+    "rotationPeakDegS",
+    "speedBeforeKmh",
+    "speedDeltaKmh",
+    "dataQualityScore",
+    "gapCount",
+    "phonePlacement",
+    "vehicleClass"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "replayId": { "type": "string", "minLength": 1 },
+    "groupId": { "type": "string", "minLength": 1, "description": "Opaque grouped-split identifier; never an account ID." },
+    "label": {
+      "enum": ["crash", "pothole", "hard_braking", "phone_drop", "door_slam", "rough_road", "normal_driving", "other"]
+    },
+    "labelVerified": { "type": "boolean" },
+    "source": { "enum": ["live", "synthetic", "test-rig"] },
+    "sampleRateHz": { "type": "number", "exclusiveMinimum": 0, "maximum": 200 },
+    "durationMs": { "type": "number", "minimum": 0 },
+    "peakG": { "type": "number", "minimum": 0 },
+    "peakJerk": { "type": "number", "minimum": 0 },
+    "impulseMs": { "type": "number", "minimum": 0 },
+    "horizontalEnergy": { "type": "number", "minimum": 0 },
+    "verticalEnergy": { "type": "number", "minimum": 0 },
+    "rotationPeakDegS": { "type": "number", "minimum": 0 },
+    "speedBeforeKmh": { "type": ["number", "null"], "minimum": 0 },
+    "speedDeltaKmh": { "type": ["number", "null"] },
+    "dataQualityScore": { "type": "number", "minimum": 0, "maximum": 100 },
+    "gapCount": { "type": "integer", "minimum": 0 },
+    "phonePlacement": { "enum": ["mount", "pocket", "seat", "cup_holder", "unknown"] },
+    "vehicleClass": { "enum": ["sedan", "suv", "pickup", "van", "truck", "other", "unknown"] }
+  }
+}
