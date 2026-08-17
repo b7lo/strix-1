@@ -66,6 +66,7 @@ import { exportReplayJson, SensorRecorder, type SensorReplayV1 } from "@/lib/rep
 import { SensorPipeline } from "@/lib/sensorPipeline";
 import { getThresholdConfigVersion } from "@/lib/remoteConfig";
 import { sensorProfiler } from "@/lib/performance/sensorProfiler";
+import { isResearchCollectionEnabled } from "@/lib/dataCollection/consent";
 import i18n from "@/lib/i18n";
 
 let Accelerometer: any = null;
@@ -97,7 +98,7 @@ export interface SessionContextValue {
   latestReport: AccidentReport | null;
   isAnalyzing: boolean;
   startSession: () => Promise<void>;
-  stopSession: () => void;
+  stopSession: () => Promise<void>;
   resetCrash: () => void;
   /** آخر تسجيل مكتمل في الذاكرة؛ لا يحتوي ملفاً دائماً ما لم يصدّره المستخدم صراحةً. */
   getLastReplay: () => SensorReplayV1 | null;
@@ -612,7 +613,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // التسجيل التشخيصي اختياري ومحدود الذاكرة. لا يُكتب إلى القرص تلقائياً.
     // تفعيله: EXPO_PUBLIC_STRIX_SENSOR_RECORDING=true
     lastReplayRef.current = null;
-    recorderRef.current = SENSOR_RECORDING_ENABLED
+    const researchRecordingEnabled = await isResearchCollectionEnabled();
+    recorderRef.current = (SENSOR_RECORDING_ENABLED || researchRecordingEnabled)
       ? new SensorRecorder({
           platform: Platform.OS === "android" || Platform.OS === "ios" || Platform.OS === "web"
             ? Platform.OS

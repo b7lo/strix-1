@@ -205,6 +205,13 @@ export default function SettingsScreen() {
             onPress={() => router.push("/privacy")}
           />
           <Row
+            icon="database"
+            iconColor={colors.primary}
+            iconBg={colors.primary + "1A"}
+            label={t("dataCollection.settingsLink")}
+            onPress={() => router.push("/data-collection")}
+          />
+          <Row
             icon="info"
             iconColor={colors.primary}
             iconBg={colors.primary + "1A"}

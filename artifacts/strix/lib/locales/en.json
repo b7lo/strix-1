@@ -476,6 +476,54 @@
     "inaccurateNote": "Inaccurate — Will be used to improve the engine",
     "legalNote": "This estimate is informational and not a legal judgment — consult official authorities."
   },
+  "dataCollection": {
+    "title": "Help improve detection",
+    "settingsLink": "Detection research data",
+    "optInTitle": "Share anonymous sensor recordings",
+    "optInBody": "When enabled, the app records sensor sessions locally. Nothing is uploaded until you label and submit a recording yourself.",
+    "consentTitle": "Research data consent",
+    "consentBody": "I agree to record and upload de-identified sensor data to improve crash detection. Exact coordinates and absolute time are removed before upload, and collection can be disabled at any time.",
+    "agree": "Agree and enable recording",
+    "privacyNote": "Exact coordinates, name, email, and phone number are not uploaded. Data is never used to assign legal liability.",
+    "lastRecording": "Latest recorded session",
+    "stopFirst": "Stop the monitoring session first so the recording can be finalized.",
+    "recordingReady": "The recording is ready and contains {{count}} samples.",
+    "noRecording": "No recording yet. Enable sharing, start a driving session, then stop it when finished.",
+    "eventLabel": "What happened during this session?",
+    "phonePlacement": "Phone placement",
+    "vehicleClass": "Vehicle class",
+    "submit": "Submit recording for review",
+    "successTitle": "Submitted",
+    "successBody": "The recording was saved without exact location and added to the review queue.",
+    "errorTitle": "Submission failed",
+    "errorBody": "Check the connection and that the collection schema is deployed, then try again.",
+    "labels": {
+      "crash": "Real crash",
+      "pothole": "Pothole or bump",
+      "hard_braking": "Hard braking",
+      "phone_drop": "Phone drop",
+      "door_slam": "Door slam",
+      "rough_road": "Rough road",
+      "normal_driving": "Normal driving",
+      "other": "Other event"
+    },
+    "placements": {
+      "mount": "Fixed mount",
+      "pocket": "Pocket",
+      "seat": "Seat",
+      "cup_holder": "Cup holder",
+      "unknown": "Unknown"
+    },
+    "vehicles": {
+      "sedan": "Sedan",
+      "suv": "SUV",
+      "pickup": "Pickup",
+      "van": "Van",
+      "truck": "Truck",
+      "other": "Other",
+      "unknown": "Unknown"
+    }
+  },
   "severity": {
     "critical": "Critical",
     "severe": "Severe",

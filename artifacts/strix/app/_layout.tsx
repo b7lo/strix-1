@@ -61,6 +61,7 @@ function RootLayoutNav() {
       <Stack.Screen name="profile-edit" options={{ headerShown: false }} />
       <Stack.Screen name="settings-detection" options={{ headerShown: false }} />
       <Stack.Screen name="settings-about" options={{ headerShown: false }} />
+      <Stack.Screen name="data-collection" options={{ headerShown: false }} />
       <Stack.Screen name="privacy" options={{ headerShown: false }} />
     </Stack>
   );
