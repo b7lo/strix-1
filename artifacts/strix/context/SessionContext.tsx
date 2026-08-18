@@ -75,6 +75,7 @@ let Magnetometer: any = null;
 let DeviceMotion: any = null;
 
 const SENSOR_RECORDING_ENABLED = process.env.EXPO_PUBLIC_STRIX_SENSOR_RECORDING === "true";
+const PHONE_MOVEMENT_SUPPRESSION_MS = 1500;
 
 if (Platform.OS !== "web") {
   try {
@@ -153,6 +154,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const speedHistoryRef = useRef<number[]>([]);
   const thresholdRef = useRef(2.0);
   const durationRef = useRef(0);
+  const sessionStartedAtRef = useRef<number | null>(null);
+  const phoneMovementUntilRef = useRef(0);
 
   const lastUIUpdateRef = useRef(0);
   const UI_THROTTLE_MS = 100;
@@ -202,6 +205,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCurrentSpeedKmh(0);
     setSessionDurationSec(0);
     durationRef.current = 0;
+    sessionStartedAtRef.current = null;
+    phoneMovementUntilRef.current = 0;
   }, []);
 
   const analyzeImpact = useCallback(async () => {
@@ -646,6 +651,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           speedKmh: speed,
           gyroPeakDegS: gyro.peakRotationRate,
           gyroValidationPassed: typeof validation === "boolean" ? validation : validation.isValid,
+          phoneMovementDetected: Date.now() <= phoneMovementUntilRef.current,
         });
 
         for (const transition of transitions) {
@@ -696,6 +702,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     impactSaturatedRef.current = false;
     speedHistoryRef.current = [];
     durationRef.current = 0;
+    sessionStartedAtRef.current = Date.now();
+    phoneMovementUntilRef.current = 0;
     lastUIUpdateRef.current = 0;
     sensorProfiler.reset();
     setPeakGForce(0);
@@ -707,8 +715,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setIsCalibrating(true); // يبدأ في وضع المعايرة حتى يجهز المحرك
 
     timerRef.current = setInterval(() => {
-      durationRef.current += 1;
-      setSessionDurationSec(durationRef.current);
+      const startedAt = sessionStartedAtRef.current;
+      if (startedAt === null) return;
+      const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      durationRef.current = elapsedSec;
+      setSessionDurationSec(elapsedSec);
     }, 1000);
 
     Accelerometer.setUpdateInterval(intervalMs);
@@ -730,9 +741,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // (قبل تدوير الـ yaw) + معدل الدوران اللحظي لبوّابة رفض الانعطاف.
       const leveled = getLeveledFrame(filtered);
       vehicleEstimator.current.addAccelSample(leveled.vX, leveled.vY, now, getLatestGyroYawRateDegS());
+      if (gForce > peakRef.current) {
+        peakRef.current = gForce;
+        peakFilteredRef.current = filtered;
+      }
       if (now - lastUIUpdateRef.current >= UI_THROTTLE_MS) {
         lastUIUpdateRef.current = now;
         setCurrentGForce(gForce);
+        setPeakGForce(peakRef.current);
         // مؤشّر المعايرة: نشط طالما المحرك لم يجهز بعد (أول ~5 ثوانٍ)
         setIsCalibrating(!isEngineReady());
         const timingQuality = getTimingQuality();
@@ -746,11 +762,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           gapCount: timingQuality.gapCount,
           roadType: getRoadType(),
         });
-      }
-      if (gForce > peakRef.current) {
-        peakRef.current = gForce;
-        peakFilteredRef.current = filtered;
-        setPeakGForce(gForce);
       }
       sensorProfiler.end(profileStartedAt);
     });
@@ -804,6 +815,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             getLatestGyroYawRateDegS(),
           );
           if (movement.moved) {
+            phoneMovementUntilRef.current = Math.max(
+              phoneMovementUntilRef.current,
+              now + PHONE_MOVEMENT_SUPPRESSION_MS,
+            );
             vehicleEstimator.current.invalidateCalibration(now);
             clearPhoneYawCalibration();
           }

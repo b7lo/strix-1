@@ -24,6 +24,7 @@ export function assessImpactEvidence(
     gyroPeakDegS: observation.gyroPeakDegS,
     pulseDurationMs,
     thresholdG: observation.thresholdG,
+    phoneMovementDetected: observation.phoneMovementDetected,
   });
 
   if (!observation.engineReady) {

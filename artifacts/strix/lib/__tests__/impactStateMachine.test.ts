@@ -4,7 +4,7 @@ import type { ImpactObservation } from "../impact/types";
 function observation(
   atMs: number,
   magnitudeG: number,
-  options: Partial<Pick<ImpactObservation, "speedKmh" | "gyroPeakDegS" | "engineReady" | "gyroValidationPassed">> & {
+  options: Partial<Pick<ImpactObservation, "speedKmh" | "gyroPeakDegS" | "engineReady" | "gyroValidationPassed" | "phoneMovementDetected">> & {
     axis?: "x" | "y";
   } = {},
 ): ImpactObservation {
@@ -34,6 +34,7 @@ function observation(
     speedKmh: options.speedKmh ?? 40,
     gyroPeakDegS: options.gyroPeakDegS ?? 20,
     gyroValidationPassed: options.gyroValidationPassed ?? true,
+    phoneMovementDetected: options.phoneMovementDetected ?? false,
     dataQualityScore: 90,
   };
 }
@@ -64,6 +65,28 @@ describe("ImpactStateMachine transition table", () => {
     const machine = new ImpactStateMachine();
     const transitions = machine.process(observation(0, 3.2));
     expect(transitions.map((event) => event.decision)).toEqual(["candidate", "confirmed"]);
+  });
+
+  it("rejects a strong peak while the phone is being repositioned", () => {
+    const machine = new ImpactStateMachine();
+    const transitions = machine.process(observation(0, 4, {
+      speedKmh: 35,
+      gyroPeakDegS: 180,
+      phoneMovementDetected: true,
+    }));
+
+    expect(transitions.map((event) => event.decision)).toEqual(["candidate", "rejected"]);
+    expect(transitions.at(-1)?.reason).toBe("evidence.phone-movement");
+  });
+
+  it("rejects a strong stationary phone drop before instant confirmation", () => {
+    const machine = new ImpactStateMachine();
+    const first = observation(0, 4, { speedKmh: 0, gyroPeakDegS: 220 });
+    first.motion.magnitudeG = 0.2;
+    const transitions = machine.process(first);
+
+    expect(transitions.map((event) => event.decision)).toEqual(["candidate", "rejected"]);
+    expect(transitions.at(-1)?.reason).toBe("evidence.phone-drop");
   });
 
   it("keeps secondary impacts inside the confirmed incident", () => {

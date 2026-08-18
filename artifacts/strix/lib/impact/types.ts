@@ -18,6 +18,7 @@ export interface ImpactObservation {
   speedKmh: number;
   gyroPeakDegS: number;
   gyroValidationPassed: boolean;
+  phoneMovementDetected?: boolean;
   dataQualityScore?: number;
 }
 
